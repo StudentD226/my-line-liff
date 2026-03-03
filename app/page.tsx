@@ -6,25 +6,36 @@ import liff from '@line/liff';
 export default function LiffPage() {
   const [isReady, setIsReady] = useState(false);
   const router = useRouter();
+
   useEffect(() => {
-    // โหลด LIFF
-    liff.init({ liffId: "2009290251-UZlxLIQJ" })
-      .then(() => setIsReady(true))
-      .catch((err) => console.error(err));
+    // ฟังก์ชันสำหรับเริ่มต้น LIFF
+    const initLiff = async () => {
+      try {
+        await liff.init({ liffId: "2009290251-UZlxLIQJ" });
+        console.log("LIFF initialized!");
+        setIsReady(true);
+
+        // เช็คการ Login และดึงข้อมูล Profile
+        if (liff.isLoggedIn()) {
+          const profile = await liff.getProfile();
+          console.log("User Profile:", profile);
+        } else {
+          // ถ้ายังไม่ได้ Login สามารถสั่ง liff.login() ได้ที่นี่ (ถ้าต้องการ)
+          // liff.login();
+        }
+      } catch (err) {
+        console.error("LIFF Initialization failed", err);
+      }
+    };
+
+    initLiff();
   }, []);
-liff.init({ liffId: "2009290251-UZlxLIQJ" }).then(() => {
-  console.log("LIFF initialized!"); // ถ้าข้อความนี้ขึ้นใน Console แสดงว่า LIFF เวิร์ก
-  if (liff.isLoggedIn()) {
-    const profile = liff.getProfile();
-    console.log("User Profile:", profile); // ดูว่าดึงชื่อเรามาได้ไหม
-  }
-});
+
   return (
-    // พื้นหลังสีเขียว LINE
     <main className="min-h-screen bg-[#00B900] flex flex-col items-center pt-8 pb-10 font-sans">
       
-      {/* โลโก้หรือหัวข้อ (ถ้ามี) */}
-      <div className="text-white text-xl font-bold mb-6 tracking-wide drop-shadow-md">
+      {/* หัวข้อส่วนบน */}
+      <div className="text-white text-xl font-bold mb-6 tracking-wide drop-shadow-md text-center px-4">
         ระบบสารสนเทศเพื่อการบริหารจัดการค่าส่วนกลาง
       </div>
 
@@ -32,8 +43,7 @@ liff.init({ liffId: "2009290251-UZlxLIQJ" }).then(() => {
       <div className="w-full max-w-md px-4">
         <div className="grid grid-cols-3 gap-3">
           
-          {/* ปุ่มที่ 1: สมัครสมาชิก (เพิ่มมาใหม่) */}
-          
+          {/* ปุ่มที่ 1: สมัครสมาชิก */}
           <div 
             onClick={() => router.push('/register')}
             className="bg-white rounded-2xl aspect-square flex flex-col items-center justify-center p-2 shadow-md hover:scale-105 active:scale-95 transition-transform cursor-pointer">
@@ -86,6 +96,13 @@ liff.init({ liffId: "2009290251-UZlxLIQJ" }).then(() => {
 
         </div>
       </div>
+      
+      {/* แสดงสถานะการโหลด (ทางเลือก) */}
+      {!isReady && (
+        <div className="fixed inset-0 bg-black/20 flex items-center justify-center text-white font-bold">
+          Loading LIFF...
+        </div>
+      )}
       
     </main>
   );
