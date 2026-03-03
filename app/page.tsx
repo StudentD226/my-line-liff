@@ -12,7 +12,7 @@ export default function LiffPage() {
       .then(() => setIsReady(true))
       .catch((err) => console.error(err));
   }, []);
-liff.init({ liffId: "YOUR_LIFF_ID" }).then(() => {
+liff.init({ liffId: "2009290251-UZlxLIQJ" }).then(() => {
   console.log("LIFF initialized!"); // ถ้าข้อความนี้ขึ้นใน Console แสดงว่า LIFF เวิร์ก
   if (liff.isLoggedIn()) {
     const profile = liff.getProfile();
