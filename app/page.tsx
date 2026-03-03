@@ -12,7 +12,13 @@ export default function LiffPage() {
       .then(() => setIsReady(true))
       .catch((err) => console.error(err));
   }, []);
-
+liff.init({ liffId: "YOUR_LIFF_ID" }).then(() => {
+  console.log("LIFF initialized!"); // ถ้าข้อความนี้ขึ้นใน Console แสดงว่า LIFF เวิร์ก
+  if (liff.isLoggedIn()) {
+    const profile = liff.getProfile();
+    console.log("User Profile:", profile); // ดูว่าดึงชื่อเรามาได้ไหม
+  }
+});
   return (
     // พื้นหลังสีเขียว LINE
     <main className="min-h-screen bg-[#00B900] flex flex-col items-center pt-8 pb-10 font-sans">
@@ -68,7 +74,7 @@ export default function LiffPage() {
             </svg>
             <span className="text-[11px] font-bold text-center text-black leading-tight">แจ้งปัญหา</span>
           </div>
-
+          
           {/* ปุ่มที่ 6: การตั้งค่า */}
           <div className="bg-white rounded-2xl aspect-square flex flex-col items-center justify-center p-2 shadow-md hover:scale-105 active:scale-95 transition-transform cursor-pointer">
             <svg className="w-8 h-8 text-black mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
