@@ -59,7 +59,7 @@ export default function RegisterPage() {
     }
   };
 
-  // ✉️ 3. ฟังก์ชันบันทึกข้อมูล
+ // ✉️ 3. ฟังก์ชันบันทึกข้อมูล <--- วางทับตรงนี้ครับ!
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -69,13 +69,18 @@ export default function RegisterPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
+
       const data = await res.json();
-      if (data.success) {
+      
+      if (res.ok && data.success) {
         setRegisteredUser(data.user);
         alert(data.isExisting ? 'ระบบพบข้อมูลเดิมของท่านเรียบร้อยแล้ว' : 'บันทึกข้อมูลการลงทะเบียนสำเร็จ');
+      } else {
+        // เพิ่มการแจ้งเตือนถ้า Database มีปัญหา
+        alert('เกิดข้อผิดพลาดจากระบบ: ' + (data.error || 'กรุณาลองใหม่อีกครั้ง'));
       }
     } catch (err) {
-      alert('เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง');
+      alert('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาเช็คอินเทอร์เน็ต');
     } finally {
       setLoading(false);
     }
