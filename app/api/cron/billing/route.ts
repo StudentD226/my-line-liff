@@ -5,7 +5,6 @@ const prisma = new PrismaClient();
 
 const fullThaiMonths = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
 
-<<<<<<< HEAD
 // 🌟 Helper ตัดทศนิยมทิ้ง ไม่ให้ปัดขึ้น
 const truncateDecimals = (val: number) => Math.floor(Math.round(val * 10000) / 100) / 100;
 
@@ -16,12 +15,6 @@ function createInvoiceFlexMessage(data: any) {
   const tableContents: any[] = [];
 
   // 1. เดือนปัจจุบัน (อยู่บนสุด)
-=======
-// 🌟 ฟังก์ชันสร้างหน้าตา Flex Message สำหรับระบบ Auto (GET)
-function createInvoiceFlexMessage(data: any) {
-  const tableContents: any[] = [];
-
->>>>>>> beebffa78c74a820bb614030891dc51dfd84ad7d
   if (data.currentInvoiceItem) {
     tableContents.push({
       type: "box", layout: "horizontal", margin: "md",
@@ -32,27 +25,9 @@ function createInvoiceFlexMessage(data: any) {
     });
   }
 
-<<<<<<< HEAD
   // 2. เดือนในอดีต (เรียงจากใหม่ไปเก่า)
   if (data.pastMonthItems && data.pastMonthItems.length > 0) {
     [...data.pastMonthItems].reverse().forEach((item: any) => {
-=======
-  if (data.pastYearTotals) {
-    Object.keys(data.pastYearTotals).forEach(yearStr => {
-      const yearNum = parseInt(yearStr);
-      tableContents.push({
-        type: "box", layout: "horizontal", margin: "md",
-        contents: [
-          { type: "text", text: `ยอดค้างชำระปี ${yearNum + 543}`, size: "sm", color: "#EF4444" },
-          { type: "text", text: `${data.pastYearTotals[yearNum].toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end", weight: "bold" }
-        ]
-      });
-    });
-  }
-
-  if (data.pastMonthItems) {
-    data.pastMonthItems.forEach((item: any) => {
->>>>>>> beebffa78c74a820bb614030891dc51dfd84ad7d
       tableContents.push({
         type: "box", layout: "horizontal", margin: "md",
         contents: [
@@ -63,7 +38,6 @@ function createInvoiceFlexMessage(data: any) {
     });
   }
 
-<<<<<<< HEAD
   // 3. ยอดค้างข้ามปี (ปีใหม่ไปปีเก่า)
   if (data.pastYearTotals) {
     Object.keys(data.pastYearTotals)
@@ -81,8 +55,6 @@ function createInvoiceFlexMessage(data: any) {
   }
 
   // 4. ค่าปรับ
-=======
->>>>>>> beebffa78c74a820bb614030891dc51dfd84ad7d
   if (data.totalPenalty > 0) {
     tableContents.push({
       type: "box", layout: "horizontal", margin: "md",
@@ -127,27 +99,16 @@ function createInvoiceFlexMessage(data: any) {
             { type: "text", text: `ใบเสร็จเรียกเก็บเงิน\nประจำเดือน ${data.headerBillingMonthText}`, size: "xs", color: "#2A524C", weight: "bold", margin: "sm", wrap: true, flex: 1 }
           ]
         },
-<<<<<<< HEAD
         // ปรับยอดรวม: ตัวใหญ่ (xxl) และบาทชิดขวา
-=======
-        // 🌟 กล่องยอดรวมดีไซน์ใหม่ (ชิดซ้าย + ตัวเลขเล็ก/ไม่หนา)
->>>>>>> beebffa78c74a820bb614030891dc51dfd84ad7d
         {
           type: "box", layout: "vertical", margin: "xl", backgroundColor: boxBgColor, cornerRadius: "lg", paddingAll: "lg",
           contents: [
             { type: "text", text: mainTitle, size: "xs", color: mainTextColor, weight: "bold", align: "start" },
             {
-<<<<<<< HEAD
               type: "box", layout: "horizontal", margin: "sm", alignItems: "flex-end", spacing: "sm",
               contents: [
                 { type: "text", text: data.finalGrandTotal.toLocaleString('th-TH', { minimumFractionDigits: 2 }), size: "xxl", weight: "bold", color: mainTextColor, align: "end", flex: 1 },
                 { type: "text", text: "บาท", size: "sm", weight: "bold", color: mainTextColor, align: "end", flex: 0, margin: "xs" }
-=======
-              type: "box", layout: "horizontal", margin: "sm", justifyContent: "center", alignItems: "flex-end", spacing: "sm",
-              contents: [
-                { type: "text", text: data.finalGrandTotal.toLocaleString('th-TH', { minimumFractionDigits: 2 }), size: "xs", color: mainTextColor, adjustMode: "shrink-to-fit", align: "center", flex: 0 },
-                { type: "text", text: "บาท", size: "xs", color: mainTextColor, flex: 0, margin: "xs" }
->>>>>>> beebffa78c74a820bb614030891dc51dfd84ad7d
               ]
             }
           ]
@@ -172,10 +133,6 @@ function createInvoiceFlexMessage(data: any) {
                 }
               ]
             }
-<<<<<<< HEAD
-=======
-            // ลบข้อความแจ้งเตือนสีเทาออกแล้ว
->>>>>>> beebffa78c74a820bb614030891dc51dfd84ad7d
           ]
         }
       ]
@@ -186,7 +143,6 @@ function createInvoiceFlexMessage(data: any) {
         {
           type: "button", style: "primary", color: "#376B64", height: "sm",
           action: { type: "uri", label: "ดูประวัติและชำระเงิน", uri: `https://liff.line.me/${process.env.NEXT_PUBLIC_LIFF_ID}/invoices` }
-<<<<<<< HEAD
         },
         ...(data.invoiceNo ? [{
           type: "box", layout: "horizontal", margin: "md",
@@ -195,9 +151,6 @@ function createInvoiceFlexMessage(data: any) {
             { type: "text", text: data.invoiceNo, size: "xxs", color: "#6B7280", weight: "bold", align: "end", flex: 1 }
           ]
         }] : [])
-=======
-        }
->>>>>>> beebffa78c74a820bb614030891dc51dfd84ad7d
       ]
     }
   };
@@ -254,11 +207,7 @@ export async function GET(request: Request) {
     }
 
     const config = await prisma.systemConfig.findFirst();
-<<<<<<< HEAD
     let penaltyRatePerDay = config?.penaltyRatePerDay || 100; // 🌟 เปลี่ยนมาดึงเรทรายวัน
-=======
-    let flatPenaltyPerMonth = config?.penaltyRatePerDay || 100;
->>>>>>> beebffa78c74a820bb614030891dc51dfd84ad7d
 
     let stats = { lineSent: 0, updatedInvoices: 0 };
 
@@ -266,7 +215,6 @@ export async function GET(request: Request) {
       
       const today = new Date(); today.setHours(0, 0, 0, 0);
       const dueDate = new Date(inv.dueDate); dueDate.setHours(0, 0, 0, 0);
-<<<<<<< HEAD
       let currentPenalty = truncateDecimals(inv.penaltyAmount || 0);
 
       // 🌟 ลอจิกค่าปรับรายวันสำหรับ Cron Job
@@ -283,19 +231,6 @@ export async function GET(request: Request) {
             totalAmount: truncateDecimals(inv.baseAmount + currentPenalty), 
             status: 'OVERDUE' 
           }
-=======
-      let currentPenalty = inv.penaltyAmount || 0;
-
-      if (today > dueDate) {
-        const diffTime = today.getTime() - dueDate.getTime();
-        const overdueDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        const overdueMonths = Math.ceil(overdueDays / 30); 
-        currentPenalty = overdueMonths * flatPenaltyPerMonth;
-        
-        await prisma.invoice.update({
-          where: { id: inv.id },
-          data: { penaltyAmount: currentPenalty, totalAmount: inv.baseAmount + currentPenalty, status: 'OVERDUE' }
->>>>>>> beebffa78c74a820bb614030891dc51dfd84ad7d
         });
       }
 
@@ -316,13 +251,8 @@ export async function GET(request: Request) {
       const currentYear = inv.billingYear;
 
       allUnpaidForThisHouse.forEach(uInv => {
-<<<<<<< HEAD
         let base = truncateDecimals(uInv.baseAmount);
         let penalty = (uInv.id === inv.id) ? currentPenalty : truncateDecimals(uInv.penaltyAmount || 0);
-=======
-        let base = uInv.baseAmount;
-        let penalty = (uInv.id === inv.id) ? currentPenalty : (uInv.penaltyAmount || 0);
->>>>>>> beebffa78c74a820bb614030891dc51dfd84ad7d
 
         grandTotalBase += base;
         totalPenalty += penalty;
@@ -333,22 +263,14 @@ export async function GET(request: Request) {
           currentInvoiceItem = { label, amount: base };
         } else {
           if (uInv.billingYear < currentYear) {
-<<<<<<< HEAD
             pastYearTotals[uInv.billingYear] = truncateDecimals((pastYearTotals[uInv.billingYear] || 0) + base);
-=======
-            pastYearTotals[uInv.billingYear] = (pastYearTotals[uInv.billingYear] || 0) + base;
->>>>>>> beebffa78c74a820bb614030891dc51dfd84ad7d
           } else {
             pastMonthItems.push({ label, amount: base });
           }
         }
       });
 
-<<<<<<< HEAD
       const finalGrandTotal = truncateDecimals(grandTotalBase + totalPenalty);
-=======
-      const finalGrandTotal = grandTotalBase + totalPenalty;
->>>>>>> beebffa78c74a820bb614030891dc51dfd84ad7d
       const isOverdue = inv.status === 'OVERDUE' || allUnpaidForThisHouse.some(u => u.status === 'OVERDUE') || totalPenalty > 0;
       
       const due = new Date(inv.dueDate);
@@ -369,11 +291,7 @@ export async function GET(request: Request) {
             finalGrandTotal: finalGrandTotal,
             isOverdue: isOverdue,
             dueDateText: dueDateText,
-<<<<<<< HEAD
             invoiceNo: inv.id // 🌟 ส่ง ID ไปโชว์ใน Payment ID ตรง Footer
-=======
-            invoiceId: inv.id
->>>>>>> beebffa78c74a820bb614030891dc51dfd84ad7d
           });
 
           await sendAutoLineMessage(resident.lineId, flexMsg);

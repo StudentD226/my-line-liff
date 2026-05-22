@@ -4,12 +4,9 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-<<<<<<< HEAD
 // 🌟 Helper ตัดทศนิยมทิ้ง ดักไว้ก่อนบันทึกลงฐานข้อมูล
 const truncateDecimals = (val: number) => Math.floor(Math.round(val * 10000) / 100) / 100;
 
-=======
->>>>>>> beebffa78c74a820bb614030891dc51dfd84ad7d
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -23,19 +20,12 @@ export async function POST(request: Request) {
     const houseNo = formData.get('houseNo') as string;
     const transferDate = formData.get('transferDate') as string;
     const transferTime = formData.get('transferTime') as string;
-<<<<<<< HEAD
     
     // 🌟 เอา truncateDecimals มาครอบการรับค่าเงินทั้งหมด ป้องกันทศนิยมเพี้ยนจากฝั่ง Frontend
     const payAmount = truncateDecimals(parseFloat(formData.get('payAmount') as string || '0'));
     const remainingBalance = truncateDecimals(parseFloat(formData.get('remainingBalance') as string || '0'));
     const advanceMonths = parseInt(formData.get('payOptionMonths') as string || '0', 10);
     const fineAmount = truncateDecimals(parseFloat(formData.get('fineAmount') as string || '0'));
-=======
-    const payAmount = parseFloat(formData.get('payAmount') as string || '0');
-    const remainingBalance = parseFloat(formData.get('remainingBalance') as string || '0');
-    const advanceMonths = parseInt(formData.get('payOptionMonths') as string || '0', 10);
-    const fineAmount = parseFloat(formData.get('fineAmount') as string || '0');
->>>>>>> beebffa78c74a820bb614030891dc51dfd84ad7d
 
     if (!file || !houseNo) return NextResponse.json({ success: false }, { status: 400 });
 
@@ -125,11 +115,7 @@ export async function POST(request: Request) {
       receiptItems.push({
         type: "box", layout: "horizontal", margin: "md", contents: [
           { type: "text", text: "ค่าปรับ", size: "sm", color: "#EA580C", weight: "bold", flex: 5 },
-<<<<<<< HEAD
           { type: "text", text: `${fineAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EA580C", align: "end", flex: 5 }
-=======
-          { type: "text", text: `${fineAmount.toLocaleString('th-TH')} บาท`, size: "sm", color: "#EA580C", align: "end", flex: 5 }
->>>>>>> beebffa78c74a820bb614030891dc51dfd84ad7d
         ]
       });
     }
@@ -138,16 +124,10 @@ export async function POST(request: Request) {
       let lastM = existingInvoices.length > 0 ? existingInvoices[existingInvoices.length - 1].billingMonth : new Date().getMonth() + 1;
       let lastY = existingInvoices.length > 0 ? existingInvoices[existingInvoices.length - 1].billingYear : new Date().getFullYear();
       
-<<<<<<< HEAD
       // 🌟 ตัดทศนิยมตรงเรทรายเดือนด้วย เผื่อ feeRate * houseSize มีจุดทศนิยม
       const monthlyRate = truncateDecimals(house.feeType === 'CALCULATED' && house.houseSize
         ? Number(house.feeRate) * Number(house.houseSize)
         : Number(house.feeRate || 1000));
-=======
-      const monthlyRate = house.feeType === 'CALCULATED' && house.houseSize
-        ? Number(house.feeRate) * Number(house.houseSize)
-        : Number(house.feeRate || 1000);
->>>>>>> beebffa78c74a820bb614030891dc51dfd84ad7d
       
       let startM = 0, startY = 0;
       for (let i = 0; i < advanceMonths; i++) {
@@ -265,8 +245,4 @@ export async function POST(request: Request) {
     console.error("Payment API Error:", error);
     return NextResponse.json({ success: false }, { status: 500 });
   }
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> beebffa78c74a820bb614030891dc51dfd84ad7d
