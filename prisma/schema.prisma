@@ -1,0 +1,163 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("PRISMA_DATABASE_URL")
+}
+
+// ------------------------------------------------------
+// 1. ตั้งค่าระบบกลาง (System Configuration)
+// ------------------------------------------------------
+model SystemConfig {
+  id                 Int         @id @default(1)
+  projectType        ProjectType @default(HOUSING_ESTATE)
+  flatRateAmount     Float       @default(500)   // ยอดเหมาจ่ายมาตรฐาน
+  penaltyRatePerDay  Float       @default(0.027) // % ค่าปรับต่อวัน (เช่น 10% ต่อปี / 365)
+  updatedAt          DateTime    @updatedAt
+  
+  invoiceGenerateDay Int         @default(27) // วันที่ออกบิลประจำเดือน
+  invoiceGenerateTime String     @default("08:00") // 🌟 เพิ่มบรรทัดนี้ เพื่อเก็บเวลาส่งบิลอัตโนมัติ
+  
+  dueDateDay         Int         @default(7)  // วันครบกำหนด / ทวงรอบแรก
+  penaltyStartDay    Int         @default(8)  // วันที่เริ่มคิดค่าปรับล่าช้า
+  secondReminderDay  Int         @default(15) // วันที่ส่งทวงรอบสองพร้อมค่าปรับ
+}
+
+enum ProjectType {
+  HOUSING_ESTATE // หมู่บ้านจัดสรร
+  CONDO          // คอนโดมิเนียม
+}
+
+// ------------------------------------------------------
+// 2. ข้อมูลผู้ใช้งาน และ สิทธิ์ (Users & Roles)
+// ------------------------------------------------------
+model User {
+  id              String   @id @default(cuid())
+  lineId          String?  @unique
+  name            String?
+  phone           String?
+  role            Role     @default(USER)
+  isNotify        Boolean  @default(true)
+  
+  // ความสัมพันธ์กับบ้าน
+  residentHouseId String?
+  residentHouse   House?   @relation("HouseResidents", fields: [residentHouseId], references: [id])
+  ownedHouses     House[]  @relation("HouseOwner")
+  
+  createdAt       DateTime @default(now())
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+// ------------------------------------------------------
+// 3. ข้อมูลอสังหาริมทรัพย์ (Property Units)
+// ------------------------------------------------------
+model House {
+  id        String    @id @default(cuid())
+  houseNo   String    @unique
+  houseSize Float     @default(0) // ตร.ว. หรือ ตร.ม.
+  
+  // รูปแบบการคำนวณเงิน
+  feeType   FeeType   @default(CALCULATED)
+  feeRate   Float     @default(0) // เรทราคา (เช่น 15 บาท/ตร.ว. หรือ เหมา 850 บาท)
+  
+  // เจ้าของและผู้อยู่อาศัย
+  ownerId   String?   
+  owner     User?     @relation("HouseOwner", fields: [ownerId], references: [id])
+  
+  // สมาชิกที่อาศัยอยู่ในบ้าน (หลายคน)
+  residents User[]    @relation("HouseResidents")
+  
+  invoices  Invoice[]
+  reports   Report[]
+  createdAt DateTime  @default(now())
+}
+
+enum FeeType {
+  CALCULATED // คำนวณตามพื้นที่ (เช่น เอา houseSize x feeRate)
+  FIXED      // เหมาจ่าย (จ่ายตามราคา feeRate เลย ไม่ต้องคูณ)
+}
+
+// ------------------------------------------------------
+// 4. ระบบการเงินและบิล (Financials & Invoices)
+// ------------------------------------------------------
+model Invoice {
+  id              String        @id @default(cuid())
+  invoiceNo       String        @unique
+  billingMonth    Int           
+  billingYear     Int           
+  
+  // แยกยอดเงินเพื่อความโปร่งใสและคำนวณใหม่ได้ง่าย
+  baseAmount      Float         // ยอดตั้งต้นที่ต้องจ่าย
+  penaltyAmount   Float         @default(0) // ยอดค่าปรับสะสม
+  totalAmount     Float         // ยอดสุทธิ (base + penalty)
+  
+  dueDate         DateTime      
+  status          InvoiceStatus @default(PENDING)
+  
+  // หลักฐานการโอนเงิน
+  slipUrl         String?       
+  payeeName       String?       
+  transferDate    String?       
+  transferTime    String?       
+  paidAt          DateTime?     
+
+  residentHouseId String
+  house           House         @relation(fields: [residentHouseId], references: [id], onDelete: Cascade)
+  
+  // 🌟 เพิ่มฟิลด์สำหรับระบบตั้งเวลาส่งบิลและแจ้งเตือนเข้า LINE อัตโนมัติ
+  scheduledSendAt DateTime?     // วันและเวลาที่กำหนดให้ส่งบิล
+  isNotified      Boolean       @default(false) // สถานะการส่งแจ้งเตือนเข้า LINE ลูกบ้าน
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+enum InvoiceStatus {
+  PENDING   // รอชำระ
+  OVERDUE   // เกินกำหนด
+  CHECKING  // รอตรวจสอบสลิป
+  PAID      // ชำระแล้ว
+  REJECTED  // สลิปไม่ถูกต้อง
+}
+
+// ------------------------------------------------------
+// 5. ระบบแจ้งซ่อมและข่าวสาร (Utility & Communication)
+// ------------------------------------------------------
+model Report {
+  id              String   @id @default(cuid())
+  ticketNo        String   @unique  // เลขที่แจ้งซ่อม (เช่น MT-670501)
+  lineId          String   // เก็บ LINE ID คนแจ้งเพื่อไว้ส่งข้อความตอบกลับ
+  type            String   @default("REPAIR") // REPAIR แจ้งซ่อม, INFORM แจ้งเพื่อทราบ
+  
+  category        String   // ประเภทปัญหา (เช่น water, electric, clean, other)
+  location        String   // สถานที่เกิดปัญหา
+  title           String   // หัวข้อปัญหา
+  description     String   @db.Text 
+  imageUrl        String?  
+  
+  status          String   @default("PENDING") 
+  adminNote       String?  @db.Text // ข้อความอัปเดตจากแอดมิน
+  
+  residentHouseId String
+  house           House    @relation(fields: [residentHouseId], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt 
+}
+
+// ------------------------------------------------------
+// 6. ข่าวประกาศ
+// ------------------------------------------------------
+model News {
+  id        Int      @id @default(autoincrement())
+  title     String
+  content   String   @db.Text 
+  imageUrl  String?
+  createdAt DateTime @default(now())
+}
