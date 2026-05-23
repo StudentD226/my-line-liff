@@ -4,7 +4,7 @@ import Swal from 'sweetalert2';
 import Link from 'next/link'; 
 import { 
   Info, CalendarDays, Settings as SettingsIcon, Building, 
-  CreditCard, X, Save, Clock, ArrowLeft, BellRing
+  CreditCard, X, Save, ArrowLeft, BellRing, Clock, Landmark, ChevronDown
 } from 'lucide-react';
 
 // 🌟 ตัวเลือกธนาคารทั้งหมด
@@ -117,11 +117,14 @@ export default function AdminSettingsPage() {
   const [dueDateDay, setDueDateDay] = useState(7);
   const [secondReminderDay, setSecondReminderDay] = useState(15);
 
-  // 🌟 State สำหรับธนาคาร
   const [bankName, setBankName] = useState("ธนาคารกรุงไทย");
   const [bankAccountNo, setBankAccountNo] = useState("660-9-55290-8");
   const [bankAccountName, setBankAccountName] = useState("นิติบุคคลหมู่บ้าน");
-  const [bankLogoUrl, setBankLogoUrl] = useState("https://images.icons8.com/fluency/96/krung-thai-bank.png");
+  const [bankLogoUrl, setBankLogoUrl] = useState("/banks/KTB.png");
+  
+  // 🌟 State สำหรับ Custom Dropdown เลือกธนาคาร และรูป Error
+  const [isBankDropdownOpen, setIsBankDropdownOpen] = useState(false);
+  const [imageError, setImageError] = useState(false); 
 
   const [loading, setLoading] = useState(true);
   const [savingGlobal, setSavingGlobal] = useState(false);
@@ -153,7 +156,6 @@ export default function AdminSettingsPage() {
         if (data.config.dueDateDay) setDueDateDay(data.config.dueDateDay);
         if (data.config.secondReminderDay) setSecondReminderDay(data.config.secondReminderDay);
         
-        // 🌟 เซ็ตค่าธนาคารที่ดึงมาจาก API
         if (data.config.bankName) setBankName(data.config.bankName);
         if (data.config.bankAccountNo) setBankAccountNo(data.config.bankAccountNo);
         if (data.config.bankAccountName) setBankAccountName(data.config.bankAccountName);
@@ -214,7 +216,6 @@ export default function AdminSettingsPage() {
               invoiceGenerateTime, 
               dueDateDay,
               secondReminderDay,
-              // 🌟 ส่งค่าธนาคารไปบันทึกด้วย
               bankName,
               bankAccountNo,
               bankAccountName,
@@ -405,36 +406,69 @@ export default function AdminSettingsPage() {
                 </label>
               </div>
 
-              {/* 🌟 บัญชีธนาคารรับเงิน (Bank Account Settings) แทรกตรงนี้ครับ */}
+              {/* 🌟 บัญชีธนาคารรับเงิน */}
               <div className="mt-8 pt-8 border-t border-gray-100">
                 <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
                   <span className="text-2xl">🏦</span> บัญชีธนาคารรับเงิน (สำหรับลูกบ้านโอนชำระ)
                 </h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {/* เลือกธนาคาร */}
-                  <div className="col-span-1">
+                  {/* 🌟 Custom Dropdown เลือกธนาคาร */}
+                  <div className="relative col-span-1">
                     <label className="block text-sm font-semibold text-gray-700 mb-2">เลือกธนาคาร</label>
-                    <div className="flex items-center space-x-3 bg-gray-50 border border-gray-200 rounded-xl p-2.5 hover:border-[#376B64]/50 transition-colors shadow-sm">
-                      <img 
-                        src={bankLogoUrl || BANK_OPTIONS[3].url} 
-                        alt="Bank Logo" 
-                        className="w-8 h-8 object-contain bg-white rounded-full p-0.5 shadow-sm border border-gray-100" 
-                      />
-                      <select
-                        value={bankName}
-                        onChange={(e) => {
-                          const selected = BANK_OPTIONS.find(b => b.name === e.target.value);
-                          setBankName(selected?.name || ""); 
-                          setBankLogoUrl(selected?.url || "");
-                        }}
-                        className="w-full bg-transparent outline-none text-sm text-gray-700 font-semibold cursor-pointer"
-                      >
-                        {BANK_OPTIONS.map((bank, idx) => (
-                          <option key={idx} value={bank.name}>{bank.name}</option>
-                        ))}
-                      </select>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsBankDropdownOpen(!isBankDropdownOpen)}
+                      className={`w-full flex items-center justify-between border rounded-xl p-3 transition-all shadow-sm outline-none ${isBankDropdownOpen ? 'bg-white border-[#376B64] ring-2 ring-[#376B64]/20' : 'bg-gray-50 border-gray-200 hover:bg-white hover:border-[#376B64]/50'}`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        {!imageError ? (
+                          <img 
+                            src={bankLogoUrl || BANK_OPTIONS[3].url} 
+                            alt="Bank Logo" 
+                            onError={() => setImageError(true)}
+                            className="w-7 h-7 object-contain bg-white rounded-full p-0.5 shadow-sm border border-gray-100" 
+                          />
+                        ) : (
+                          <div className="w-7 h-7 bg-white rounded-full shadow-sm border border-gray-100 flex items-center justify-center text-[#376B64]">
+                            <Landmark size={14} />
+                          </div>
+                        )}
+                        <span className="text-[15px] font-semibold text-gray-700">{bankName}</span>
+                      </div>
+                      <ChevronDown size={18} className={`text-[#376B64] transition-transform ${isBankDropdownOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {/* เมนู Dropdown */}
+                    {isBankDropdownOpen && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setIsBankDropdownOpen(false)}></div>
+                        <div className="absolute top-full left-0 mt-2 w-full bg-white border border-gray-100 rounded-xl shadow-xl z-50 overflow-hidden animate-fadeIn origin-top">
+                          <div className="max-h-60 overflow-y-auto custom-scrollbar">
+                            {BANK_OPTIONS.map((bank, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => {
+                                  setBankName(bank.name);
+                                  setBankLogoUrl(bank.url);
+                                  setImageError(false);
+                                  setIsBankDropdownOpen(false);
+                                }}
+                                className={`w-full flex items-center space-x-3 p-3 transition-colors ${bankName === bank.name ? 'bg-[#376B64]/10 text-[#376B64]' : 'hover:bg-gray-50 text-gray-700'}`}
+                              >
+                                <img 
+                                  src={bank.url} 
+                                  alt={bank.name} 
+                                  className="w-7 h-7 object-contain bg-white rounded-full p-0.5 shadow-sm border border-gray-100" 
+                                />
+                                <span className={`text-[15px] ${bankName === bank.name ? 'font-bold' : 'font-medium'}`}>{bank.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   {/* ชื่อบัญชี */}
@@ -508,15 +542,17 @@ export default function AdminSettingsPage() {
                         </div>
                       </div>
                     </div>
-                    <div className="relative">
+                    
+                    <div className="relative flex items-center">
                       <input
                         type="time"
                         value={invoiceGenerateTime}
                         onChange={(e) => setInvoiceGenerateTime(e.target.value)}
-                        className="w-full border border-gray-200 bg-gray-50 hover:bg-white hover:border-[#376B64]/40 focus:bg-white focus:border-[#376B64] focus:ring-2 focus:ring-[#376B64]/20 rounded-xl p-3.5 outline-none transition-all text-left shadow-sm font-medium text-[15px] text-gray-900"
+                        className="w-full border border-gray-200 bg-gray-50 hover:bg-white hover:border-[#376B64]/40 focus:bg-white focus:border-[#376B64] focus:ring-2 focus:ring-[#376B64]/20 rounded-xl p-3.5 outline-none transition-all text-left shadow-sm font-medium text-[15px] text-gray-900 appearance-none [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer z-10"
                       />
-                      <Clock size={20} className="absolute right-3.5 top-3.5 text-[#376B64] pointer-events-none" />
+                      <Clock size={20} className="absolute right-3.5 text-[#376B64] z-0" />
                     </div>
+                    
                   </div>
                 </div>
               </div>
@@ -685,8 +721,11 @@ export default function AdminSettingsPage() {
       )}
 
       <style dangerouslySetInnerHTML={{__html: `
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fadeIn { animation: fadeIn 0.2s ease-out forwards; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
       `}} />
     </div>
   );
