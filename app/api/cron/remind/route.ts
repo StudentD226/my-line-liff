@@ -144,7 +144,7 @@ function createInvoiceFlexMessage(data: any) {
               type: "text",
               text: data.invoiceNo || "N/A", // 🌟 ดึง invoiceNo ของเดือนนั้นๆ มาแสดง
               size: "xxs",
-              color: "#EF4444", // 🌟 สีแดงตามสั่ง
+              color: " #6B7280", // 🌟 สีแดงตามสั่ง
               weight: "bold",
               align: "end",
               flex: 1
