@@ -44,7 +44,7 @@ function createInvoiceFlexMessage(data: any) {
             { type: "text", text: `${data.pastYearTotals[yearNum].toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end", weight: "bold" }
           ]
         });
-    });
+      });
   }
 
   if (data.totalPenalty > 0) {
@@ -57,17 +57,17 @@ function createInvoiceFlexMessage(data: any) {
     });
   }
 
-  let boxBgColor = "#EBF5FB";   
-  let mainTextColor = "#111827"; 
+  let boxBgColor = "#EBF5FB";
+  let mainTextColor = "#111827";
   let mainTitle = "ยอดที่ต้องชำระ";
 
   if (data.type === 'REMINDER') {
-    boxBgColor = "#FFEDD5";     
-    mainTextColor = "#EA580C";   
+    boxBgColor = "#FFEDD5";
+    mainTextColor = "#EA580C";
     mainTitle = "แจ้งเตือนยอดที่ต้องชำระ";
   } else if (data.type === 'OVERDUE' || data.isOverdue) {
-    boxBgColor = "#FDEBEC";     
-    mainTextColor = "#EF4444";   
+    boxBgColor = "#FDEBEC";
+    mainTextColor = "#EF4444";
     mainTitle = "ยอดค้างชำระ";
   }
 
@@ -98,7 +98,7 @@ function createInvoiceFlexMessage(data: any) {
             {
               type: "box", layout: "horizontal", margin: "sm", alignItems: "flex-end",
               contents: [
-                { type: "text", text: " ", flex: 1 }, 
+                { type: "text", text: " ", flex: 1 },
                 { type: "text", text: data.finalGrandTotal.toLocaleString('th-TH', { minimumFractionDigits: 2 }), size: "xxl", weight: "bold", color: mainTextColor, align: "center", flex: 0, adjustMode: "shrink-to-fit" },
                 { type: "text", text: "บาท", size: "sm", weight: "bold", color: mainTextColor, align: "end", flex: 1 }
               ]
@@ -136,13 +136,21 @@ function createInvoiceFlexMessage(data: any) {
           type: "button", style: "primary", color: "#376B64", height: "sm",
           action: { type: "uri", label: "ดูประวัติและชำระเงิน", uri: `https://liff.line.me/${process.env.NEXT_PUBLIC_LIFF_ID}/invoices` }
         },
-        ...(data.invoiceNo ? [{
+        {
           type: "box", layout: "horizontal", margin: "md",
           contents: [
             { type: "text", text: "PAYMENT ID", size: "xxs", color: "#6B7280", weight: "bold", flex: 0 },
-            { type: "text", text: data.invoiceNo, size: "xxs", color: "#6B7280", weight: "bold", align: "end", flex: 1 }
+            {
+              type: "text",
+              text: data.invoiceNo || "N/A", // 🌟 ดึง invoiceNo ของเดือนนั้นๆ มาแสดง
+              size: "xxs",
+              color: "#EF4444", // 🌟 สีแดงตามสั่ง
+              weight: "bold",
+              align: "end",
+              flex: 1
+            }
           ]
-        }] : [])
+        }
       ]
     }
   };
@@ -188,24 +196,24 @@ async function handleRemindCronJob(request: Request) {
 
     for (const inv of pendingInvoices) {
       let currentPenalty = truncateDecimals(Number(inv.penaltyAmount || 0));
-      
+
       if (reminderType === 'OVERDUE') {
         const dueDate = new Date(inv.dueDate); dueDate.setHours(0, 0, 0, 0);
         const todayNoTime = new Date(); todayNoTime.setHours(0, 0, 0, 0);
-        
+
         if (todayNoTime > dueDate) {
           const diffTime = todayNoTime.getTime() - dueDate.getTime();
           const overdueDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
           const overdueMonths = Math.floor(overdueDays / 30);
-          
+
           currentPenalty = truncateDecimals(overdueMonths * penaltyRatePerMonth);
-          
+
           await prisma.invoice.update({
             where: { id: inv.id },
-            data: { 
-                penaltyAmount: currentPenalty, 
-                totalAmount: truncateDecimals(Number(inv.baseAmount) + currentPenalty), 
-                status: 'OVERDUE' 
+            data: {
+              penaltyAmount: currentPenalty,
+              totalAmount: truncateDecimals(Number(inv.baseAmount) + currentPenalty),
+              status: 'OVERDUE'
             }
           });
         }
@@ -247,7 +255,7 @@ async function handleRemindCronJob(request: Request) {
           const flexMsg = createInvoiceFlexMessage({
             type: reminderType, houseNo: inv.house.houseNo, headerBillingMonthText,
             currentInvoiceItem, pastYearTotals, pastMonthItems, totalPenalty,
-            finalGrandTotal, isOverdue, dueDateText, invoiceNo: inv.id 
+            finalGrandTotal, isOverdue, dueDateText, invoiceNo: inv.id
           });
           await sendAutoLineMessage(resident.lineId, flexMsg);
           stats.lineSent++;
