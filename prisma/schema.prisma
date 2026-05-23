@@ -160,4 +160,54 @@ model News {
   content   String   @db.Text 
   imageUrl  String?
   createdAt DateTime @default(now())
+
+}
+
+// ------------------------------------------------------
+// 7. ระบบบัญชี รายรับ-รายจ่าย (Financial Tracking)
+// ------------------------------------------------------
+enum TransactionType {
+  INCOME  // รายรับ
+  EXPENSE // รายจ่าย
+}
+
+model TransactionCategory {
+  id          String   @id @default(cuid())
+  name        String   // ชื่อหมวดหมู่ เช่น 'ค่าส่วนกลาง', 'ค่าจ้างยาม', 'ค่าจัดสวน'
+  type        TransactionType 
+  isFavorite  Boolean  @default(false) // 🌟 ให้แอดมินกดดาว/ปักหมุดรายการที่ใช้บ่อยได้
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  transactions FinancialTransaction[]
+}
+
+model FinancialTransaction {
+  id          String   @id @default(cuid())
+  type        TransactionType 
+  
+  categoryId  String
+  category    TransactionCategory @relation(fields: [categoryId], references: [id])
+  
+  description String?  // รายละเอียดเพิ่มเติม เช่น 'ซ่อมปั๊มน้ำซอย 2'
+  amount      Float    // จำนวนเงิน
+  date        DateTime // วันที่เกิดรายการ
+  recordedBy  String?  // ชื่อแอดมินที่บันทึก
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ------------------------------------------------------
+// 8. ระบบแจ้งเตือนแอดมิน (Admin Reminders)
+// ------------------------------------------------------
+model AdminReminder {
+  id          String   @id @default(cuid())
+  title       String   // เช่น 'ชำระค่าไฟส่วนกลาง', 'จ่ายค่าจ้างยาม'
+  dayOfMonth  Int      // วันที่ต้องการให้ระบบเตือนในทุกๆ เดือน (เช่น 25)
+  isActive    Boolean  @default(true) // เปิด/ปิด การเตือนได้
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

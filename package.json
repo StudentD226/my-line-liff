@@ -21,6 +21,7 @@
     "prisma": "^6.19.2",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "recharts": "^3.8.1",
     "sweetalert2": "^11.26.24"
   },
   "devDependencies": {
