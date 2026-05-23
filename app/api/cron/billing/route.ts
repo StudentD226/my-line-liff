@@ -45,7 +45,7 @@ function createInvoiceFlexMessage(data: any) {
             { type: "text", text: `${data.pastYearTotals[yearNum].toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end", weight: "bold" }
           ]
         });
-    });
+      });
   }
 
   if (data.totalPenalty > 0) {
@@ -58,17 +58,17 @@ function createInvoiceFlexMessage(data: any) {
     });
   }
 
-  let boxBgColor = "#EBF5FB";   
-  let mainTextColor = "#111827"; 
+  let boxBgColor = "#EBF5FB";
+  let mainTextColor = "#111827";
   let mainTitle = "ยอดที่ต้องชำระ";
 
   if (data.type === 'REMINDER') {
-    boxBgColor = "#FFEDD5";     
-    mainTextColor = "#EA580C";   
+    boxBgColor = "#FFEDD5";
+    mainTextColor = "#EA580C";
     mainTitle = "แจ้งเตือนยอดที่ต้องชำระ";
   } else if (data.type === 'OVERDUE' || data.isOverdue) {
-    boxBgColor = "#FDEBEC";     
-    mainTextColor = "#EF4444";   
+    boxBgColor = "#FDEBEC";
+    mainTextColor = "#EF4444";
     mainTitle = "ยอดค้างชำระ";
   }
 
@@ -99,7 +99,7 @@ function createInvoiceFlexMessage(data: any) {
             {
               type: "box", layout: "horizontal", margin: "sm", alignItems: "flex-end",
               contents: [
-                { type: "text", text: " ", flex: 1 }, 
+                { type: "text", text: " ", flex: 1 },
                 { type: "text", text: data.finalGrandTotal.toLocaleString('th-TH', { minimumFractionDigits: 2 }), size: "xxl", weight: "bold", color: mainTextColor, align: "center", flex: 0, adjustMode: "shrink-to-fit" },
                 { type: "text", text: "บาท", size: "sm", weight: "bold", color: mainTextColor, align: "end", flex: 1 }
               ]
@@ -163,7 +163,7 @@ async function sendAutoLineMessage(lineId: string, flexBubbleStructure: any) {
         messages: [{ type: "flex", altText: "ใบเสร็จเรียกเก็บเงินค่าส่วนกลาง", contents: flexBubbleStructure }]
       }),
     });
-    
+
     if (response.ok) console.log(`✅ ส่งบิลเข้า LINE สำเร็จ: ${lineId}`);
     else console.error('❌ ส่ง LINE ไม่สำเร็จ:', await response.text());
   } catch (error) {
@@ -211,15 +211,15 @@ async function handleCronJob(request: Request) {
         const diffTime = today.getTime() - dueDate.getTime();
         const overdueDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
         const overdueMonths = Math.floor(overdueDays / 30);
-        
+
         currentPenalty = truncateDecimals(overdueMonths * penaltyRatePerMonth);
-        
+
         await prisma.invoice.update({
           where: { id: inv.id },
-          data: { 
-            penaltyAmount: currentPenalty, 
-            totalAmount: truncateDecimals(Number(inv.baseAmount) + currentPenalty), 
-            status: 'OVERDUE' 
+          data: {
+            penaltyAmount: currentPenalty,
+            totalAmount: truncateDecimals(Number(inv.baseAmount) + currentPenalty),
+            status: 'OVERDUE'
           }
         });
       }
@@ -262,7 +262,7 @@ async function handleCronJob(request: Request) {
 
       const finalGrandTotal = truncateDecimals(grandTotalBase + totalPenalty);
       const isOverdue = inv.status === 'OVERDUE' || allUnpaidForThisHouse.some(u => u.status === 'OVERDUE') || totalPenalty > 0;
-      
+
       const due = new Date(inv.dueDate);
       const dueDateText = `${String(due.getDate()).padStart(2, '0')}/${String(due.getMonth() + 1).padStart(2, '0')}/${due.getFullYear() + 543}`;
       const headerBillingMonthText = `${fullThaiMonths[inv.billingMonth]} ${inv.billingYear + 543}`;
@@ -270,7 +270,7 @@ async function handleCronJob(request: Request) {
       for (const resident of inv.house.residents) {
         if (resident.lineId) {
           const flexMsg = createInvoiceFlexMessage({
-            type: inv.status === 'OVERDUE' ? 'OVERDUE' : 'SEND', 
+            type: inv.status === 'OVERDUE' ? 'OVERDUE' : 'SEND',
             houseNo: inv.house.houseNo,
             headerBillingMonthText: headerBillingMonthText,
             currentInvoiceItem: currentInvoiceItem,
@@ -280,7 +280,7 @@ async function handleCronJob(request: Request) {
             finalGrandTotal: finalGrandTotal,
             isOverdue: isOverdue,
             dueDateText: dueDateText,
-            invoiceNo: inv.id 
+            invoiceNo: inv.id
           });
 
           await sendAutoLineMessage(resident.lineId, flexMsg);
@@ -295,8 +295,8 @@ async function handleCronJob(request: Request) {
       stats.updatedInvoices++;
     }
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       message: 'หุ่นยนต์ทำงานเสร็จสิ้น!',
       stats
     });
