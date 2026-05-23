@@ -13,7 +13,6 @@ export async function GET(request: Request) {
 
     if (!lineId) return NextResponse.json({ success: false, error: 'ไม่พบ lineId' }, { status: 400 });
 
-    // 🌟 [แก้ไขจุดสำคัญที่ 1] สั่ง include invoices ซ้อนเข้าไปในตารางบ้าน
     const user = await prisma.user.findUnique({
       where: { lineId },
       include: { 
@@ -31,38 +30,38 @@ export async function GET(request: Request) {
     if (!user?.residentHouse) return NextResponse.json({ success: false, error: 'ไม่พบข้อมูลบ้าน' }, { status: 404 });
 
     const house = user.residentHouse;
-    
-    // 🌟 [แก้ไขจุดสำคัญที่ 2] เรียกใช้งานข้อมูลบิลที่รวมกลุ่ม REJECTED เข้ามาตรวจเช็คเรียบร้อยแล้ว
     const pendingInvoices = house.invoices;
 
     const config = await prisma.systemConfig.findFirst();
-    const penaltyRatePerDay = config?.penaltyRatePerDay || 100; // 🌟 เปลี่ยนเป็นเรทค่าปรับรายวัน
+    const flatPenaltyPerMonth = config?.penaltyRatePerDay || 100; 
 
     let baseTotal = 0;
     let totalFine = 0;
     
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // 🌟 เทียบเวลาที่เที่ยงคืนตรง
+    today.setHours(0, 0, 0, 0); 
 
     pendingInvoices.forEach(inv => {
       const baseAmt = truncateDecimals(Number(inv.baseAmount));
       baseTotal += baseAmt;
 
       const dueDate = new Date(inv.dueDate);
-      dueDate.setHours(0, 0, 0, 0); // 🌟 เทียบเวลาที่เที่ยงคืนตรง
+      dueDate.setHours(0, 0, 0, 0); 
 
       if (today > dueDate) {
         const diffTime = today.getTime() - dueDate.getTime();
-        const overdueDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); // 🌟 นับเป็นวันเต็มๆ
+        const overdueDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); 
+        
+        // 🌟 คำนวณค่าปรับแบบเหมาเดือน ปัดเศษทิ้ง (ไม่ถึง 30 วันไม่คิด)
+        const overdueMonths = Math.floor(overdueDays / 30);
 
-        if (overdueDays > 0) {
-          const fine = truncateDecimals(overdueDays * penaltyRatePerDay); // 🌟 คำนวณรายวัน
+        if (overdueMonths > 0) {
+          const fine = truncateDecimals(overdueMonths * flatPenaltyPerMonth); 
           totalFine += fine;
         }
       }
     });
 
-    // 🌟 หุ้มตัวแปรสุดท้ายด้วย truncateDecimals อีกชั้นเพื่อความชัวร์
     baseTotal = truncateDecimals(baseTotal);
     totalFine = truncateDecimals(totalFine);
 
@@ -73,7 +72,7 @@ export async function GET(request: Request) {
         monthlyRate: house.feeRate ? truncateDecimals(Number(house.feeRate)) : 1000,
         outstandingBalance: baseTotal,
         fineAmount: totalFine,
-        totalToPay: truncateDecimals(baseTotal + totalFine) // 🌟 ยอดรวมสุทธิเป๊ะๆ
+        totalToPay: truncateDecimals(baseTotal + totalFine) 
       }
     });
   } catch (error) {

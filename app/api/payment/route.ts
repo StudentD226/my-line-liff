@@ -92,7 +92,6 @@ export async function POST(request: Request) {
         });
       }
 
-      // 🌟 [แก้ไขจุดที่มีปัญหา] ใช้ Promise.all คู่กับ update รายใบ มั่นใจได้ว่าผ่านชัวร์ 100%
       await Promise.all(
         existingInvoices.map(inv => 
           prisma.invoice.update({
@@ -124,7 +123,6 @@ export async function POST(request: Request) {
       let lastM = existingInvoices.length > 0 ? existingInvoices[existingInvoices.length - 1].billingMonth : new Date().getMonth() + 1;
       let lastY = existingInvoices.length > 0 ? existingInvoices[existingInvoices.length - 1].billingYear : new Date().getFullYear();
       
-      // 🌟 ตัดทศนิยมตรงเรทรายเดือนด้วย เผื่อ feeRate * houseSize มีจุดทศนิยม
       const monthlyRate = truncateDecimals(house.feeType === 'CALCULATED' && house.houseSize
         ? Number(house.feeRate) * Number(house.houseSize)
         : Number(house.feeRate || 1000));
@@ -180,15 +178,16 @@ export async function POST(request: Request) {
                 { type: "text", text: "ส่งสลิปแล้ว เจ้าหน้าที่กำลังตรวจสอบ", size: "xs", color: "#EA580C", weight: "bold", margin: "sm", flex: 1 }
               ]
             },
+            // 🌟 ปรับ UI ยอดเงินตรงนี้: เลขใหญ่ xxl + บาทชิดขวา
             {
               type: "box", layout: "vertical", margin: "xl", backgroundColor: "#EBF5FB", cornerRadius: "lg", paddingAll: "lg",
               contents: [
                 { type: "text", text: "ยอดรวมที่โอน", size: "xs", color: "#0369A1", weight: "bold", align: "start" },
                 {
-                  type: "box", layout: "horizontal", margin: "sm", justifyContent: "center", alignItems: "flex-end", spacing: "sm",
+                  type: "box", layout: "horizontal", margin: "sm", alignItems: "flex-end", spacing: "sm",
                   contents: [
-                    { type: "text", text: payAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 }), size: "xl", weight: "bold", color: "#0369A1", adjustMode: "shrink-to-fit", align: "center", flex: 0 },
-                    { type: "text", text: "บาท", size: "sm", weight: "bold", color: "#0369A1", flex: 0, margin: "xs" }
+                    { type: "text", text: payAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 }), size: "xxl", weight: "bold", color: "#0369A1", adjustMode: "shrink-to-fit", align: "end", flex: 1 },
+                    { type: "text", text: "บาท", size: "sm", weight: "bold", color: "#0369A1", align: "end", flex: 0, margin: "xs" }
                   ]
                 }
               ]
