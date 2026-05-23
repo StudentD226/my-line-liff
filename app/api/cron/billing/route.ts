@@ -95,7 +95,6 @@ function createInvoiceFlexMessage(data: any) {
         {
           type: "box", layout: "vertical", margin: "xl", backgroundColor: boxBgColor, cornerRadius: "lg", paddingAll: "lg",
           contents: [
-            // 🌟 แก้ไข: กลับมาเป็น align: "start" เพื่อให้หัวข้อชิดซ้าย
             { type: "text", text: mainTitle, size: "xs", color: mainTextColor, weight: "bold", align: "start" },
             {
               type: "box", layout: "horizontal", margin: "sm", alignItems: "flex-end",
@@ -172,7 +171,8 @@ async function sendAutoLineMessage(lineId: string, flexBubbleStructure: any) {
   }
 }
 
-export async function GET(request: Request) {
+// 🌟 สร้างฟังก์ชันกลาง เพื่อให้ทั้ง GET และ POST เรียกใช้ตัวเดียวกัน
+async function handleCronJob(request: Request) {
   const authHeader = request.headers.get('authorization');
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return new Response('Unauthorized - คุณไม่มีสิทธิ์เข้าถึง', { status: 401 });
@@ -306,3 +306,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: false, error: 'ระบบหุ่นยนต์ผิดพลาด' }, { status: 500 });
   }
 }
+
+// 🌟 ส่งออกแบบแพ็คคู่ ไม่ว่าจะยิง POST หรือ GET ก็ทำงานได้หมด!
+export async function GET(request: Request) { return handleCronJob(request); }
+export async function POST(request: Request) { return handleCronJob(request); }

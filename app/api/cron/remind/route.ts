@@ -94,7 +94,6 @@ function createInvoiceFlexMessage(data: any) {
         {
           type: "box", layout: "vertical", margin: "xl", backgroundColor: boxBgColor, cornerRadius: "lg", paddingAll: "lg",
           contents: [
-            // 🌟 แก้ไข: กลับมาเป็น align: "start" เพื่อให้หัวข้อชิดซ้าย
             { type: "text", text: mainTitle, size: "xs", color: mainTextColor, weight: "bold", align: "start" },
             {
               type: "box", layout: "horizontal", margin: "sm", alignItems: "flex-end",
@@ -162,7 +161,8 @@ async function sendAutoLineMessage(lineId: string, flexBubbleStructure: any) {
   }
 }
 
-export async function GET(request: Request) {
+// 🌟 ย้ายลอจิกทั้งหมดมาไว้ในฟังก์ชันนี้
+async function handleRemindCronJob(request: Request) {
   const authHeader = request.headers.get('authorization');
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) return new Response('Unauthorized', { status: 401 });
 
@@ -183,14 +183,12 @@ export async function GET(request: Request) {
     });
     if (pendingInvoices.length === 0) return NextResponse.json({ success: true, message: 'ไม่มีบิลค้างชำระที่ต้องทวง' });
 
-    // 🌟 ดึงเรทรายเดือน
     const penaltyRatePerMonth = config?.penaltyRatePerDay ? Number(config.penaltyRatePerDay) : 100;
     let stats = { lineSent: 0, updatedInvoices: 0 };
 
     for (const inv of pendingInvoices) {
       let currentPenalty = truncateDecimals(Number(inv.penaltyAmount || 0));
       
-      // 🌟 คำนวณค่าปรับแบบรายเดือน (เดือนละ 100)
       if (reminderType === 'OVERDUE') {
         const dueDate = new Date(inv.dueDate); dueDate.setHours(0, 0, 0, 0);
         const todayNoTime = new Date(); todayNoTime.setHours(0, 0, 0, 0);
@@ -263,3 +261,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 });
   }
 }
+
+// 🌟 Export ให้รองรับทั้ง GET และ POST
+export async function GET(request: Request) { return handleRemindCronJob(request); }
+export async function POST(request: Request) { return handleRemindCronJob(request); }
