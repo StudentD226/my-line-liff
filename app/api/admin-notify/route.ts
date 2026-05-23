@@ -99,7 +99,6 @@ function createInvoiceFlexMessage(data: any) {
         {
           type: "box", layout: "vertical", margin: "xl", backgroundColor: boxBgColor, cornerRadius: "lg", paddingAll: "lg",
           contents: [
-            // 🌟 แก้ไขให้ตรงเพื่อน: align: "start" เพื่อให้หัวข้อชิดซ้าย
             { type: "text", text: mainTitle, size: "xs", color: mainTextColor, weight: "bold", align: "start" },
             {
               type: "box", layout: "horizontal", margin: "sm", alignItems: "flex-end",
@@ -256,7 +255,8 @@ export async function POST(request: Request) {
       finalGrandTotal,
       isOverdue: type === 'OVERDUE',
       dueDateText,
-      invoiceNo: invoice.id 
+      // 🌟 แก้ตรงนี้ ดึง invoiceNo มา ไม่เอา id มั่วๆ
+      invoiceNo: invoice.invoiceNo || invoice.id 
     });
 
     const flexMessage: messagingApi.FlexMessage = {

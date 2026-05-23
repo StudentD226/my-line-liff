@@ -56,11 +56,17 @@ export async function POST(request: Request) {
         }
       });
 
+      // 🌟 [ย้ายมาตรงนี้] สร้างรหัสบิลรอไว้เลย เพื่อใช้ทั้งตอนสร้างใหม่และอัปเดตของเก่า
+      // ตัวอย่าง: 26-18052569-M05
+      const monthSuffix = String(targetMonth).padStart(2, '0');
+      const customInvoiceNo = `${house.houseNo}-${dayStr}${monthStr}${yearStr}-M${monthSuffix}`;
+
       if (existingInvoice) {
         if (existingInvoice.status === 'PENDING') {
           await prisma.invoice.update({
             where: { id: existingInvoice.id },
             data: {
+              invoiceNo: customInvoiceNo, // 🌟 เพิ่มบรรทัดนี้: เผื่อบิลเก่ามันยังเป็นเลขมั่วๆ (cuid) ให้เขียนทับด้วยเลขสวยๆ ได้เลย
               penaltyAmount: 0,
               totalAmount: existingInvoice.baseAmount,
               scheduledSendAt: scheduledSendAt,
@@ -81,17 +87,12 @@ export async function POST(request: Request) {
       
       const baseAmount = rawFeeType === 'FIXED' ? feeRate : (houseSize * feeRate);
 
-      // 🌟 [แก้ปัญหาคีย์ซ้ำ] สร้างรหัสบิลอาจารย์ + เดือนที่ออกบิล เพื่อการันตีว่าเลขจะไม่ชนกันแน่นอน
-      // ตัวอย่าง: 26-18052569-M05
-      const monthSuffix = String(targetMonth).padStart(2, '0');
-      const invoiceNo = `${house.houseNo}-${dayStr}${monthStr}${yearStr}-M${monthSuffix}`;
-
       const calculatedDueDate = new Date(targetYear, targetMonth - 1, dueDateDay); 
       calculatedDueDate.setHours(23, 59, 59, 999);
 
       await prisma.invoice.create({
         data: {
-          invoiceNo: invoiceNo,
+          invoiceNo: customInvoiceNo, // 🌟 รหัสบิลสวยๆ
           billingMonth: targetMonth,
           billingYear: targetYear,
           baseAmount: baseAmount,

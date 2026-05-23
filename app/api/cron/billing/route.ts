@@ -280,7 +280,8 @@ async function handleCronJob(request: Request) {
             finalGrandTotal: finalGrandTotal,
             isOverdue: isOverdue,
             dueDateText: dueDateText,
-            invoiceNo: inv.id
+            // 🌟 แก้ตรงนี้ ดึง invoiceNo มา ไม่เอา id มั่วๆ
+            invoiceNo: inv.invoiceNo || inv.id
           });
 
           await sendAutoLineMessage(resident.lineId, flexMsg);
