@@ -3,8 +3,8 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-// 🌟 Helper ตัดทศนิยมทิ้ง ไม่ให้ปัดขึ้น (ป้องกันเลขรวน)
-const truncateDecimals = (val: number) => Math.floor(Math.round(val * 10000) / 100) / 100;
+// 🌟 Helper ตัดทศนิยมทิ้ง
+const truncateDecimals = (val: number): number => Math.floor(Math.round(val * 10000) / 100) / 100;
 
 export async function GET(request: Request) {
   try {
@@ -12,7 +12,6 @@ export async function GET(request: Request) {
     const status = searchParams.get('status');
     const houseId = searchParams.get('houseId');
 
-    // สร้างเงื่อนไขในการ Query
     const whereClause: any = {};
     if (status && status !== 'ALL') {
       whereClause.status = status;
@@ -21,7 +20,6 @@ export async function GET(request: Request) {
       whereClause.residentHouseId = parseInt(houseId);
     }
 
-    // ดึงข้อมูลบิลพร้อมความสัมพันธ์ของบ้าน
     const invoices = await prisma.invoice.findMany({
       where: whereClause,
       include: {
@@ -34,29 +32,27 @@ export async function GET(request: Request) {
     });
 
     const config = await prisma.systemConfig.findFirst();
-    let penaltyRatePerDay = config?.penaltyRatePerDay || 100; // 🌟 เปลี่ยนเป็นเรทรายวัน
+    let penaltyRatePerDay = config?.penaltyRatePerDay ? Number(config.penaltyRatePerDay) : 100;
+    
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // 🌟 วนลูปคำนวณค่าปรับและยอดรวมใหม่แบบ "รายวัน" + "ตัดทศนิยม" ให้ตรงกับบิล LINE
     const updatedInvoices = invoices.map((inv) => {
       let base = truncateDecimals(Number(inv.baseAmount || 0));
       let penalty = truncateDecimals(Number(inv.penaltyAmount || 0));
       let currentStatus = inv.status;
 
-      // ถ้าบิลยังไม่จ่าย หรือค้างชำระ ให้คำนวณค่าปรับใหม่ตามเวลาจริง
       if (['PENDING', 'OVERDUE', 'REJECTED'].includes(currentStatus)) {
         const dueDate = new Date(inv.dueDate);
         dueDate.setHours(0, 0, 0, 0);
 
         if (today > dueDate) {
           const diffTime = today.getTime() - dueDate.getTime();
-          const overdueDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); // 🌟 นับเป็นวันเต็มๆ
+          const overdueDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); 
           
-          penalty = truncateDecimals(overdueDays * penaltyRatePerDay); // 🌟 คูณรายวัน
+          penalty = truncateDecimals(overdueDays * penaltyRatePerDay); 
           currentStatus = 'OVERDUE';
         } else {
-          // ถ้ายังไม่เกินกำหนด และเป็นเศษเก่า ให้ล้างเป็น 0
           if (currentStatus !== 'REJECTED') {
             penalty = 0;
           }
@@ -66,7 +62,7 @@ export async function GET(request: Request) {
       return {
         ...inv,
         penaltyAmount: penalty,
-        totalAmount: truncateDecimals(base + penalty), // 🌟 ยอดรวมตัดทศนิยม
+        totalAmount: truncateDecimals(base + penalty),
         status: currentStatus
       };
     });

@@ -6,15 +6,11 @@ const prisma = new PrismaClient();
 const fullThaiMonths = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
 
 // 🌟 Helper ตัดทศนิยมทิ้ง ไม่ให้ปัดขึ้น
-const truncateDecimals = (val: number) => Math.floor(Math.round(val * 10000) / 100) / 100;
+const truncateDecimals = (val: number): number => Math.floor(Math.round(val * 10000) / 100) / 100;
 
-// ==========================================
-// 🎨 ฟังก์ชัน UI (อัปเดตใหม่ล่าสุดให้ตรงกับของ Admin)
-// ==========================================
 function createInvoiceFlexMessage(data: any) {
   const tableContents: any[] = [];
 
-  // 1. เดือนปัจจุบัน (อยู่บนสุด)
   if (data.currentInvoiceItem) {
     tableContents.push({
       type: "box", layout: "horizontal", margin: "md",
@@ -25,7 +21,6 @@ function createInvoiceFlexMessage(data: any) {
     });
   }
 
-  // 2. เดือนในอดีต (เรียงจากใหม่ไปเก่า)
   if (data.pastMonthItems && data.pastMonthItems.length > 0) {
     [...data.pastMonthItems].reverse().forEach((item: any) => {
       tableContents.push({
@@ -38,7 +33,6 @@ function createInvoiceFlexMessage(data: any) {
     });
   }
 
-  // 3. ยอดค้างข้ามปี (ปีใหม่ไปปีเก่า)
   if (data.pastYearTotals) {
     Object.keys(data.pastYearTotals)
       .sort((a, b) => Number(b) - Number(a))
@@ -54,7 +48,6 @@ function createInvoiceFlexMessage(data: any) {
     });
   }
 
-  // 4. ค่าปรับ
   if (data.totalPenalty > 0) {
     tableContents.push({
       type: "box", layout: "horizontal", margin: "md",
@@ -99,16 +92,17 @@ function createInvoiceFlexMessage(data: any) {
             { type: "text", text: `ใบเสร็จเรียกเก็บเงิน\nประจำเดือน ${data.headerBillingMonthText}`, size: "xs", color: "#2A524C", weight: "bold", margin: "sm", wrap: true, flex: 1 }
           ]
         },
-        // ปรับยอดรวม: ตัวใหญ่ (xxl) และบาทชิดขวา
         {
           type: "box", layout: "vertical", margin: "xl", backgroundColor: boxBgColor, cornerRadius: "lg", paddingAll: "lg",
           contents: [
+            // 🌟 แก้ไข: กลับมาเป็น align: "start" เพื่อให้หัวข้อชิดซ้าย
             { type: "text", text: mainTitle, size: "xs", color: mainTextColor, weight: "bold", align: "start" },
             {
-              type: "box", layout: "horizontal", margin: "sm", alignItems: "flex-end", spacing: "sm",
+              type: "box", layout: "horizontal", margin: "sm", alignItems: "flex-end",
               contents: [
-                { type: "text", text: data.finalGrandTotal.toLocaleString('th-TH', { minimumFractionDigits: 2 }), size: "xxl", weight: "bold", color: mainTextColor, align: "end", flex: 1 },
-                { type: "text", text: "บาท", size: "sm", weight: "bold", color: mainTextColor, align: "end", flex: 0, margin: "xs" }
+                { type: "text", text: " ", flex: 1 }, 
+                { type: "text", text: data.finalGrandTotal.toLocaleString('th-TH', { minimumFractionDigits: 2 }), size: "xxl", weight: "bold", color: mainTextColor, align: "center", flex: 0, adjustMode: "shrink-to-fit" },
+                { type: "text", text: "บาท", size: "sm", weight: "bold", color: mainTextColor, align: "end", flex: 1 }
               ]
             }
           ]
@@ -156,7 +150,6 @@ function createInvoiceFlexMessage(data: any) {
   };
 }
 
-// ฟังก์ชันยิงข้อความเข้า LINE API สำหรับระบบ Auto
 async function sendAutoLineMessage(lineId: string, flexBubbleStructure: any) {
   if (!lineId || !process.env.LINE_CHANNEL_ACCESS_TOKEN) return;
   try {
@@ -179,9 +172,6 @@ async function sendAutoLineMessage(lineId: string, flexBubbleStructure: any) {
   }
 }
 
-// ==========================================
-// 2. ตัวหุ่นยนต์หลัก (Cron Job แบบเช็คตามเวลา) (GET)
-// ==========================================
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -195,7 +185,7 @@ export async function GET(request: Request) {
       where: {
         isNotified: false,
         scheduledSendAt: { lte: now },
-        status: { in: ['PENDING', 'OVERDUE'] }
+        status: { in: ['PENDING', 'OVERDUE'] as any }
       },
       include: {
         house: { include: { residents: true } }
@@ -207,28 +197,28 @@ export async function GET(request: Request) {
     }
 
     const config = await prisma.systemConfig.findFirst();
-    let penaltyRatePerDay = config?.penaltyRatePerDay || 100; // 🌟 เปลี่ยนมาดึงเรทรายวัน
+    const penaltyRatePerMonth = config?.penaltyRatePerDay ? Number(config.penaltyRatePerDay) : 100;
 
     let stats = { lineSent: 0, updatedInvoices: 0 };
 
     for (const inv of pendingInvoices) {
-      
       const today = new Date(); today.setHours(0, 0, 0, 0);
       const dueDate = new Date(inv.dueDate); dueDate.setHours(0, 0, 0, 0);
-      let currentPenalty = truncateDecimals(inv.penaltyAmount || 0);
+      let currentPenalty = truncateDecimals(Number(inv.penaltyAmount || 0));
 
-      // 🌟 ลอจิกค่าปรับรายวันสำหรับ Cron Job
+      // 🌟 คำนวณค่าปรับแบบรายเดือน (เดือนละ 100)
       if (today > dueDate) {
         const diffTime = today.getTime() - dueDate.getTime();
-        const overdueDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); // ปัดเศษลงเพื่อเป็นวันเต็มๆ
+        const overdueDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        const overdueMonths = Math.floor(overdueDays / 30);
         
-        currentPenalty = truncateDecimals(overdueDays * penaltyRatePerDay);
+        currentPenalty = truncateDecimals(overdueMonths * penaltyRatePerMonth);
         
         await prisma.invoice.update({
           where: { id: inv.id },
           data: { 
             penaltyAmount: currentPenalty, 
-            totalAmount: truncateDecimals(inv.baseAmount + currentPenalty), 
+            totalAmount: truncateDecimals(Number(inv.baseAmount) + currentPenalty), 
             status: 'OVERDUE' 
           }
         });
@@ -237,7 +227,7 @@ export async function GET(request: Request) {
       const allUnpaidForThisHouse = await prisma.invoice.findMany({
         where: {
           residentHouseId: inv.residentHouseId,
-          status: { in: ['PENDING', 'OVERDUE', 'REJECTED'] }
+          status: { in: ['PENDING', 'OVERDUE', 'REJECTED'] as any }
         },
         orderBy: [{ billingYear: 'asc' }, { billingMonth: 'asc' }]
       });
@@ -251,8 +241,8 @@ export async function GET(request: Request) {
       const currentYear = inv.billingYear;
 
       allUnpaidForThisHouse.forEach(uInv => {
-        let base = truncateDecimals(uInv.baseAmount);
-        let penalty = (uInv.id === inv.id) ? currentPenalty : truncateDecimals(uInv.penaltyAmount || 0);
+        let base = truncateDecimals(Number(uInv.baseAmount || 0));
+        let penalty = (uInv.id === inv.id) ? currentPenalty : truncateDecimals(Number(uInv.penaltyAmount || 0));
 
         grandTotalBase += base;
         totalPenalty += penalty;
@@ -279,7 +269,6 @@ export async function GET(request: Request) {
 
       for (const resident of inv.house.residents) {
         if (resident.lineId) {
-          
           const flexMsg = createInvoiceFlexMessage({
             type: inv.status === 'OVERDUE' ? 'OVERDUE' : 'SEND', 
             houseNo: inv.house.houseNo,
@@ -291,7 +280,7 @@ export async function GET(request: Request) {
             finalGrandTotal: finalGrandTotal,
             isOverdue: isOverdue,
             dueDateText: dueDateText,
-            invoiceNo: inv.id // 🌟 ส่ง ID ไปโชว์ใน Payment ID ตรง Footer
+            invoiceNo: inv.id 
           });
 
           await sendAutoLineMessage(resident.lineId, flexMsg);

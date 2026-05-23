@@ -3,39 +3,25 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-<<<<<<< HEAD
 // 🌟 Helper ตัดทศนิยมทิ้ง ไม่ให้ปัดขึ้น
-const truncateDecimals = (val: number) => Math.floor(Math.round(val * 10000) / 100) / 100;
+const truncateDecimals = (val: number): number => Math.floor(Math.round(val * 10000) / 100) / 100;
 
-=======
->>>>>>> beebffa78c74a820bb614030891dc51dfd84ad7d
 export async function GET(
   request: Request,
-  // 🌟 1. เปลี่ยน Type ของ params ให้เป็น Promise
   { params }: { params: Promise<{ invoiceNo: string }> } 
 ) {
   try {
-    // 🌟 2. ต้องใส่ await ก่อนดึงค่า invoiceNo ออกมาใช้
     const { invoiceNo } = await params; 
 
-<<<<<<< HEAD
-    // 💡 หมายเหตุ: หากใน Prisma Schema ของพี่กำหนด Primary Key เป็นคำว่า id 
-    // อาจจะต้องเปลี่ยนจาก invoiceNo: invoiceNo เป็น id: invoiceNo แทนนะครับ
-=======
->>>>>>> beebffa78c74a820bb614030891dc51dfd84ad7d
     const invoice = await prisma.invoice.findUnique({
       where: { 
-        invoiceNo: invoiceNo 
+        id: invoiceNo 
       },
       include: {
         house: {
           include: {
-            owner: true, // ดึงข้อมูลเจ้าของบ้าน
-<<<<<<< HEAD
-            residents: true // ดึงข้อมูลผู้อยู่อาศัย
-=======
-            residents: true // ดึงข้อมูลผู้อยู่อาศัย (อิงตาม Schema ล่าสุดของคุณ)
->>>>>>> beebffa78c74a820bb614030891dc51dfd84ad7d
+            owner: true,
+            residents: true 
           }
         }
       }
@@ -48,10 +34,8 @@ export async function GET(
       );
     }
 
-<<<<<<< HEAD
-    // 🌟 ดึง Config เพื่อเอาเรทค่าปรับรายวัน
     const config = await prisma.systemConfig.findFirst();
-    const penaltyRatePerDay = config?.penaltyRatePerDay || 100;
+    const penaltyRatePerMonth = config?.penaltyRatePerDay ? Number(config.penaltyRatePerDay) : 100;
 
     let base = truncateDecimals(Number(invoice.baseAmount || 0));
     let penalty = truncateDecimals(Number(invoice.penaltyAmount || 0));
@@ -60,16 +44,17 @@ export async function GET(
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // 🌟 คำนวณค่าปรับแบบ "รายวัน" และ "ตัดทศนิยม" สดๆ ก่อนส่งให้หน้าเว็บลูกบ้าน
+    // 🌟 คำนวณค่าปรับแบบรายเดือน (เดือนละ 100)
     if (['PENDING', 'OVERDUE', 'REJECTED'].includes(currentStatus)) {
       const dueDate = new Date(invoice.dueDate);
       dueDate.setHours(0, 0, 0, 0);
 
       if (today > dueDate) {
         const diffTime = today.getTime() - dueDate.getTime();
-        const overdueDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); // นับเป็นวันเต็มๆ
+        const overdueDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        const overdueMonths = Math.floor(overdueDays / 30);
         
-        penalty = truncateDecimals(overdueDays * penaltyRatePerDay);
+        penalty = truncateDecimals(overdueMonths * penaltyRatePerMonth);
         currentStatus = 'OVERDUE';
       } else {
         if (currentStatus !== 'REJECTED') {
@@ -78,18 +63,13 @@ export async function GET(
       }
     }
 
-=======
->>>>>>> beebffa78c74a820bb614030891dc51dfd84ad7d
     return NextResponse.json({
       success: true,
       invoice: {
         ...invoice,
-<<<<<<< HEAD
-        penaltyAmount: penalty, // ส่งยอดค่าปรับที่คำนวณใหม่
-        totalAmount: truncateDecimals(base + penalty), // ส่งยอดรวมที่บวกค่าปรับแล้ว
-        status: currentStatus, // ส่งสถานะที่อัปเดตเป็น OVERDUE (ถ้าเกินกำหนด)
-=======
->>>>>>> beebffa78c74a820bb614030891dc51dfd84ad7d
+        penaltyAmount: penalty, 
+        totalAmount: truncateDecimals(base + penalty), 
+        status: currentStatus,
         displayMonthYear: `${invoice.billingMonth}/${invoice.billingYear + 543}`
       }
     });

@@ -20,9 +20,9 @@ export async function POST(request: Request) {
         const lineId = event.source.userId;
 
         if (text === 'ตรวจสอบค่าส่วนกลาง') {
-          const user = await prisma.user.findUnique({ 
-            where: { lineId: lineId || '' }, 
-            include: { 
+          const user = await prisma.user.findUnique({
+            where: { lineId: lineId || '' },
+            include: {
               residentHouse: {
                 include: {
                   invoices: {
@@ -30,8 +30,8 @@ export async function POST(request: Request) {
                     orderBy: { dueDate: 'asc' }
                   }
                 }
-              } 
-            } 
+              }
+            }
           });
 
           if (!user || !user.residentHouse) {
@@ -52,7 +52,8 @@ export async function POST(request: Request) {
             const dueDate = new Date(inv.dueDate); dueDate.setHours(0, 0, 0, 0);
             if (today > dueDate) {
               const diffTime = today.getTime() - dueDate.getTime();
-              const overdueMonths = Math.ceil(Math.ceil(diffTime / (1000 * 60 * 60 * 24)) / 30);
+              const overdueDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+              const overdueMonths = Math.floor(overdueDays / 30); // 🌟 แก้เป็น Math.floor (ครบ 30 วันถึงนับ 1 เดือน)
               inv.penaltyAmount = overdueMonths * flatPenaltyPerMonth;
               inv.totalAmount = inv.baseAmount + inv.penaltyAmount;
               inv.status = 'OVERDUE';
@@ -76,7 +77,7 @@ export async function POST(request: Request) {
             let pastMonthItems: { label: string, amount: number }[] = [];
             let totalPenalty = 0;
             let grandTotalBase = 0;
-            const currentYear = new Date().getFullYear(); 
+            const currentYear = new Date().getFullYear();
             const currentInvoiceId = pendingInvoices[pendingInvoices.length - 1].id;
 
             pendingInvoices.forEach(inv => {
@@ -137,13 +138,13 @@ export async function POST(request: Request) {
             }
 
             const isOverdue = pendingInvoices.some(inv => new Date() > new Date(inv.dueDate)) || pendingInvoices.length > 1 || totalPenalty > 0;
-            let boxBgColor = "#EBF5FB";   
-            let mainTextColor = "#111827"; 
+            let boxBgColor = "#EBF5FB";
+            let mainTextColor = "#111827";
             let mainTitle = "ยอดที่ต้องชำระ";
 
             if (isOverdue) {
-              boxBgColor = "#FDEBEC";     
-              mainTextColor = "#EF4444";   
+              boxBgColor = "#FDEBEC";
+              mainTextColor = "#EF4444";
               mainTitle = "ยอดค้างชำระ";
             }
 
@@ -184,10 +185,11 @@ export async function POST(request: Request) {
                       contents: [
                         { type: "text", text: mainTitle, size: "xs", color: mainTextColor, weight: "bold", align: "start" },
                         {
-                          type: "box", layout: "horizontal", margin: "sm", justifyContent: "center", alignItems: "flex-end", spacing: "sm",
+                          type: "box", layout: "horizontal", margin: "sm", alignItems: "flex-end",
                           contents: [
-                            { type: "text", text: finalGrandTotal.toLocaleString('th-TH', { minimumFractionDigits: 2 }), size: "xl", weight: "bold", color: mainTextColor, adjustMode: "shrink-to-fit", align: "center", flex: 0 },
-                            { type: "text", text: "บาท", size: "sm", weight: "bold", color: mainTextColor, flex: 0, margin: "xs" }
+                            { type: "text", text: " ", flex: 1 },
+                            { type: "text", text: finalGrandTotal.toLocaleString('th-TH', { minimumFractionDigits: 2 }), size: "xxl", weight: "bold", color: mainTextColor, align: "center", flex: 0, adjustMode: "shrink-to-fit" },
+                            { type: "text", text: "บาท", size: "sm", weight: "bold", color: mainTextColor, align: "end", flex: 1 }
                           ]
                         }
                       ]
@@ -228,16 +230,16 @@ export async function POST(request: Request) {
                       contents: [
                         { type: "text", text: "PAYMENT ID", size: "xxs", color: "#4B5563", weight: "bold", flex: 0 },
                         // 🌟 [แก้ไขจุดสำคัญ] ตรวจเช็คค่าบิล ถ้าเจอรหัสเก่าที่เป็น INV ให้สลับสวิตช์เป็นสไตล์อาจารย์ที่เป็นตัวหนาทันที!
-                        { 
-                          type: "text", 
-                          text: (user.residentHouse.invoices?.[0]?.invoiceNo && !user.residentHouse.invoices[0].invoiceNo.startsWith('INV')) 
-                            ? user.residentHouse.invoices[0].invoiceNo 
-                            : customTeacherInvoiceNo, 
-                          size: "xxs", 
-                          color: "#4B5563", 
-                          weight: "bold", 
-                          align: "end", 
-                          flex: 1 
+                        {
+                          type: "text",
+                          text: (user.residentHouse.invoices?.[0]?.invoiceNo && !user.residentHouse.invoices[0].invoiceNo.startsWith('INV'))
+                            ? user.residentHouse.invoices[0].invoiceNo
+                            : customTeacherInvoiceNo,
+                          size: "xxs",
+                          color: "#4B5563",
+                          weight: "bold",
+                          align: "end",
+                          flex: 1
                         }
                       ]
                     }

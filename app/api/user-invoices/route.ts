@@ -52,8 +52,8 @@ export async function GET(request: Request) {
 
         if (today > dueDate) {
           const diffTime = today.getTime() - dueDate.getTime();
-          const overdueDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-          const overdueMonths = Math.ceil(overdueDays / 30);
+          const overdueDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+          const overdueMonths = Math.floor(overdueDays / 30);
           
           penalty = overdueMonths * flatPenaltyPerMonth;
           inv.status = 'OVERDUE';
