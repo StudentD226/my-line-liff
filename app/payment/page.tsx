@@ -224,178 +224,182 @@ function PaymentForm() {
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
       `}} />
 
-      <div className="bg-gradient-to-b from-[#2A524C] to-[#376B64] px-5 pt-8 pb-10 text-white shadow-lg shadow-[#376B64]/20 rounded-b-[2.5rem] relative">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-white/20 rounded-full overflow-hidden border-2 border-white/30 p-0.5">
+      {/* --- ปรับ Header ให้บางลง (pt-6 pb-8) --- */}
+      <div className="bg-gradient-to-b from-[#2A524C] to-[#376B64] px-4 pt-6 pb-8 text-white shadow-lg shadow-[#376B64]/20 rounded-b-[2.5rem] relative">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 bg-white/20 rounded-full overflow-hidden border-2 border-white/30 p-0.5">
             <img src={lineProfile?.pictureUrl || '/default-avatar.png'} alt="avatar" className="w-full h-full rounded-full object-cover" />
           </div>
           <div>
-            <p className="text-[13px] text-white/80 font-medium">สวัสดีครับคุณ {lineProfile?.displayName || 'ลูกบ้าน'}</p>
-            <h1 className="text-[20px] font-bold tracking-wide">บ้านเลขที่ {houseData?.houseNo || 'ไม่พบข้อมูล'}</h1>
+            <p className="text-[12px] text-white/80 font-medium leading-none mb-1">สวัสดีครับคุณ {lineProfile?.displayName || 'ลูกบ้าน'}</p>
+            <h1 className="text-[18px] font-bold tracking-wide leading-none">บ้านเลขที่ {houseData?.houseNo || 'ไม่พบข้อมูล'}</h1>
           </div>
         </div>
       </div>
 
-      <div className="p-5 space-y-2 -mt-6 relative z-10">
+      <div className="px-4 space-y-3 -mt-5 relative z-10">
         
-        <div className="bg-white rounded-[2rem] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-100 relative overflow-hidden">
-          <div className="text-center mb-6 pt-2">
+        {/* --- ส่วนยอดที่ต้องชำระ (ลด padding จาก p-6 เหลือ p-4) --- */}
+        <div className="bg-white rounded-[1.5rem] p-4 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-100 relative overflow-hidden">
+          <div className="text-center mb-4 pt-1">
             
-            <div className="flex flex-col items-center justify-center mb-2">
+            <div className="flex flex-col items-center justify-center mb-1">
               {outstandingBalance > 0 ? (
                 <>
-                  <p className="text-[13px] font-bold text-rose-500 uppercase tracking-wider flex items-center gap-1.5">
-                    <AlertCircle size={16} strokeWidth={2.5} />
+                  <p className="text-[12px] font-bold text-rose-500 uppercase tracking-wider flex items-center gap-1.5">
+                    <AlertCircle size={14} strokeWidth={2.5} />
                     ยอดค้างชำระปัจจุบัน
                   </p>
                   {houseData?.overdueMonthsText && (
-                    <span className="text-[11.5px] text-rose-400 font-semibold mt-1 bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-100/50">
+                    <span className="text-[11px] text-rose-400 font-semibold mt-0.5 bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-100/50">
                       {houseData.overdueMonthsText}
                     </span>
                   )}
                 </>
               ) : (
-                <p className="text-[13px] font-bold text-teal-600 uppercase tracking-wider flex items-center gap-1.5">
-                  <CheckCircle size={16} strokeWidth={2.5} />
+                <p className="text-[12px] font-bold text-teal-600 uppercase tracking-wider flex items-center gap-1.5">
+                  <CheckCircle size={14} strokeWidth={2.5} />
                   ยอดที่ต้องชำระ
                 </p>
               )}
             </div>
 
-            <div className="flex items-end justify-center gap-1.5 mb-1 mt-3">
-              <span className="text-[44px] font-black text-gray-800 leading-none tracking-tight">
+            <div className="flex items-end justify-center gap-1 mb-0 mt-1">
+              <span className="text-[40px] font-black text-gray-800 leading-none tracking-tight">
                 {outstandingBalance.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
               </span>
-              <span className="text-[16px] font-bold text-gray-400 mb-1.5">บาท</span>
+              <span className="text-[14px] font-bold text-gray-400 mb-1">บาท</span>
             </div>
 
             {fineAmount > 0 && (
-              <p className="text-[12px] text-rose-600 font-bold mt-2 bg-rose-50 px-3 py-1.5 rounded-full inline-block border border-rose-100">
+              <p className="text-[11px] text-rose-600 font-bold mt-1.5 bg-rose-50 px-3 py-1 rounded-full inline-block border border-rose-100">
                 *รวมค่าปรับล่าช้า {fineAmount.toLocaleString()} บาทแล้ว
               </p>
             )}
 
-            <p className="text-[12px] text-gray-500 mt-2 font-medium">อัตราค่าบำรุงรักษาส่วนกลาง {monthlyRate.toLocaleString('th-TH')} บาท/เดือน</p>
+            <p className="text-[11px] text-gray-500 mt-1.5 font-medium">อัตราค่าบำรุงรักษาส่วนกลาง {monthlyRate.toLocaleString('th-TH')} บาท/เดือน</p>
           </div>
 
-          <div className="pt-4 border-t border-gray-100">
-            <label className="block text-[14px] font-bold text-gray-700 mb-3 flex items-center gap-2">
-              <CreditCard size={20} strokeWidth={2.5} className="text-[#376B64]" />
+          <div className="pt-3 border-t border-gray-100">
+            <label className="block text-[13px] font-bold text-gray-700 mb-2 flex items-center gap-1.5">
+              <CreditCard size={16} strokeWidth={2.5} className="text-[#376B64]" />
               รูปแบบการชำระเงิน
             </label>
             
-            <div onClick={() => setIsCustomSelectOpen(true)} className="w-full p-4 bg-[#F8FAFC] border border-gray-200 rounded-2xl flex flex-col justify-center cursor-pointer active:scale-[0.98] transition-all">
-              <div className="flex justify-between items-center mb-1">
-                <span className="text-[15px] font-bold text-[#376B64]">
+            {/* ลด p-4 เหลือ p-3 */}
+            <div onClick={() => setIsCustomSelectOpen(true)} className="w-full p-3 bg-[#F8FAFC] border border-gray-200 rounded-xl flex flex-col justify-center cursor-pointer active:scale-[0.98] transition-all">
+              <div className="flex justify-between items-center mb-0.5">
+                <span className="text-[14px] font-bold text-[#376B64]">
                   {paymentOptions.find(o => o.value === payOption)?.title} <span className="text-gray-400 font-normal ml-1">({(outstandingBalance + monthlyRate * payOption).toLocaleString('th-TH')} ฿)</span>
                 </span>
-                <ChevronDown size={20} strokeWidth={2.5} className="text-[#376B64]/50" />
+                <ChevronDown size={18} strokeWidth={2.5} className="text-[#376B64]/50" />
               </div>
-              <p className="text-[12px] font-medium text-gray-500 leading-relaxed">{getCoverageText(payOption)}</p>
+              <p className="text-[11px] font-medium text-gray-500 leading-relaxed">{getCoverageText(payOption)}</p>
             </div>
           </div>
 
-          <div className="pt-5 mt-5 border-t border-gray-100">
-            <label className="flex justify-between items-center text-[13px] font-bold text-gray-500 mb-2">
+          <div className="pt-3 mt-3 border-t border-gray-100">
+            <label className="flex justify-between items-center text-[12px] font-bold text-gray-500 mb-1.5">
               หรือ ระบุยอดเงินโอนเอง
               {customAmount && (
-                <span className="text-[10px] bg-[#376B64] text-white px-2 py-0.5 rounded-md animate-pulse">
+                <span className="text-[9px] bg-[#376B64] text-white px-2 py-0.5 rounded-md animate-pulse">
                   กำลังใช้ยอดนี้
                 </span>
               )}
             </label>
             <div className="relative group">
+              {/* ลด p-3.5 เหลือ p-3 */}
               <input 
                 type="number" value={customAmount} onChange={(e) => setCustomAmount(e.target.value)}
                 placeholder="ระบุจำนวนเงินที่ต้องการชำระ (บาท)"
-                className="w-full p-3.5 pl-4 bg-white border border-gray-200 rounded-xl text-[16px] font-bold text-[#376B64] focus:outline-none focus:border-[#376B64] focus:ring-2 focus:ring-[#376B64]/20 transition-all placeholder:font-medium placeholder:text-gray-300 placeholder:text-[13px]" 
+                className="w-full p-3 pl-3.5 bg-white border border-gray-200 rounded-xl text-[15px] font-bold text-[#376B64] focus:outline-none focus:border-[#376B64] focus:ring-2 focus:ring-[#376B64]/20 transition-all placeholder:font-medium placeholder:text-gray-300 placeholder:text-[12px]" 
               />
             </div>
 
-            <div className="mt-4 bg-blue-50/60 border border-blue-100 rounded-2xl p-3">
-              <div className="flex items-center gap-2 mb-2">
-                <Info size={18} strokeWidth={2.5} className="text-blue-500" />
-                <span className="text-[13px] font-bold text-blue-800">คำแนะนำการระบุยอดโอน</span>
+            <div className="mt-3 bg-blue-50/60 border border-blue-100 rounded-xl p-2.5">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Info size={14} strokeWidth={2.5} className="text-blue-500" />
+                <span className="text-[12px] font-bold text-blue-800">คำแนะนำการระบุยอดโอน</span>
               </div>
-              <ul className="text-[11px] text-blue-700 leading-relaxed space-y-1.5 ml-5 list-disc">
-                <li>ระบบจะนำไป <strong className="text-blue-900">หักยอดค้างชำระ</strong> ก่อนเป็นอันดับแรก</li>
+              <ul className="text-[11px] text-blue-700 leading-relaxed space-y-1 ml-4 list-disc">
+                <li>ระบบจะนำไป <strong className="text-blue-900">หักยอดค้างชำระ</strong> ก่อน</li>
                 <li>เงินที่โอนเกินมา จะถูกนำไปเป็น <strong className="text-blue-900">ยอดจ่ายล่วงหน้า</strong> อัตโนมัติ</li>
                 <li>สามารถ <strong className="text-blue-900">ทยอยจ่ายได้</strong> (หากยอดโอนน้อยกว่าหนี้ทั้งหมด)</li>
               </ul>
-              <p className="text-[11px] text-blue-500/80 mt-2.5 pt-2.5 border-t border-blue-100/50">
+              <p className="text-[10px] text-blue-500/80 mt-1.5 pt-1.5 border-t border-blue-100/50">
                 * เมื่อพิมพ์ตัวเลข ระบบจะใช้ยอดช่องนี้แทนปุ่มตัวเลือกด้านบน
               </p>
             </div>
             
             {customAmount && remainingBalance > 0 && (
-              <div className="mt-4 flex items-center justify-between bg-rose-50 p-3.5 rounded-xl border border-rose-100">
-                <span className="text-[12px] font-bold text-rose-600">ยอดค้างคงเหลือ</span>
-                <span className="text-[14px] font-black text-rose-600">{remainingBalance.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
+              <div className="mt-3 flex items-center justify-between bg-rose-50 p-3 rounded-xl border border-rose-100">
+                <span className="text-[11px] font-bold text-rose-600">ยอดค้างคงเหลือ</span>
+                <span className="text-[13px] font-black text-rose-600">{remainingBalance.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
               </div>
             )}
           </div>
         </div>
 
-        {/* --- ธนาคาร --- */}
-        <div className="bg-white rounded-[1.5rem] p-5 shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-gray-100 flex items-center gap-5">
-          <div className="w-14 h-14 bg-gradient-to-br from-[#00A5E3] to-[#0086b8] rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-[#00A5E3]/20">
-            <Landmark size={28} strokeWidth={2} className="text-white" />
+        {/* --- ธนาคาร (ลด p-5 เหลือ p-3.5) --- */}
+        <div className="bg-white rounded-[1.2rem] p-3.5 shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-gray-100 flex items-center gap-4">
+          <div className="w-12 h-12 bg-gradient-to-br from-[#00A5E3] to-[#0086b8] rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-[#00A5E3]/20">
+            <Landmark size={24} strokeWidth={2} className="text-white" />
           </div>
           <div>
-            <p className="text-[15px] font-extrabold text-gray-800">ธนาคารกรุงไทย</p>
-            <p className="text-[13px] text-gray-500 mt-1 font-medium">660-9-55290-8</p>
-            <p className="text-[11px] text-gray-400 mt-0.5">นิติบุคคลหมู่บ้าน</p>
+            <p className="text-[14px] font-extrabold text-gray-800 leading-tight">ธนาคารกรุงไทย</p>
+            <p className="text-[12px] text-gray-500 mt-0.5 font-medium leading-tight">660-9-55290-8</p>
+            <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">นิติบุคคลหมู่บ้าน</p>
           </div>
         </div>
 
-        {/* --- อัปโหลดสลิป --- */}
-        <div className="bg-white rounded-[2rem] p-6 shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-100">
-          <h3 className="text-[16px] font-extrabold text-gray-800 mb-4 flex items-center gap-2">
+        {/* --- อัปโหลดสลิป (ลด p-6 เหลือ p-4) --- */}
+        <div className="bg-white rounded-[1.5rem] p-4 shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-100">
+          <h3 className="text-[14px] font-extrabold text-gray-800 mb-3 flex items-center gap-1.5">
             <div className="bg-[#376B64]/10 p-1.5 rounded-lg text-[#376B64]">
-              <FileImage size={20} strokeWidth={2.5} />
+              <FileImage size={16} strokeWidth={2.5} />
             </div>
             หลักฐานการโอนเงิน
           </h3>
           
           <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-            <div className="border-2 border-dashed border-gray-300 bg-gray-50/50 rounded-[1.5rem] p-8 flex flex-col items-center justify-center hover:bg-gray-100 hover:border-[#376B64]/50 transition-all min-h-[180px] overflow-hidden">
+            <div className="border-2 border-dashed border-gray-300 bg-gray-50/50 rounded-[1rem] p-5 flex flex-col items-center justify-center hover:bg-gray-100 hover:border-[#376B64]/50 transition-all min-h-[140px] overflow-hidden">
               {previewUrl ? (
                 <img src={previewUrl} alt="Slip Preview" className="absolute inset-0 w-full h-full object-contain bg-black/5" />
               ) : (
                 <>
-                  <div className="w-12 h-12 bg-white rounded-full shadow-md flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                    <UploadCloud size={24} strokeWidth={2.5} className="text-[#376B64]" />
+                  <div className="w-10 h-10 bg-white rounded-full shadow-md flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                    <UploadCloud size={20} strokeWidth={2.5} className="text-[#376B64]" />
                   </div>
-                  <p className="text-[14px] font-bold text-gray-700 mb-1">แตะเพื่ออัปโหลดสลิป</p>
+                  <p className="text-[12px] font-bold text-gray-700 mb-1">แตะเพื่ออัปโหลดสลิป</p>
                 </>
               )}
             </div>
             <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/jpeg, image/png" className="hidden" />
           </div>
 
-          <div className="grid grid-cols-2 gap-4 mt-6">
+          <div className="grid grid-cols-2 gap-3 mt-4">
             <div>
-              <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">วันที่โอน</label>
-              <div onClick={() => setIsDatePickerOpen(true)} className="relative w-full pl-10 pr-3 py-3.5 bg-[#F8FAFC] border border-gray-200 rounded-xl cursor-pointer active:scale-95 transition-all flex items-center">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                  <CalendarDays size={16} strokeWidth={2.5} className="text-gray-400" />
+              <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-1">วันที่โอน</label>
+              <div onClick={() => setIsDatePickerOpen(true)} className="relative w-full pl-9 pr-2 py-2.5 bg-[#F8FAFC] border border-gray-200 rounded-xl cursor-pointer active:scale-95 transition-all flex items-center">
+                <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+                  <CalendarDays size={14} strokeWidth={2.5} className="text-gray-400" />
                 </div>
                 {transferDate 
-                  ? <span className="text-[13px] font-bold text-[#376B64]">{recentDates.find(d => d.value === transferDate)?.label.split(' ')[0] + ' ' + recentDates.find(d => d.value === transferDate)?.label.split(' ')[1]}</span>
-                  : <span className="text-[13px] font-medium text-gray-400">เลือกวันที่</span>
+                  ? <span className="text-[12px] font-bold text-[#376B64]">{recentDates.find(d => d.value === transferDate)?.label.split(' ')[0] + ' ' + recentDates.find(d => d.value === transferDate)?.label.split(' ')[1]}</span>
+                  : <span className="text-[12px] font-medium text-gray-400">เลือกวันที่</span>
                 }
               </div>
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">เวลาโอน</label>
-              <div onClick={openTimePicker} className="relative w-full pl-10 pr-3 py-3.5 bg-[#F8FAFC] border border-gray-200 rounded-xl cursor-pointer active:scale-95 transition-all flex items-center">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                  <Clock size={16} strokeWidth={2.5} className="text-gray-400" />
+              <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-1">เวลาโอน</label>
+              <div onClick={openTimePicker} className="relative w-full pl-9 pr-2 py-2.5 bg-[#F8FAFC] border border-gray-200 rounded-xl cursor-pointer active:scale-95 transition-all flex items-center">
+                <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+                  <Clock size={14} strokeWidth={2.5} className="text-gray-400" />
                 </div>
                 {transferTime 
-                  ? <span className="text-[14px] font-bold tracking-widest text-[#376B64]">{transferTime}</span>
-                  : <span className="text-[13px] font-medium text-gray-400">เลือกเวลา</span>
+                  ? <span className="text-[13px] font-bold tracking-widest text-[#376B64]">{transferTime}</span>
+                  : <span className="text-[12px] font-medium text-gray-400">เลือกเวลา</span>
                 }
               </div>
             </div>
@@ -403,11 +407,12 @@ function PaymentForm() {
         </div>
       </div>
 
-      <div className="px-5 mt-4 mb-8">
+      {/* --- ปุ่มยืนยัน (ลด py-4 เหลือ py-3.5) --- */}
+      <div className="px-4 mt-4 mb-6 relative z-10">
         <button 
           onClick={handleSubmit}
           disabled={!isFormComplete || submitting}
-          className={`w-full py-4 rounded-2xl font-bold text-[16px] transition-all flex items-center justify-center gap-2 active:scale-[0.98] ${
+          className={`w-full py-3.5 rounded-2xl font-bold text-[15px] transition-all flex items-center justify-center gap-2 active:scale-[0.98] ${
             isFormComplete 
               ? 'bg-gradient-to-r from-[#2A524C] to-[#376B64] shadow-lg shadow-[#376B64]/30 text-white' 
               : 'bg-gray-200 text-gray-400 cursor-not-allowed border-none'
@@ -417,23 +422,23 @@ function PaymentForm() {
         </button>
       </div>
 
-      {/* --- Modals --- */}
+      {/* --- Modals (ลด padding และ space ใน popup) --- */}
       {isCustomSelectOpen && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity" onClick={() => setIsCustomSelectOpen(false)}></div>
-          <div className="bg-white w-full max-w-md rounded-t-[2.5rem] p-6 relative z-10 animate-slide-up shadow-2xl">
-            <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6"></div>
-            <h3 className="text-[18px] font-extrabold text-gray-800 mb-5 text-center">เลือกระยะเวลาที่ต้องการชำระ</h3>
-            <div className="space-y-3 max-h-[55vh] overflow-y-auto pb-4 pr-1 custom-scrollbar">
+          <div className="bg-white w-full max-w-md rounded-t-[2rem] p-5 relative z-10 animate-slide-up shadow-2xl">
+            <div className="w-10 h-1.5 bg-gray-200 rounded-full mx-auto mb-4"></div>
+            <h3 className="text-[16px] font-extrabold text-gray-800 mb-4 text-center">เลือกระยะเวลาที่ต้องการชำระ</h3>
+            <div className="space-y-2 max-h-[55vh] overflow-y-auto pb-4 pr-1 custom-scrollbar">
               {paymentOptions.map((opt) => (
-                <div key={opt.value} onClick={() => { setPayOption(opt.value); setCustomAmount(''); setIsCustomSelectOpen(false); }} className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between ${payOption === opt.value ? 'border-[#376B64] bg-[#376B64]/5 shadow-sm' : 'border-gray-100 hover:border-gray-200'}`}>
-                  <div className="flex-1 pr-4">
-                     <p className={`text-[15px] font-bold ${payOption === opt.value ? 'text-[#376B64]' : 'text-gray-800'}`}>{opt.title}</p>
-                     <p className="text-[12px] text-gray-500 mt-1 leading-relaxed">{getCoverageText(opt.value)}</p>
+                <div key={opt.value} onClick={() => { setPayOption(opt.value); setCustomAmount(''); setIsCustomSelectOpen(false); }} className={`p-3 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-between ${payOption === opt.value ? 'border-[#376B64] bg-[#376B64]/5 shadow-sm' : 'border-gray-100 hover:border-gray-200'}`}>
+                  <div className="flex-1 pr-3">
+                     <p className={`text-[14px] font-bold ${payOption === opt.value ? 'text-[#376B64]' : 'text-gray-800'}`}>{opt.title}</p>
+                     <p className="text-[11px] text-gray-500 mt-0.5 leading-relaxed">{getCoverageText(opt.value)}</p>
                   </div>
                   <div className="text-right flex flex-col items-end">
-                     <p className={`text-[15px] font-black ${payOption === opt.value ? 'text-[#376B64]' : 'text-gray-800'}`}>{(outstandingBalance + monthlyRate * opt.value).toLocaleString('th-TH')} ฿</p>
-                     {payOption === opt.value && <CheckCircle size={20} strokeWidth={2.5} className="text-[#376B64] mt-1.5 animate-bounce" />}
+                     <p className={`text-[14px] font-black ${payOption === opt.value ? 'text-[#376B64]' : 'text-gray-800'}`}>{(outstandingBalance + monthlyRate * opt.value).toLocaleString('th-TH')} ฿</p>
+                     {payOption === opt.value && <CheckCircle size={18} strokeWidth={2.5} className="text-[#376B64] mt-1 animate-bounce" />}
                   </div>
                 </div>
               ))}
@@ -445,15 +450,15 @@ function PaymentForm() {
       {isDatePickerOpen && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity" onClick={() => setIsDatePickerOpen(false)}></div>
-          <div className="bg-white w-full max-w-md rounded-t-[2.5rem] p-6 relative z-10 animate-slide-up shadow-2xl">
-            <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6"></div>
-            <h3 className="text-[18px] font-extrabold text-gray-800 mb-5 text-center">เลือกวันที่โอนเงิน</h3>
-            <div className="max-h-[50vh] overflow-y-auto space-y-2 pr-2 custom-scrollbar pb-6">
+          <div className="bg-white w-full max-w-md rounded-t-[2rem] p-5 relative z-10 animate-slide-up shadow-2xl">
+            <div className="w-10 h-1.5 bg-gray-200 rounded-full mx-auto mb-4"></div>
+            <h3 className="text-[16px] font-extrabold text-gray-800 mb-4 text-center">เลือกวันที่โอนเงิน</h3>
+            <div className="max-h-[50vh] overflow-y-auto space-y-1.5 pr-1 custom-scrollbar pb-4">
               {recentDates.map(date => (
                 <div 
                   key={date.value} 
                   onClick={() => { setTransferDate(date.value); setIsDatePickerOpen(false); }} 
-                  className={`p-4 rounded-xl border-2 transition-all cursor-pointer text-center font-bold text-[15px] ${transferDate === date.value ? 'border-[#376B64] bg-[#376B64]/10 text-[#376B64] shadow-sm' : 'border-gray-100 text-gray-700 hover:bg-gray-50 hover:border-gray-200'}`}
+                  className={`p-3 rounded-xl border-2 transition-all cursor-pointer text-center font-bold text-[14px] ${transferDate === date.value ? 'border-[#376B64] bg-[#376B64]/10 text-[#376B64] shadow-sm' : 'border-gray-100 text-gray-700 hover:bg-gray-50 hover:border-gray-200'}`}
                 >
                   {date.label}
                 </div>
@@ -466,29 +471,29 @@ function PaymentForm() {
       {isTimePickerOpen && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity" onClick={() => setIsTimePickerOpen(false)}></div>
-          <div className="bg-white w-full max-w-md rounded-t-[2.5rem] p-6 relative z-10 animate-slide-up shadow-2xl">
-            <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6"></div>
-            <h3 className="text-[18px] font-extrabold text-gray-800 mb-2 text-center">ระบุเวลาที่โอนเงิน</h3>
-            <p className="text-center text-sm text-gray-500 mb-6">ระบุเวลาให้ตรงกับสลิปธนาคาร</p>
+          <div className="bg-white w-full max-w-md rounded-t-[2rem] p-5 relative z-10 animate-slide-up shadow-2xl">
+            <div className="w-10 h-1.5 bg-gray-200 rounded-full mx-auto mb-4"></div>
+            <h3 className="text-[16px] font-extrabold text-gray-800 mb-1 text-center">ระบุเวลาที่โอนเงิน</h3>
+            <p className="text-center text-[12px] text-gray-500 mb-5">ระบุเวลาให้ตรงกับสลิปธนาคาร</p>
             
-            <div className="flex gap-4 h-[35vh] mb-8">
-              <div className="flex-1 overflow-y-auto custom-scrollbar border border-gray-100 rounded-2xl p-2 space-y-1 bg-gray-50/50">
-                <div className="text-center text-gray-400 font-bold text-[12px] pb-2 sticky top-0 bg-white/90 backdrop-blur-sm z-10 rounded-t-xl pt-2">ชั่วโมง</div>
+            <div className="flex gap-3 h-[30vh] mb-5">
+              <div className="flex-1 overflow-y-auto custom-scrollbar border border-gray-100 rounded-xl p-1.5 space-y-1 bg-gray-50/50">
+                <div className="text-center text-gray-400 font-bold text-[11px] pb-1.5 sticky top-0 bg-white/90 backdrop-blur-sm z-10 rounded-t-lg pt-1">ชั่วโมง</div>
                 {hoursList.map(h => (
-                  <div key={h} onClick={() => setTempHour(h)} className={`py-3 text-center rounded-xl font-black text-[20px] cursor-pointer transition-all ${tempHour === h ? 'bg-[#376B64] text-white shadow-md scale-105' : 'text-gray-600 hover:bg-gray-200'}`}>{h}</div>
+                  <div key={h} onClick={() => setTempHour(h)} className={`py-2 text-center rounded-lg font-black text-[18px] cursor-pointer transition-all ${tempHour === h ? 'bg-[#376B64] text-white shadow-md scale-105' : 'text-gray-600 hover:bg-gray-200'}`}>{h}</div>
                 ))}
               </div>
-              <div className="flex-1 overflow-y-auto custom-scrollbar border border-gray-100 rounded-2xl p-2 space-y-1 bg-gray-50/50">
-                <div className="text-center text-gray-400 font-bold text-[12px] pb-2 sticky top-0 bg-white/90 backdrop-blur-sm z-10 rounded-t-xl pt-2">นาที</div>
+              <div className="flex-1 overflow-y-auto custom-scrollbar border border-gray-100 rounded-xl p-1.5 space-y-1 bg-gray-50/50">
+                <div className="text-center text-gray-400 font-bold text-[11px] pb-1.5 sticky top-0 bg-white/90 backdrop-blur-sm z-10 rounded-t-lg pt-1">นาที</div>
                 {minutesList.map(m => (
-                  <div key={m} onClick={() => setTempMinute(m)} className={`py-3 text-center rounded-xl font-black text-[20px] cursor-pointer transition-all ${tempMinute === m ? 'bg-[#376B64] text-white shadow-md scale-105' : 'text-gray-600 hover:bg-gray-200'}`}>{m}</div>
+                  <div key={m} onClick={() => setTempMinute(m)} className={`py-2 text-center rounded-lg font-black text-[18px] cursor-pointer transition-all ${tempMinute === m ? 'bg-[#376B64] text-white shadow-md scale-105' : 'text-gray-600 hover:bg-gray-200'}`}>{m}</div>
                 ))}
               </div>
             </div>
 
             <button 
               onClick={() => { setTransferTime(`${tempHour}:${tempMinute}`); setIsTimePickerOpen(false); }}
-              className="w-full bg-gradient-to-r from-[#2A524C] to-[#376B64] text-white py-4 rounded-2xl font-bold text-[16px] active:scale-[0.98] transition-all shadow-lg shadow-[#376B64]/30"
+              className="w-full bg-gradient-to-r from-[#2A524C] to-[#376B64] text-white py-3.5 rounded-xl font-bold text-[15px] active:scale-[0.98] transition-all shadow-lg shadow-[#376B64]/30"
             >
               ตกลง (เวลา {tempHour}:{tempMinute} น.)
             </button>
