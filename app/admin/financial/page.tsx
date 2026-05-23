@@ -253,7 +253,7 @@ export default function FinancialDashboard() {
                     <Pie data={pieData} innerRadius={60} outerRadius={90} paddingAngle={2} dataKey="value">
                       {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                     </Pie>
-                    <Tooltip formatter={(value: number) => `${value.toLocaleString()} บาท`} />
+                    <Tooltip formatter={(value: any) => `${Number(value || 0).toLocaleString()} บาท`} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="absolute text-center pointer-events-none">
