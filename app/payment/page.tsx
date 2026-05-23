@@ -7,7 +7,8 @@ import liff from '@line/liff';
 import Swal from 'sweetalert2';
 import { 
   AlertCircle, CheckCircle, CreditCard, ChevronDown, 
-  Info, Landmark, FileImage, UploadCloud, CalendarDays, Clock 
+  Info, Landmark, FileImage, UploadCloud, CalendarDays, Clock, 
+  Copy, Check // 🌟 เพิ่มไอคอน Copy และ Check
 } from 'lucide-react';
 
 function PaymentForm() {
@@ -25,6 +26,7 @@ function PaymentForm() {
     bankLogoUrl: "/banks/KTB.png"
   });
   const [imageError, setImageError] = useState(false);
+  const [isCopied, setIsCopied] = useState(false); // 🌟 State สำหรับสถานะการคัดลอก
 
   const [payOption, setPayOption] = useState<number>(0); 
   const [customAmount, setCustomAmount] = useState<string>('');
@@ -59,7 +61,6 @@ function PaymentForm() {
     }).catch(err => console.error("LIFF Error:", err));
   }, []);
 
-  // 🌟 ฟังก์ชันดึงข้อมูลธนาคารจาก API
   const fetchSystemConfig = async () => {
     try {
       const res = await fetch('/api/admin/settings');
@@ -90,6 +91,29 @@ function PaymentForm() {
       console.error("Error fetching smart info:", error);
     } finally {
       setLoadingData(false);
+    }
+  };
+
+  // 🌟 ฟังก์ชันจัดการการคัดลอกเลขบัญชี
+  const handleCopyAccountNo = () => {
+    if (bankInfo.bankAccountNo) {
+      navigator.clipboard.writeText(bankInfo.bankAccountNo);
+      setIsCopied(true);
+      
+      const Toast = Swal.mixin({
+        toast: true,
+        position: 'top',
+        showConfirmButton: false,
+        timer: 2000,
+        timerProgressBar: true,
+        customClass: { popup: 'rounded-2xl shadow-lg mt-4' }
+      });
+      Toast.fire({
+        icon: 'success',
+        title: 'คัดลอกเลขบัญชีแล้ว',
+      });
+
+      setTimeout(() => setIsCopied(false), 2000);
     }
   };
 
@@ -366,7 +390,7 @@ function PaymentForm() {
           </div>
         </div>
 
-        {/* 🌟 กล่องธนาคาร (ดึงข้อมูลแบบ Dynamic แล้ว) */}
+        {/* 🌟 กล่องธนาคาร พร้อมปุ่ม Copy */}
         <div className="bg-white rounded-[1.2rem] p-3.5 shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-gray-100 flex items-center gap-4">
           {!imageError ? (
             <img 
@@ -382,8 +406,22 @@ function PaymentForm() {
           )}
           <div className="flex-1 overflow-hidden">
             <p className="text-[14px] font-extrabold text-gray-800 leading-tight truncate">{bankInfo.bankName}</p>
-            <p className="text-[13px] text-[#376B64] mt-0.5 font-bold tracking-wider leading-tight">{bankInfo.bankAccountNo}</p>
-            <p className="text-[10px] text-gray-500 mt-0.5 leading-tight truncate">{bankInfo.bankAccountName}</p>
+            
+            {/* 🌟 ส่วนเลขบัญชีที่มีปุ่มคัดลอก */}
+            <div className="flex items-center gap-2 mt-0.5">
+              <p className="text-[14px] text-[#376B64] font-bold tracking-wider leading-tight">{bankInfo.bankAccountNo}</p>
+              <button 
+                onClick={handleCopyAccountNo}
+                className={`p-1.5 rounded-md transition-all active:scale-95 flex items-center justify-center ${
+                  isCopied ? 'bg-green-100 text-green-600' : 'bg-[#376B64]/10 text-[#376B64] hover:bg-[#376B64]/20'
+                }`}
+                title="คัดลอกเลขบัญชี"
+              >
+                {isCopied ? <Check size={14} strokeWidth={3} /> : <Copy size={14} />}
+              </button>
+            </div>
+
+            <p className="text-[11px] text-gray-500 mt-0.5 leading-tight truncate">{bankInfo.bankAccountName}</p>
           </div>
         </div>
 
