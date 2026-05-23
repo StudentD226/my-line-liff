@@ -7,20 +7,17 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 const COLORS = ["#3B82F6", "#60A5FA", "#93C5FD", "#FBBF24", "#8B5CF6"];
 
 export default function FinancialDashboard() {
-  // 🌟 State สำหรับจัดการ Alert
   const [alert, setAlert] = useState<{ show: boolean; message: string; type: "success" | "warning" | "error" }>({
     show: false,
     message: "",
     type: "success",
   });
 
-  // ฟังก์ชันเรียก Alert
   const showAlert = (message: string, type: "success" | "warning" | "error" = "success") => {
     setAlert({ show: true, message, type });
-    setTimeout(() => setAlert({ show: false, message: "", type: "success" }), 3000); // ปิดออโต้ใน 3 วินาที
+    setTimeout(() => setAlert({ show: false, message: "", type: "success" }), 3000);
   };
 
-  // ข้อมูลจำลองสำหรับกราฟ
   const pieData = [
     { name: "ค่าสาธารณูปโภค", value: 4272 },
     { name: "ค่าบำรุงรักษา", value: 4272 },
@@ -32,7 +29,6 @@ export default function FinancialDashboard() {
   return (
     <div className="p-6 lg:p-10 max-w-7xl mx-auto bg-[#F8FAFC] min-h-screen font-sans relative">
       
-      {/* 🌟 Alert Component (จะเด้งลงมาจากขอบจอบน) */}
       {alert.show && (
         <div className={`fixed top-5 left-1/2 transform -translate-x-1/2 z-50 px-6 py-3 rounded-lg shadow-xl flex items-center space-x-3 transition-all duration-300 animate-fade-in-down ${
           alert.type === "success" ? "bg-emerald-500 text-white" :
@@ -45,30 +41,14 @@ export default function FinancialDashboard() {
         </div>
       )}
 
-      {/* 🌟 Header */}
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">สร้างและสรุปรายงาน</h1>
           <p className="text-sm text-gray-500 mt-1">สร้างรายงานทางการเงินและสรุปผลการดำเนินงานของหมู่บ้าน</p>
         </div>
-        <div className="flex items-center space-x-4">
-          <button className="relative p-2 bg-white rounded-full shadow-sm hover:bg-gray-50">
-            <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
-            🔔
-          </button>
-          <div className="flex items-center space-x-3 bg-white px-4 py-2 rounded-full shadow-sm">
-            <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
-            <div className="text-sm">
-              <p className="font-bold text-gray-700">แอดมิน</p>
-              <p className="text-xs text-gray-500">ผู้ดูแลระบบ</p>
-            </div>
-          </div>
-        </div>
       </div>
 
-      {/* 🌟 1. เลือกช่วงเวลา & ปฏิทิน */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* เลือกเดือน/วัน */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
           <h2 className="text-lg font-bold text-gray-800 mb-4">เลือกช่วงรายงาน</h2>
           <div className="space-y-4">
@@ -96,7 +76,6 @@ export default function FinancialDashboard() {
           </div>
         </div>
 
-        {/* Dummy Calendar (ตกแต่งให้เหมือนในรูป) */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center">
           <div className="text-center w-full">
             <div className="flex justify-between items-center mb-4">
@@ -118,38 +97,28 @@ export default function FinancialDashboard() {
         </div>
       </div>
 
-      {/* 🌟 2. การ์ดสรุปผล 3 ใบ */}
       <h2 className="text-lg font-bold text-gray-800 mb-4">สรุปผลรายงาน</h2>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center text-center">
           <div className="w-12 h-12 rounded-full border-2 border-emerald-500 text-emerald-500 flex items-center justify-center text-xl font-bold mb-3">↓</div>
           <p className="text-gray-500 text-sm mb-1">รายรับรวม</p>
           <p className="text-2xl font-bold text-gray-800">12,000 <span className="text-base font-normal">บาท</span></p>
-          <p className="text-emerald-500 text-sm mt-2 font-medium">เพิ่มขึ้น 12.5 %</p>
-          <p className="text-xs text-gray-400">จากเดือนก่อน</p>
         </div>
         
         <div onClick={() => showAlert("พบยอดค้างชำระสะสมเกินกำหนด กรุณาตรวจสอบ", "warning")} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center text-center cursor-pointer hover:border-red-200 transition-all">
           <div className="w-12 h-12 rounded-full border-2 border-red-500 text-red-500 flex items-center justify-center text-xl font-bold mb-3">↑</div>
           <p className="text-gray-500 text-sm mb-1">ยอดค้างชำระ (สะสม)</p>
           <p className="text-2xl font-bold text-red-500">35,000 <span className="text-base font-normal">บาท</span></p>
-          <p className="text-red-500 text-sm mt-2 font-medium">เพิ่มขึ้น 8.5 %</p>
-          <p className="text-xs text-gray-400">จากเดือนก่อน</p>
         </div>
 
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center text-center">
           <div className="w-12 h-12 bg-blue-500 text-white rounded-full flex items-center justify-center text-xl font-bold mb-3">🧾</div>
           <p className="text-gray-500 text-sm mb-1">จำนวนรายการ</p>
           <p className="text-2xl font-bold text-gray-800">120 <span className="text-base font-normal">รายการ</span></p>
-          <p className="text-emerald-500 text-sm mt-2 font-medium">เพิ่มขึ้น 28.5 %</p>
-          <p className="text-xs text-gray-400">จากเดือนก่อน</p>
         </div>
       </div>
 
-      {/* 🌟 3. กราฟสัดส่วน & สรุปยอดรายรับ */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        
-        {/* กราฟวงกลม */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <h3 className="font-bold text-gray-800 mb-4">สัดส่วนรายรับ</h3>
           <div className="flex items-center justify-center h-64 relative">
@@ -161,7 +130,6 @@ export default function FinancialDashboard() {
                 <Tooltip />
               </PieChart>
             </ResponsiveContainer>
-            {/* ข้อความตรงกลางโดนัท */}
             <div className="absolute text-center pointer-events-none">
               <p className="text-xs text-gray-500">รวม</p>
               <p className="text-lg font-bold text-gray-800">12,000</p>
@@ -170,7 +138,6 @@ export default function FinancialDashboard() {
           </div>
         </div>
 
-        {/* สรุปยอดแบบ Text */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
           <h3 className="font-bold text-gray-800 mb-4">สรุปยอดรายรับ</h3>
           <div className="space-y-4">
@@ -186,113 +153,10 @@ export default function FinancialDashboard() {
               <span className="text-gray-600">ยอดค้างชำระ (สะสม)</span>
               <span className="font-bold text-red-500 text-xl">35,000 บาท</span>
             </div>
-            <div className="pt-2">
-              <span className="text-sm text-gray-500 font-bold">รายการล่าสุด</span>
-              <div className="flex justify-between items-center mt-2">
-                <div className="text-xs">
-                  <p className="text-gray-800 font-bold">บ้านเลขที่ 123/123 (นางสาวแป้ง)</p>
-                  <p className="text-gray-400">ID : PP-123</p>
-                </div>
-                <div className="text-right text-xs">
-                  <p className="text-emerald-500 font-bold">+ 100.00 บาท</p>
-                  <p className="text-gray-400">12:00 น.</p>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
 
-      {/* 🌟 4. ตารางรายการล่าสุด */}
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-8">
-        <h3 className="font-bold text-gray-800 mb-4">รายการล่าสุด</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-gray-600 text-left">
-            <thead className="text-gray-400 border-b border-gray-100">
-              <tr>
-                <th className="pb-3 font-normal">วันที่</th>
-                <th className="pb-3 font-normal">รายการ</th>
-                <th className="pb-3 font-normal">ประเภท</th>
-                <th className="pb-3 font-normal">สถานะ</th>
-                <th className="pb-3 font-normal text-right">รายรับ (บาท)</th>
-                <th className="pb-3 font-normal text-right">รายจ่าย (บาท)</th>
-                <th className="pb-3 font-normal text-right">คงเหลือ (บาท)</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              <tr className="hover:bg-gray-50 transition-colors">
-                <td className="py-4">31 ก.ค. 68</td>
-                <td className="py-4">ค่าส่วนกลาง</td>
-                <td className="py-4"><span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-md text-xs font-bold">รายรับ</span></td>
-                <td className="py-4"><span className="text-emerald-500 font-bold">ชำระแล้ว</span></td>
-                <td className="py-4 text-right text-emerald-500 font-bold">1,200.00</td>
-                <td className="py-4 text-right">-</td>
-                <td className="py-4 text-right">1,245,780.50</td>
-              </tr>
-              <tr className="hover:bg-gray-50 transition-colors">
-                <td className="py-4">31 ก.ค. 68</td>
-                <td className="py-4">ค่าน้ำประปา</td>
-                <td className="py-4"><span className="bg-red-100 text-red-700 px-2 py-1 rounded-md text-xs font-bold">รายจ่าย</span></td>
-                <td className="py-4"><span className="text-orange-500 font-bold">ค้างชำระ</span></td>
-                <td className="py-4 text-right">-</td>
-                <td className="py-4 text-right">12,450.00</td>
-                <td className="py-4 text-right">1,244,780.50</td>
-              </tr>
-              <tr className="hover:bg-gray-50 transition-colors">
-                <td className="py-4">31 ก.ค. 68</td>
-                <td className="py-4">ค่าส่วนกลาง</td>
-                <td className="py-4"><span className="bg-red-100 text-red-700 px-2 py-1 rounded-md text-xs font-bold">รายจ่าย</span></td>
-                <td className="py-4"><span className="text-orange-500 font-bold">ค้างชำระ</span></td>
-                <td className="py-4 text-right">-</td>
-                <td className="py-4 text-right">28,750.00</td>
-                <td className="py-4 text-right">1,257,030.50</td>
-              </tr>
-            </tbody>
-            <tfoot>
-              <tr className="font-bold text-gray-800">
-                <td colSpan={4} className="py-4">รวม</td>
-                <td className="py-4 text-right text-emerald-500">245,630.00</td>
-                <td className="py-4 text-right text-red-500">189,540.00</td>
-                <td></td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-      </div>
-
-      {/* 🌟 5. เอกสาร & ดาวน์โหลด */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-10">
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <h3 className="font-bold text-gray-800 mb-4">เอกสารรายงานการเงิน</h3>
-          <ul className="space-y-3 text-sm">
-            <li className="flex justify-between items-center text-gray-600 hover:text-teal-700 cursor-pointer">
-              <span className="flex items-center space-x-2"><span>📄</span><span>รายงานรับ - จ่าย ประจำเดือน ก.ค. 2568</span></span>
-              <span className="bg-blue-50 text-blue-500 px-2 py-1 rounded text-xs font-bold">PDF</span>
-            </li>
-            <li className="flex justify-between items-center text-gray-600 hover:text-teal-700 cursor-pointer">
-              <span className="flex items-center space-x-2"><span>📄</span><span>งบสรุป ประจำเดือน ก.ค. 2568</span></span>
-              <span className="bg-blue-50 text-blue-500 px-2 py-1 rounded text-xs font-bold">PDF</span>
-            </li>
-          </ul>
-        </div>
-
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <h3 className="font-bold text-gray-800 mb-1">ดาวน์โหลดรายงาน</h3>
-          <p className="text-xs text-gray-400 mb-4">เลือกประเภทไฟล์ที่ต้องการดาวน์โหลด</p>
-          <div className="flex space-x-4">
-            <button onClick={() => showAlert("กำลังดาวน์โหลด PDF...", "success")} className="flex-1 flex flex-col items-center justify-center p-4 border border-gray-200 rounded-xl hover:border-red-500 hover:bg-red-50 transition-all text-red-500">
-              <span className="text-3xl mb-2">📕</span>
-              <span className="font-bold text-sm">PDF</span>
-            </button>
-            <button onClick={() => showAlert("ส่งออก Excel สำเร็จ!", "success")} className="flex-1 flex flex-col items-center justify-center p-4 border border-gray-200 rounded-xl hover:border-emerald-500 hover:bg-emerald-50 transition-all text-emerald-600">
-              <span className="text-3xl mb-2">📗</span>
-              <span className="font-bold text-sm">Excel</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* สไตล์อนิเมชันสำหรับ Alert */}
       <style jsx>{`
         @keyframes fadeInDown {
           from { opacity: 0; transform: translate(-50%, -20px); }
@@ -302,7 +166,6 @@ export default function FinancialDashboard() {
           animation: fadeInDown 0.3s ease-out forwards;
         }
       `}</style>
-
     </div>
   );
 }
