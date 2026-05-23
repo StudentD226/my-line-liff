@@ -25,8 +25,13 @@ export async function POST(request: Request) {
       penaltyRatePerDay, 
       applyToAllHouses,
       invoiceGenerateDay,
+      invoiceGenerateTime, // 🌟 เพิ่มเวลาส่งบิล
       dueDateDay,
-      secondReminderDay
+      secondReminderDay,
+      bankName,            // 🌟 เพิ่มชื่อธนาคาร
+      bankAccountNo,       // 🌟 เพิ่มเลขบัญชี
+      bankAccountName,     // 🌟 เพิ่มชื่อบัญชี
+      bankLogoUrl          // 🌟 เพิ่มโลโก้ธนาคาร
     } = body;
 
     // 1. อัปเดตการตั้งค่าส่วนกลาง
@@ -37,8 +42,13 @@ export async function POST(request: Request) {
         flatRateAmount: Number(flatRateAmount),
         penaltyRatePerDay: Number(penaltyRatePerDay),
         invoiceGenerateDay: Number(invoiceGenerateDay),
+        invoiceGenerateTime: invoiceGenerateTime, // บันทึกเวลา
         dueDateDay: Number(dueDateDay),
-        secondReminderDay: Number(secondReminderDay)
+        secondReminderDay: Number(secondReminderDay),
+        bankName: bankName,               // บันทึกธนาคาร
+        bankAccountNo: bankAccountNo,     // บันทึกเลขบัญชี
+        bankAccountName: bankAccountName, // บันทึกชื่อบัญชี
+        bankLogoUrl: bankLogoUrl          // บันทึกโลโก้
       }
     });
 

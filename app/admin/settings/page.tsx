@@ -7,6 +7,17 @@ import {
   CreditCard, X, Save, Clock, ArrowLeft, BellRing
 } from 'lucide-react';
 
+// 🌟 ตัวเลือกธนาคารทั้งหมด
+const BANK_OPTIONS = [
+  { name: "ธนาคารกสิกรไทย", url: "https://images.icons8.com/fluency/96/kasikornbank.png" },
+  { name: "ธนาคารไทยพาณิชย์", url: "https://images.icons8.com/fluency/96/scb-bank.png" },
+  { name: "ธนาคารกรุงเทพ", url: "https://images.icons8.com/fluency/96/bangkok-bank.png" },
+  { name: "ธนาคารกรุงไทย", url: "https://images.icons8.com/fluency/96/krung-thai-bank.png" },
+  { name: "ธนาคารกรุงศรีอยุธยา", url: "https://images.icons8.com/fluency/96/bank-of-ayudhya.png" },
+  { name: "ธนาคารทหารไทยธนชาต (ttb)", url: "https://images.icons8.com/fluency/96/ttb-bank.png" },
+  { name: "ธนาคารออมสิน", url: "https://images.icons8.com/fluency/96/government-savings-bank.png" },
+];
+
 const Toast = Swal.mixin({
   toast: true,
   position: 'top-end',
@@ -99,12 +110,18 @@ const CustomDayPicker = ({
 export default function AdminSettingsPage() {
   const [projectType, setProjectType] = useState('HOUSING_ESTATE');
   const [flatRateAmount, setFlatRateAmount] = useState(500);
-  const [penaltyRatePerDay, setPenaltyRatePerDay] = useState(100); // ตอนนี้เราใช้เป็นค่าปรับแบบเหมาจ่ายรายเดือน
+  const [penaltyRatePerDay, setPenaltyRatePerDay] = useState(100); 
   
   const [invoiceGenerateDay, setInvoiceGenerateDay] = useState(27);
   const [invoiceGenerateTime, setInvoiceGenerateTime] = useState("08:00");
   const [dueDateDay, setDueDateDay] = useState(7);
   const [secondReminderDay, setSecondReminderDay] = useState(15);
+
+  // 🌟 State สำหรับธนาคาร
+  const [bankName, setBankName] = useState("ธนาคารกรุงไทย");
+  const [bankAccountNo, setBankAccountNo] = useState("660-9-55290-8");
+  const [bankAccountName, setBankAccountName] = useState("นิติบุคคลหมู่บ้าน");
+  const [bankLogoUrl, setBankLogoUrl] = useState("https://images.icons8.com/fluency/96/krung-thai-bank.png");
 
   const [loading, setLoading] = useState(true);
   const [savingGlobal, setSavingGlobal] = useState(false);
@@ -135,6 +152,12 @@ export default function AdminSettingsPage() {
         if (data.config.invoiceGenerateTime) setInvoiceGenerateTime(data.config.invoiceGenerateTime);
         if (data.config.dueDateDay) setDueDateDay(data.config.dueDateDay);
         if (data.config.secondReminderDay) setSecondReminderDay(data.config.secondReminderDay);
+        
+        // 🌟 เซ็ตค่าธนาคารที่ดึงมาจาก API
+        if (data.config.bankName) setBankName(data.config.bankName);
+        if (data.config.bankAccountNo) setBankAccountNo(data.config.bankAccountNo);
+        if (data.config.bankAccountName) setBankAccountName(data.config.bankAccountName);
+        if (data.config.bankLogoUrl) setBankLogoUrl(data.config.bankLogoUrl);
       }
     } catch (err) {
       console.error('Error fetching config:', err);
@@ -190,7 +213,12 @@ export default function AdminSettingsPage() {
               invoiceGenerateDay,
               invoiceGenerateTime, 
               dueDateDay,
-              secondReminderDay
+              secondReminderDay,
+              // 🌟 ส่งค่าธนาคารไปบันทึกด้วย
+              bankName,
+              bankAccountNo,
+              bankAccountName,
+              bankLogoUrl
             })
           });
           const data = await res.json();
@@ -327,6 +355,8 @@ export default function AdminSettingsPage() {
               <span className="p-2 bg-[#376B64]/10 text-[#376B64] rounded-lg"><SettingsIcon size={20} /></span> การตั้งค่าระบบส่วนกลาง (Global Settings)
             </h2>
             <form onSubmit={handleSaveGlobal} className="space-y-6">
+              
+              {/* ส่วนที่ 1: การคิดเงิน */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">ประเภทโครงการ</label>
@@ -350,7 +380,6 @@ export default function AdminSettingsPage() {
                   />
                 </div>
 
-                {/* 🌟 เปลี่ยน Label ให้สอดคล้องกับการคำนวณแบบเหมาจ่าย */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">ค่าปรับล่าช้าเหมาจ่าย (บาท/เดือน)</label>
                   <input 
@@ -376,15 +405,73 @@ export default function AdminSettingsPage() {
                 </label>
               </div>
 
+              {/* 🌟 บัญชีธนาคารรับเงิน (Bank Account Settings) แทรกตรงนี้ครับ */}
+              <div className="mt-8 pt-8 border-t border-gray-100">
+                <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
+                  <span className="text-2xl">🏦</span> บัญชีธนาคารรับเงิน (สำหรับลูกบ้านโอนชำระ)
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* เลือกธนาคาร */}
+                  <div className="col-span-1">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">เลือกธนาคาร</label>
+                    <div className="flex items-center space-x-3 bg-gray-50 border border-gray-200 rounded-xl p-2.5 hover:border-[#376B64]/50 transition-colors shadow-sm">
+                      <img 
+                        src={bankLogoUrl || BANK_OPTIONS[3].url} 
+                        alt="Bank Logo" 
+                        className="w-8 h-8 object-contain bg-white rounded-full p-0.5 shadow-sm border border-gray-100" 
+                      />
+                      <select
+                        value={bankName}
+                        onChange={(e) => {
+                          const selected = BANK_OPTIONS.find(b => b.name === e.target.value);
+                          setBankName(selected?.name || ""); 
+                          setBankLogoUrl(selected?.url || "");
+                        }}
+                        className="w-full bg-transparent outline-none text-sm text-gray-700 font-semibold cursor-pointer"
+                      >
+                        {BANK_OPTIONS.map((bank, idx) => (
+                          <option key={idx} value={bank.name}>{bank.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* ชื่อบัญชี */}
+                  <div className="col-span-1">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">ชื่อบัญชี (Account Name)</label>
+                    <input
+                      type="text"
+                      required
+                      value={bankAccountName}
+                      onChange={(e) => setBankAccountName(e.target.value)}
+                      placeholder="เช่น นิติบุคคลหมู่บ้าน..."
+                      className="w-full border border-gray-200 rounded-xl p-3.5 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#376B64]/50 focus:border-[#376B64] outline-none transition-all shadow-sm font-medium"
+                    />
+                  </div>
+
+                  {/* เลขบัญชี */}
+                  <div className="col-span-1">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">เลขบัญชี (Account Number)</label>
+                    <input
+                      type="text"
+                      required
+                      value={bankAccountNo}
+                      onChange={(e) => setBankAccountNo(e.target.value)}
+                      placeholder="เช่น 123-4-56789-0"
+                      className="w-full border border-gray-200 rounded-xl p-3.5 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#376B64]/50 focus:border-[#376B64] outline-none transition-all shadow-sm font-mono tracking-wider"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* ส่วนที่ 2: รอบบิลอัตโนมัติ */}
               <div className="mt-8 pt-8 border-t border-gray-100">
                 <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
                   <span className="p-2 bg-[#376B64]/10 text-[#376B64] rounded-lg"><CalendarDays size={20} /></span> รอบบิลอัตโนมัติ (Automated Billing)
                 </h3>
                 
-                {/* 🌟 เรียงลำดับใหม่: ออกบิล -> แจ้งเตือนก่อนกำหนด -> ครบกำหนด -> เวลาจัดส่ง (ย้ายไปขวาสุด) */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  
-                  {/* ลำดับที่ 1 */}
                   <CustomDayPicker 
                     label="วันที่ออกบิลประจำเดือน" 
                     value={invoiceGenerateDay} 
@@ -393,7 +480,6 @@ export default function AdminSettingsPage() {
                     tooltipText="วันที่ระบบจะสร้างบิลใหม่ และส่งข้อความแจ้งเตือนค่าส่วนกลางไปหาลูกบ้านทุกคน"
                   />
                   
-                  {/* ลำดับที่ 2 (สลับเอาทวงยอดมาแก้เป็นเตือนก่อนกำหนด) */}
                   <CustomDayPicker 
                     label="วันที่แจ้งเตือนก่อนครบกำหนด" 
                     value={secondReminderDay} 
@@ -403,7 +489,6 @@ export default function AdminSettingsPage() {
                     icon={BellRing}
                   />
 
-                  {/* ลำดับที่ 3 */}
                   <CustomDayPicker 
                     label="วันครบกำหนดชำระ" 
                     value={dueDateDay} 
@@ -412,7 +497,6 @@ export default function AdminSettingsPage() {
                     tooltipText="วันสุดท้ายที่ลูกบ้านสามารถชำระเงินได้โดยไม่ถูกคิดค่าธรรมเนียมล่าช้า"
                   />
 
-                  {/* ลำดับที่ 4 (เวลาจัดส่งบิล ย้ายมาอยู่ท้ายสุด) */}
                   <div className="flex flex-col h-full">
                     <div className="flex items-center gap-1.5 mb-2">
                       <label className="block text-sm font-semibold text-gray-700">เวลาจัดส่งบิล</label>
@@ -434,7 +518,6 @@ export default function AdminSettingsPage() {
                       <Clock size={20} className="absolute right-3.5 top-3.5 text-[#376B64] pointer-events-none" />
                     </div>
                   </div>
-
                 </div>
               </div>
 
@@ -450,6 +533,7 @@ export default function AdminSettingsPage() {
             </form>
           </div>
 
+          {/* ส่วนที่ 3: จัดการบ้าน */}
           <div className="border-t-[8px] border-gray-50">
             <div className="p-6 md:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-gray-100">
               <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
