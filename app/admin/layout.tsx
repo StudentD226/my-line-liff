@@ -1,7 +1,8 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, FileText, CheckCircle, Users, LayoutDashboard, Wrench, Bell, UserCircle } from 'lucide-react';
+// 🌟 1. เพิ่มไอคอน PieChart นำเข้าจาก lucide-react
+import { Home, FileText, CheckCircle, Users, LayoutDashboard, Wrench, Bell, UserCircle, PieChart } from 'lucide-react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname(); // ใช้เพื่อเช็คว่าตอนนี้อยู่หน้าไหน
@@ -11,7 +12,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { icon: Home, label: 'จัดการข้อมูลบ้าน', href: '/admin/houses' },
     { icon: FileText, label: 'จัดการบิล/เรียกเก็บ', href: '/admin/invoices' },
     { icon: CheckCircle, label: 'ตรวจสอบการโอน', href: '/admin/review-slips' },
-    { icon: Wrench, label: 'ศูนย์รับเรื่อง/แจ้งซ่อม', href: '/admin/maintenance' }, // 🌟 เพิ่มเมนูใหม่ตรงนี้
+    { icon: PieChart, label: 'รายงานการเงิน', href: '/admin/financial' }, // 🌟 2. เพิ่มเมนูใหม่ตรงนี้ครับ
+    { icon: Wrench, label: 'ศูนย์รับเรื่อง/แจ้งซ่อม', href: '/admin/maintenance' }, 
     { icon: Users, label: 'สมาชิกลูกบ้าน', href: '/admin/users' },
   ];
 
