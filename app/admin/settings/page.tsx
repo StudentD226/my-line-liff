@@ -14,7 +14,7 @@ const BANK_OPTIONS = [
   { name: "ธนาคารกรุงเทพ", url: "/banks/BBL.png" },
   { name: "ธนาคารกรุงไทย", url: "/banks/KTB.png" },
   { name: "ธนาคารกรุงศรีอยุธยา", url: "/banks/BAY.png" },
-  { name: "ธนาคารทหารไทยธนชาต (ttb)", url: "/banks/TTB.png" },
+  { name: "ธนาคารทหารไทยธนชาต", url: "/banks/TTB.png" },
   { name: "ธนาคารออมสิน", url: "/banks/GSB.png" },
 ];
 
