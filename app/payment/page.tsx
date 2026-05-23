@@ -17,6 +17,15 @@ function PaymentForm() {
   const [houseData, setHouseData] = useState<any>(null); 
   const [loadingData, setLoadingData] = useState(true);
 
+  // 🌟 State สำหรับเก็บข้อมูลธนาคาร
+  const [bankInfo, setBankInfo] = useState({
+    bankName: "ธนาคารกรุงไทย",
+    bankAccountNo: "660-9-55290-8",
+    bankAccountName: "นิติบุคคลหมู่บ้าน",
+    bankLogoUrl: "/banks/KTB.png"
+  });
+  const [imageError, setImageError] = useState(false);
+
   const [payOption, setPayOption] = useState<number>(0); 
   const [customAmount, setCustomAmount] = useState<string>('');
   
@@ -35,6 +44,9 @@ function PaymentForm() {
   const [tempMinute, setTempMinute] = useState('00');
 
   useEffect(() => {
+    // ดึงข้อมูลการตั้งค่าธนาคาร
+    fetchSystemConfig();
+
     liff.init({ liffId: "2009290251-UZlxLIQJ" }).then(() => {
       if (!liff.isLoggedIn()) {
         liff.login();
@@ -46,6 +58,24 @@ function PaymentForm() {
       }
     }).catch(err => console.error("LIFF Error:", err));
   }, []);
+
+  // 🌟 ฟังก์ชันดึงข้อมูลธนาคารจาก API
+  const fetchSystemConfig = async () => {
+    try {
+      const res = await fetch('/api/admin/settings');
+      const data = await res.json();
+      if (data.success && data.config) {
+        setBankInfo({
+          bankName: data.config.bankName || "ธนาคารกรุงไทย",
+          bankAccountNo: data.config.bankAccountNo || "660-9-55290-8",
+          bankAccountName: data.config.bankAccountName || "นิติบุคคลหมู่บ้าน",
+          bankLogoUrl: data.config.bankLogoUrl || "/banks/KTB.png"
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching config:", error);
+    }
+  };
 
   const fetchSmartHouseData = async (lineId: string) => {
     try {
@@ -224,7 +254,6 @@ function PaymentForm() {
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
       `}} />
 
-      {/* --- ปรับ Header ให้บางลง (pt-6 pb-8) --- */}
       <div className="bg-gradient-to-b from-[#2A524C] to-[#376B64] px-4 pt-6 pb-8 text-white shadow-lg shadow-[#376B64]/20 rounded-b-[2.5rem] relative">
         <div className="flex items-center gap-3">
           <div className="w-11 h-11 bg-white/20 rounded-full overflow-hidden border-2 border-white/30 p-0.5">
@@ -239,7 +268,6 @@ function PaymentForm() {
 
       <div className="px-4 space-y-3 -mt-5 relative z-10">
         
-        {/* --- ส่วนยอดที่ต้องชำระ (ลด padding จาก p-6 เหลือ p-4) --- */}
         <div className="bg-white rounded-[1.5rem] p-4 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-100 relative overflow-hidden">
           <div className="text-center mb-4 pt-1">
             
@@ -286,7 +314,6 @@ function PaymentForm() {
               รูปแบบการชำระเงิน
             </label>
             
-            {/* ลด p-4 เหลือ p-3 */}
             <div onClick={() => setIsCustomSelectOpen(true)} className="w-full p-3 bg-[#F8FAFC] border border-gray-200 rounded-xl flex flex-col justify-center cursor-pointer active:scale-[0.98] transition-all">
               <div className="flex justify-between items-center mb-0.5">
                 <span className="text-[14px] font-bold text-[#376B64]">
@@ -308,7 +335,6 @@ function PaymentForm() {
               )}
             </label>
             <div className="relative group">
-              {/* ลด p-3.5 เหลือ p-3 */}
               <input 
                 type="number" value={customAmount} onChange={(e) => setCustomAmount(e.target.value)}
                 placeholder="ระบุจำนวนเงินที่ต้องการชำระ (บาท)"
@@ -340,19 +366,27 @@ function PaymentForm() {
           </div>
         </div>
 
-        {/* --- ธนาคาร (ลด p-5 เหลือ p-3.5) --- */}
+        {/* 🌟 กล่องธนาคาร (ดึงข้อมูลแบบ Dynamic แล้ว) */}
         <div className="bg-white rounded-[1.2rem] p-3.5 shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-gray-100 flex items-center gap-4">
-          <div className="w-12 h-12 bg-gradient-to-br from-[#00A5E3] to-[#0086b8] rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-[#00A5E3]/20">
-            <Landmark size={24} strokeWidth={2} className="text-white" />
-          </div>
-          <div>
-            <p className="text-[14px] font-extrabold text-gray-800 leading-tight">ธนาคารกรุงไทย</p>
-            <p className="text-[12px] text-gray-500 mt-0.5 font-medium leading-tight">660-9-55290-8</p>
-            <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">นิติบุคคลหมู่บ้าน</p>
+          {!imageError ? (
+            <img 
+              src={bankInfo.bankLogoUrl} 
+              alt={bankInfo.bankName} 
+              onError={() => setImageError(true)}
+              className="w-12 h-12 object-contain bg-white rounded-xl p-1 shadow-sm border border-gray-100 flex-shrink-0" 
+            />
+          ) : (
+            <div className="w-12 h-12 bg-gradient-to-br from-[#00A5E3] to-[#0086b8] rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-[#00A5E3]/20">
+              <Landmark size={24} strokeWidth={2} className="text-white" />
+            </div>
+          )}
+          <div className="flex-1 overflow-hidden">
+            <p className="text-[14px] font-extrabold text-gray-800 leading-tight truncate">{bankInfo.bankName}</p>
+            <p className="text-[13px] text-[#376B64] mt-0.5 font-bold tracking-wider leading-tight">{bankInfo.bankAccountNo}</p>
+            <p className="text-[10px] text-gray-500 mt-0.5 leading-tight truncate">{bankInfo.bankAccountName}</p>
           </div>
         </div>
 
-        {/* --- อัปโหลดสลิป (ลด p-6 เหลือ p-4) --- */}
         <div className="bg-white rounded-[1.5rem] p-4 shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-100">
           <h3 className="text-[14px] font-extrabold text-gray-800 mb-3 flex items-center gap-1.5">
             <div className="bg-[#376B64]/10 p-1.5 rounded-lg text-[#376B64]">
@@ -374,7 +408,7 @@ function PaymentForm() {
                 </>
               )}
             </div>
-            <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/jpeg, image/png" className="hidden" />
+            <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" onClick={(e) => { (e.target as HTMLInputElement).value = ''; }} className="hidden" />
           </div>
 
           <div className="grid grid-cols-2 gap-3 mt-4">
@@ -407,7 +441,6 @@ function PaymentForm() {
         </div>
       </div>
 
-      {/* --- ปุ่มยืนยัน (ลด py-4 เหลือ py-3.5) --- */}
       <div className="px-4 mt-4 mb-6 relative z-10">
         <button 
           onClick={handleSubmit}
@@ -422,7 +455,6 @@ function PaymentForm() {
         </button>
       </div>
 
-      {/* --- Modals (ลด padding และ space ใน popup) --- */}
       {isCustomSelectOpen && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity" onClick={() => setIsCustomSelectOpen(false)}></div>

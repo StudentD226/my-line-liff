@@ -3,68 +3,71 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+// ========================================================
+// 🟢 GET: ดึงข้อมูลการตั้งค่าส่งไปให้หน้าเว็บ
+// ========================================================
 export async function GET() {
   try {
-    let config = await prisma.systemConfig.findFirst();
-    if (!config) {
-      config = await prisma.systemConfig.create({ data: {} });
-    }
+    const config = await prisma.systemConfig.findFirst();
     return NextResponse.json({ success: true, config });
   } catch (error) {
-    console.error('Fetch Config Error:', error);
-    return NextResponse.json({ success: false, error: 'Failed to fetch config' }, { status: 500 });
+    console.error('Error fetching settings:', error);
+    return NextResponse.json({ success: false, error: 'ดึงข้อมูลไม่สำเร็จ' }, { status: 500 });
   }
 }
 
+// ========================================================
+// 🔵 POST: รับข้อมูลจากหน้าเว็บมาบันทึกลง Database
+// ========================================================
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { 
-      projectType, 
-      flatRateAmount, 
-      penaltyRatePerDay, 
-      applyToAllHouses,
-      invoiceGenerateDay,
-      invoiceGenerateTime, // 🌟 เพิ่มเวลาส่งบิล
-      dueDateDay,
-      secondReminderDay,
-      bankName,            // 🌟 เพิ่มชื่อธนาคาร
-      bankAccountNo,       // 🌟 เพิ่มเลขบัญชี
-      bankAccountName,     // 🌟 เพิ่มชื่อบัญชี
-      bankLogoUrl          // 🌟 เพิ่มโลโก้ธนาคาร
-    } = body;
 
-    // 1. อัปเดตการตั้งค่าส่วนกลาง
-    await prisma.systemConfig.update({
-      where: { id: 1 },
-      data: {
-        projectType,
-        flatRateAmount: Number(flatRateAmount),
-        penaltyRatePerDay: Number(penaltyRatePerDay),
-        invoiceGenerateDay: Number(invoiceGenerateDay),
-        invoiceGenerateTime: invoiceGenerateTime, // บันทึกเวลา
-        dueDateDay: Number(dueDateDay),
-        secondReminderDay: Number(secondReminderDay),
-        bankName: bankName,               // บันทึกธนาคาร
-        bankAccountNo: bankAccountNo,     // บันทึกเลขบัญชี
-        bankAccountName: bankAccountName, // บันทึกชื่อบัญชี
-        bankLogoUrl: bankLogoUrl          // บันทึกโลโก้
-      }
-    });
+    // 🌟 จัดเตรียมข้อมูลที่จะบันทึก (เพิ่มฟิลด์ธนาคารเข้ามาตรงนี้)
+    const dataToSave = {
+      projectType: body.projectType,
+      flatRateAmount: Number(body.flatRateAmount),
+      penaltyRatePerDay: Number(body.penaltyRatePerDay),
+      invoiceGenerateDay: Number(body.invoiceGenerateDay),
+      invoiceGenerateTime: body.invoiceGenerateTime,
+      dueDateDay: Number(body.dueDateDay),
+      secondReminderDay: Number(body.secondReminderDay),
+      // ข้อมูลธนาคาร
+      bankName: body.bankName,
+      bankAccountNo: body.bankAccountNo,
+      bankAccountName: body.bankAccountName,
+      bankLogoUrl: body.bankLogoUrl,
+    };
 
-    // 2. ถ้าติ๊กช่อง "อัปเดตทับราคาบ้านทุกหลัง"
-    if (applyToAllHouses) {
-      await prisma.house.updateMany({
-        data: {
-          feeType: 'FIXED',
-          feeRate: Number(flatRateAmount)
-        }
+    // เช็คว่าเคยมีการตั้งค่าในระบบหรือยัง
+    const existingConfig = await prisma.systemConfig.findFirst();
+
+    if (existingConfig) {
+      // ถ้ามีแล้ว ให้อัปเดตของเดิม
+      await prisma.systemConfig.update({
+        where: { id: existingConfig.id },
+        data: dataToSave,
+      });
+    } else {
+      // ถ้ายังไม่มี ให้สร้างใหม่
+      await prisma.systemConfig.create({
+        data: dataToSave,
       });
     }
 
-    return NextResponse.json({ success: true, message: 'Settings updated successfully' });
-  } catch (error) {
-    console.error('Update Config Error:', error);
-    return NextResponse.json({ success: false, error: 'Failed to update config' }, { status: 500 });
+    // 🌟 ถ้ายูสเซอร์ติ๊กถูก "อัปเดตทับราคาบ้านทุกหลังทันที"
+    if (body.applyToAllHouses) {
+      await prisma.house.updateMany({
+        data: {
+          feeType: 'FIXED',
+          feeRate: Number(body.flatRateAmount),
+        },
+      });
+    }
+
+    return NextResponse.json({ success: true, message: 'บันทึกสำเร็จ' });
+  } catch (error: any) {
+    console.error('Error saving settings:', error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
