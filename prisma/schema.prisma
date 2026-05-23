@@ -11,18 +11,24 @@ datasource db {
 // 1. ตั้งค่าระบบกลาง (System Configuration)
 // ------------------------------------------------------
 model SystemConfig {
-  id                 Int         @id @default(1)
-  projectType        ProjectType @default(HOUSING_ESTATE)
-  flatRateAmount     Float       @default(500)   // ยอดเหมาจ่ายมาตรฐาน
-  penaltyRatePerDay  Float       @default(0.027) // % ค่าปรับต่อวัน (เช่น 10% ต่อปี / 365)
-  updatedAt          DateTime    @updatedAt
-  
-  invoiceGenerateDay Int         @default(27) // วันที่ออกบิลประจำเดือน
-  invoiceGenerateTime String     @default("08:00") // 🌟 เพิ่มบรรทัดนี้ เพื่อเก็บเวลาส่งบิลอัตโนมัติ
-  
-  dueDateDay         Int         @default(7)  // วันครบกำหนด / ทวงรอบแรก
-  penaltyStartDay    Int         @default(8)  // วันที่เริ่มคิดค่าปรับล่าช้า
-  secondReminderDay  Int         @default(15) // วันที่ส่งทวงรอบสองพร้อมค่าปรับ
+  id                  Int         @id @default(1)
+  projectType         ProjectType @default(HOUSING_ESTATE) // ใช้ Enum เพื่อความปลอดภัยของข้อมูล
+  flatRateAmount      Float       @default(500)   // ยอดเหมาจ่ายมาตรฐาน
+  penaltyRatePerDay   Float       @default(100)   // เก็บค่าปรับเหมาจ่ายรายเดือน หรือ % ต่อวัน
+  updatedAt           DateTime    @updatedAt      // บันทึกเวลาที่มีการแก้ไขข้อมูลล่าสุด
+
+  // 📅 การตั้งค่าวันที่และเวลาของระบบบิล
+  invoiceGenerateDay  Int         @default(27)    // วันที่ออกบิลประจำเดือน
+  invoiceGenerateTime String      @default("08:00") // 🌟 เวลาจัดส่งบิลอัตโนมัติ
+  dueDateDay          Int         @default(7)     // วันครบกำหนด / ทวงรอบแรก
+  penaltyStartDay     Int         @default(8)     // วันที่เริ่มคิดค่าปรับล่าช้า
+  secondReminderDay   Int         @default(15)    // วันที่ส่งทวงรอบสองพร้อมค่าปรับ
+
+  // 🏦 ข้อมูลบัญชีธนาคารรับเงินส่วนกลาง
+  bankName            String      @default("ธนาคารกรุงไทย")
+  bankAccountNo       String      @default("660-9-55290-8")
+  bankAccountName     String      @default("นิติบุคคลหมู่บ้าน")
+  bankLogoUrl         String      @default("/banks/KTB.png")
 }
 
 enum ProjectType {

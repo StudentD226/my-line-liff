@@ -9,13 +9,13 @@ import {
 
 // 🌟 ตัวเลือกธนาคารทั้งหมด
 const BANK_OPTIONS = [
-  { name: "ธนาคารกสิกรไทย", url: "https://images.icons8.com/fluency/96/kasikornbank.png" },
-  { name: "ธนาคารไทยพาณิชย์", url: "https://images.icons8.com/fluency/96/scb-bank.png" },
-  { name: "ธนาคารกรุงเทพ", url: "https://images.icons8.com/fluency/96/bangkok-bank.png" },
-  { name: "ธนาคารกรุงไทย", url: "https://images.icons8.com/fluency/96/krung-thai-bank.png" },
-  { name: "ธนาคารกรุงศรีอยุธยา", url: "https://images.icons8.com/fluency/96/bank-of-ayudhya.png" },
-  { name: "ธนาคารทหารไทยธนชาต (ttb)", url: "https://images.icons8.com/fluency/96/ttb-bank.png" },
-  { name: "ธนาคารออมสิน", url: "https://images.icons8.com/fluency/96/government-savings-bank.png" },
+  { name: "ธนาคารกสิกรไทย", url: "/banks/KBANK.png" },
+  { name: "ธนาคารไทยพาณิชย์", url: "/banks/SCB.png" },
+  { name: "ธนาคารกรุงเทพ", url: "/banks/BBL.png" },
+  { name: "ธนาคารกรุงไทย", url: "/banks/KTB.png" },
+  { name: "ธนาคารกรุงศรีอยุธยา", url: "/banks/BAY.png" },
+  { name: "ธนาคารทหารไทยธนชาต (ttb)", url: "/banks/TTB.png" },
+  { name: "ธนาคารออมสิน", url: "/banks/GSB.png" },
 ];
 
 const Toast = Swal.mixin({
