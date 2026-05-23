@@ -11,7 +11,9 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const lineId = searchParams.get('lineId');
 
-    if (!lineId) return NextResponse.json({ success: false, error: 'ไม่พบ lineId' }, { status: 400 });
+    if (!lineId) {
+      return NextResponse.json({ success: false, error: 'ไม่พบ lineId' }, { status: 400 });
+    }
 
     const user = await prisma.user.findUnique({
       where: { lineId },
@@ -27,39 +29,23 @@ export async function GET(request: Request) {
       }
     });
 
-    if (!user?.residentHouse) return NextResponse.json({ success: false, error: 'ไม่พบข้อมูลบ้าน' }, { status: 404 });
+    if (!user?.residentHouse) {
+      return NextResponse.json({ success: false, error: 'ไม่พบข้อมูลบ้าน' }, { status: 404 });
+    }
 
     const house = user.residentHouse;
     const pendingInvoices = house.invoices;
 
-    const config = await prisma.systemConfig.findFirst();
-    const flatPenaltyPerMonth = config?.penaltyRatePerDay || 100; 
-
     let baseTotal = 0;
     let totalFine = 0;
     
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); 
-
+    // 🌟 ดึงค่าปรับที่ถูกคำนวณไว้ใน Database มาบวกตรงๆ ไม่ต้องคำนวณใหม่หน้าเว็บ
     pendingInvoices.forEach(inv => {
-      const baseAmt = truncateDecimals(Number(inv.baseAmount));
+      const baseAmt = truncateDecimals(Number(inv.baseAmount || 0));
+      const penaltyAmt = truncateDecimals(Number(inv.penaltyAmount || 0));
+
       baseTotal += baseAmt;
-
-      const dueDate = new Date(inv.dueDate);
-      dueDate.setHours(0, 0, 0, 0); 
-
-      if (today > dueDate) {
-        const diffTime = today.getTime() - dueDate.getTime();
-        const overdueDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); 
-        
-        // 🌟 คำนวณค่าปรับแบบเหมาเดือน ปัดเศษทิ้ง (ไม่ถึง 30 วันไม่คิด)
-        const overdueMonths = Math.floor(overdueDays / 30);
-
-        if (overdueMonths > 0) {
-          const fine = truncateDecimals(overdueMonths * flatPenaltyPerMonth); 
-          totalFine += fine;
-        }
-      }
+      totalFine += penaltyAmt;
     });
 
     baseTotal = truncateDecimals(baseTotal);
