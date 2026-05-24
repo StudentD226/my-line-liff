@@ -154,7 +154,6 @@ export async function POST(request: Request) {
             const dueDateText = `${String(dueDateObj.getDate()).padStart(2, '0')}/${String(dueDateObj.getMonth() + 1).padStart(2, '0')}/${dueDateObj.getFullYear() + 543}`;
 
             const autoRefDate = `${String(today.getDate()).padStart(2, '0')}${String(today.getMonth() + 1).padStart(2, '0')}${today.getFullYear() + 543}`;
-            // 🌟 สร้างรูปแบบตามใจอาจารย์ตรงนี้ไว้รอใช้เลย
             const customTeacherInvoiceNo = `${houseNo}-${autoRefDate}`;
 
             flexMessage = {
@@ -229,7 +228,6 @@ export async function POST(request: Request) {
                       type: "box", layout: "horizontal", margin: "md",
                       contents: [
                         { type: "text", text: "PAYMENT ID", size: "xxs", color: "#4B5563", weight: "bold", flex: 0 },
-                        // 🌟 [แก้ไขจุดสำคัญ] ตรวจเช็คค่าบิล ถ้าเจอรหัสเก่าที่เป็น INV ให้สลับสวิตช์เป็นสไตล์อาจารย์ที่เป็นตัวหนาทันที!
                         {
                           type: "text",
                           text: (user.residentHouse.invoices?.[0]?.invoiceNo && !user.residentHouse.invoices[0].invoiceNo.startsWith('INV'))
@@ -248,46 +246,42 @@ export async function POST(request: Request) {
               }
             };
           } else {
+            // 🌟 แก้ไขส่วนนี้: เปลี่ยนขนาดเป็น kilo และเอากรอบดำออก
             flexMessage = {
               type: "flex",
               altText: `ตรวจสอบค่าส่วนกลาง บ้านเลขที่ ${houseNo}`,
               contents: {
                 type: "bubble",
-                size: "mega",
+                size: "kilo", // 👈 ปรับให้ขนาดเท่ากับบิลเรียกเก็บเงิน
                 body: {
-                  type: "box", layout: "vertical", paddingAll: "xs",
+                  type: "box", layout: "vertical", paddingAll: "xl", backgroundColor: "#FFFFFF",
                   contents: [
                     {
-                      type: "box", layout: "vertical", borderColor: "#2d5a52", borderWidth: "2px", cornerRadius: "xl", paddingAll: "xl", backgroundColor: "#FFFFFF",
+                      type: "box", layout: "horizontal", margin: "sm", alignItems: "center",
                       contents: [
                         {
-                          type: "box", layout: "horizontal", margin: "md", alignItems: "flex-start",
-                          contents: [
-                            {
-                              type: "box", layout: "vertical", backgroundColor: "#2d5a52", cornerRadius: "md", width: "48px", height: "48px", alignItems: "center", justifyContent: "center", flex: 0,
-                              contents: [{ type: "image", url: "https://img.icons8.com/fluency-systems-filled/48/ffffff/home.png", size: "24px" }]
-                            },
-                            {
-                              type: "box", layout: "vertical", margin: "md",
-                              contents: [
-                                { type: "text", text: `บ้านเลขที่ ${houseNo}`, weight: "bold", size: "xxl", color: "#111827" },
-                                { type: "text", text: "ไม่มียอดค้างชำระ", weight: "bold", color: "#16A34A", size: "md", margin: "sm" }
-                              ]
-                            }
-                          ]
+                          type: "box", layout: "vertical", backgroundColor: "#2d5a52", cornerRadius: "md", width: "48px", height: "48px", alignItems: "center", justifyContent: "center", flex: 0,
+                          contents: [{ type: "image", url: "https://img.icons8.com/fluency-systems-filled/48/ffffff/home.png", size: "24px" }]
                         },
-                        { type: "separator", margin: "lg", color: "#E5E7EB" },
                         {
-                          type: "box", layout: "horizontal", margin: "lg", alignItems: "center",
+                          type: "box", layout: "vertical", margin: "md",
                           contents: [
-                            { type: "text", text: "ยอดที่ต้องชำระ", size: "md", weight: "bold", color: "#111827", flex: 1 },
-                            { type: "text", text: "0 บาท", size: "xl", weight: "bold", color: "#111827", align: "end", flex: 0 }
+                            { type: "text", text: `บ้านเลขที่ ${houseNo}`, weight: "bold", size: "xl", color: "#111827" },
+                            { type: "text", text: "ไม่มียอดค้างชำระ", weight: "bold", color: "#16A34A", size: "sm", margin: "xs" }
                           ]
-                        },
-                        { type: "separator", margin: "lg", color: "#E5E7EB" },
-                        { type: "text", text: "คุณชำระค่าส่วนกลางครบถ้วนแล้ว ขอบคุณที่ให้ความร่วมมือครับ", size: "sm", color: "#4B5563", margin: "lg", wrap: true }
+                        }
                       ]
-                    }
+                    },
+                    { type: "separator", margin: "xl", color: "#E5E7EB" },
+                    {
+                      type: "box", layout: "horizontal", margin: "lg", alignItems: "center",
+                      contents: [
+                        { type: "text", text: "ยอดที่ต้องชำระ", size: "sm", weight: "bold", color: "#111827", flex: 1 },
+                        { type: "text", text: "0 บาท", size: "xl", weight: "bold", color: "#111827", align: "end", flex: 0 }
+                      ]
+                    },
+                    { type: "separator", margin: "xl", color: "#E5E7EB" },
+                    { type: "text", text: "คุณชำระค่าส่วนกลางครบถ้วนแล้ว ขอบคุณที่ให้ความร่วมมือครับ", size: "xs", color: "#4B5563", margin: "lg", wrap: true }
                   ]
                 }
               }

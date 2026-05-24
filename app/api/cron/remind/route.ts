@@ -14,8 +14,9 @@ function createInvoiceFlexMessage(data: any) {
     tableContents.push({
       type: "box", layout: "horizontal", margin: "md",
       contents: [
-        { type: "text", text: data.currentInvoiceItem.label, size: "sm", color: "#059669", weight: "bold" },
-        { type: "text", text: `${data.currentInvoiceItem.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#059669", align: "end", weight: "bold" }
+        // 🌟 เอา weight: "bold" ออก
+        { type: "text", text: data.currentInvoiceItem.label, size: "sm", color: "#059669" },
+        { type: "text", text: `${data.currentInvoiceItem.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#059669", align: "end" }
       ]
     });
   }
@@ -25,8 +26,9 @@ function createInvoiceFlexMessage(data: any) {
       tableContents.push({
         type: "box", layout: "horizontal", margin: "md",
         contents: [
+          // 🌟 เอา weight: "bold" ออก
           { type: "text", text: item.label, size: "sm", color: "#EF4444" },
-          { type: "text", text: `${item.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end", weight: "bold" }
+          { type: "text", text: `${item.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end" }
         ]
       });
     });
@@ -40,8 +42,9 @@ function createInvoiceFlexMessage(data: any) {
         tableContents.push({
           type: "box", layout: "horizontal", margin: "md",
           contents: [
+            // 🌟 เอา weight: "bold" ออก
             { type: "text", text: `ยอดค้างชำระปี ${yearNum + 543}`, size: "sm", color: "#EF4444" },
-            { type: "text", text: `${data.pastYearTotals[yearNum].toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end", weight: "bold" }
+            { type: "text", text: `${data.pastYearTotals[yearNum].toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end" }
           ]
         });
       });
@@ -51,8 +54,9 @@ function createInvoiceFlexMessage(data: any) {
     tableContents.push({
       type: "box", layout: "horizontal", margin: "md",
       contents: [
+        // 🌟 เอา weight: "bold" ออก
         { type: "text", text: `ค่าปรับ`, size: "sm", color: "#EA580C" },
-        { type: "text", text: `${data.totalPenalty.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EA580C", align: "end", weight: "bold" }
+        { type: "text", text: `${data.totalPenalty.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EA580C", align: "end" }
       ]
     });
   }
@@ -88,7 +92,8 @@ function createInvoiceFlexMessage(data: any) {
           type: "box", layout: "horizontal", margin: "md", backgroundColor: "#D1E7E3", cornerRadius: "20px", paddingAll: "sm", paddingStart: "md", paddingEnd: "md", alignItems: "flex-start",
           contents: [
             { type: "image", url: "https://img.icons8.com/fluency-systems-filled/48/2a524c/info.png", size: "16px", flex: 0, margin: "xs" },
-            { type: "text", text: `ใบเสร็จเรียกเก็บเงิน\nประจำเดือน ${data.headerBillingMonthText}`, size: "xs", color: "#2A524C", weight: "bold", margin: "sm", wrap: true, flex: 1 }
+            // 🌟 เอา weight: "bold" ออกตรงนี้
+            { type: "text", text: `ใบเสร็จเรียกเก็บเงิน\nประจำเดือน ${data.headerBillingMonthText}`, size: "xs", color: "#2A524C", margin: "sm", wrap: true, flex: 1 }
           ]
         },
         {
@@ -139,13 +144,13 @@ function createInvoiceFlexMessage(data: any) {
         {
           type: "box", layout: "horizontal", margin: "md",
           contents: [
-            { type: "text", text: "PAYMENT ID", size: "xxs", color: "#6B7280", weight: "bold", flex: 0 },
+            // 🌟 เอา weight: "bold" ออก
+            { type: "text", text: "PAYMENT ID", size: "xxs", color: "#6B7280", flex: 0 },
             {
               type: "text",
-              text: data.invoiceNo || "N/A", // 🌟 ดึง invoiceNo มาแสดง ไม่เอา id ยาวๆ
+              text: data.invoiceNo || "N/A", 
               size: "xxs",
               color: " #6B7280", 
-              weight: "bold",
               align: "end",
               flex: 1
             }
@@ -169,7 +174,6 @@ async function sendAutoLineMessage(lineId: string, flexBubbleStructure: any) {
   }
 }
 
-// 🌟 ย้ายลอจิกทั้งหมดมาไว้ในฟังก์ชันนี้
 async function handleRemindCronJob(request: Request) {
   const authHeader = request.headers.get('authorization');
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) return new Response('Unauthorized', { status: 401 });
@@ -180,8 +184,10 @@ async function handleRemindCronJob(request: Request) {
 
     const currentDay = new Date().getDate();
     let reminderType: 'NONE' | 'REMINDER' | 'OVERDUE' = 'NONE';
+    
+    // 🌟 หุ่นยนต์ตัวนี้จะทำงานส่งบิลสีแดงเฉพาะวันที่ 15 ของเดือน
     if (currentDay === config.secondReminderDay) reminderType = 'REMINDER';
-    else if (currentDay === config.dueDateDay + 1) reminderType = 'OVERDUE';
+    else if (currentDay === 15) reminderType = 'OVERDUE';
 
     if (reminderType === 'NONE') return NextResponse.json({ success: true, message: 'วันนี้ไม่ใช่วันส่งทวงยอดค้างครับ' });
 
@@ -204,7 +210,9 @@ async function handleRemindCronJob(request: Request) {
         if (todayNoTime > dueDate) {
           const diffTime = todayNoTime.getTime() - dueDate.getTime();
           const overdueDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-          const overdueMonths = Math.floor(overdueDays / 30);
+          
+          // 🌟 ปัดเศษขึ้น (Math.ceil) ให้เริ่มคิดค่าปรับทันที
+          const overdueMonths = Math.ceil(overdueDays / 30);
 
           currentPenalty = truncateDecimals(overdueMonths * penaltyRatePerMonth);
 
@@ -247,7 +255,10 @@ async function handleRemindCronJob(request: Request) {
       const finalGrandTotal = truncateDecimals(grandTotalBase + totalPenalty);
       const isOverdue = reminderType === 'OVERDUE' || currentPenalty > 0;
       const due = new Date(inv.dueDate);
-      const dueDateText = `${String(due.getDate()).padStart(2, '0')}/${String(due.getMonth() + 1).padStart(2, '0')}/${due.getFullYear() + 543}`;
+      
+      // 🌟 เปลี่ยน Format วันที่เป็น 07/มิถุนายน/2569
+      const dueDateText = `${String(due.getDate()).padStart(2, '0')}/${fullThaiMonths[due.getMonth() + 1]}/${due.getFullYear() + 543}`;
+      
       const headerBillingMonthText = `${fullThaiMonths[inv.billingMonth]} ${inv.billingYear + 543}`;
 
       for (const resident of inv.house.residents) {
@@ -256,7 +267,6 @@ async function handleRemindCronJob(request: Request) {
             type: reminderType, houseNo: inv.house.houseNo, headerBillingMonthText,
             currentInvoiceItem, pastYearTotals, pastMonthItems, totalPenalty,
             finalGrandTotal, isOverdue, dueDateText, 
-            // 🌟 แก้ตรงนี้ ดึง invoiceNo มา ไม่เอา id มั่วๆ
             invoiceNo: inv.invoiceNo || inv.id
           });
           await sendAutoLineMessage(resident.lineId, flexMsg);
@@ -272,6 +282,5 @@ async function handleRemindCronJob(request: Request) {
   }
 }
 
-// 🌟 Export ให้รองรับทั้ง GET และ POST
 export async function GET(request: Request) { return handleRemindCronJob(request); }
 export async function POST(request: Request) { return handleRemindCronJob(request); }

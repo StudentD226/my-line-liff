@@ -15,8 +15,9 @@ function createInvoiceFlexMessage(data: any) {
     tableContents.push({
       type: "box", layout: "horizontal", margin: "md",
       contents: [
-        { type: "text", text: data.currentInvoiceItem.label, size: "sm", color: "#059669", weight: "bold" },
-        { type: "text", text: `${data.currentInvoiceItem.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#059669", align: "end", weight: "bold" }
+        // 🌟 เอา weight: "bold" ออก
+        { type: "text", text: data.currentInvoiceItem.label, size: "sm", color: "#059669" },
+        { type: "text", text: `${data.currentInvoiceItem.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#059669", align: "end" }
       ]
     });
   }
@@ -26,8 +27,9 @@ function createInvoiceFlexMessage(data: any) {
       tableContents.push({
         type: "box", layout: "horizontal", margin: "md",
         contents: [
+          // 🌟 เอา weight: "bold" ออก
           { type: "text", text: item.label, size: "sm", color: "#EF4444" },
-          { type: "text", text: `${item.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end", weight: "bold" }
+          { type: "text", text: `${item.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end" }
         ]
       });
     });
@@ -41,8 +43,9 @@ function createInvoiceFlexMessage(data: any) {
         tableContents.push({
           type: "box", layout: "horizontal", margin: "md",
           contents: [
+            // 🌟 เอา weight: "bold" ออก
             { type: "text", text: `ยอดค้างชำระปี ${yearNum + 543}`, size: "sm", color: "#EF4444" },
-            { type: "text", text: `${data.pastYearTotals[yearNum].toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end", weight: "bold" }
+            { type: "text", text: `${data.pastYearTotals[yearNum].toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end" }
           ]
         });
       });
@@ -52,8 +55,9 @@ function createInvoiceFlexMessage(data: any) {
     tableContents.push({
       type: "box", layout: "horizontal", margin: "md",
       contents: [
+        // 🌟 เอา weight: "bold" ออก
         { type: "text", text: `ค่าปรับ`, size: "sm", color: "#EA580C" },
-        { type: "text", text: `${data.totalPenalty.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EA580C", align: "end", weight: "bold" }
+        { type: "text", text: `${data.totalPenalty.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EA580C", align: "end" }
       ]
     });
   }
@@ -89,7 +93,8 @@ function createInvoiceFlexMessage(data: any) {
           type: "box", layout: "horizontal", margin: "md", backgroundColor: "#D1E7E3", cornerRadius: "20px", paddingAll: "sm", paddingStart: "md", paddingEnd: "md", alignItems: "flex-start",
           contents: [
             { type: "image", url: "https://img.icons8.com/fluency-systems-filled/48/2a524c/info.png", size: "16px", flex: 0, margin: "xs" },
-            { type: "text", text: `ใบเสร็จเรียกเก็บเงิน\nประจำเดือน ${data.headerBillingMonthText}`, size: "xs", color: "#2A524C", weight: "bold", margin: "sm", wrap: true, flex: 1 }
+            // 🌟 เอา weight: "bold" ออกตรงนี้
+            { type: "text", text: `ใบเสร็จเรียกเก็บเงิน\nประจำเดือน ${data.headerBillingMonthText}`, size: "xs", color: "#2A524C", margin: "sm", wrap: true, flex: 1 }
           ]
         },
         {
@@ -140,8 +145,9 @@ function createInvoiceFlexMessage(data: any) {
         ...(data.invoiceNo ? [{
           type: "box", layout: "horizontal", margin: "md",
           contents: [
-            { type: "text", text: "PAYMENT ID", size: "xxs", color: "#6B7280", weight: "bold", flex: 0 },
-            { type: "text", text: data.invoiceNo, size: "xxs", color: "#6B7280", weight: "bold", align: "end", flex: 1 }
+            // 🌟 เอา weight: "bold" ออก
+            { type: "text", text: "PAYMENT ID", size: "xxs", color: "#6B7280", flex: 0 },
+            { type: "text", text: data.invoiceNo, size: "xxs", color: "#6B7280", align: "end", flex: 1 }
           ]
         }] : [])
       ]
@@ -171,7 +177,6 @@ async function sendAutoLineMessage(lineId: string, flexBubbleStructure: any) {
   }
 }
 
-// 🌟 สร้างฟังก์ชันกลาง เพื่อให้ทั้ง GET และ POST เรียกใช้ตัวเดียวกัน
 async function handleCronJob(request: Request) {
   const authHeader = request.headers.get('authorization');
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -185,19 +190,11 @@ async function handleCronJob(request: Request) {
     const now = new Date();
     const currentDay = now.getDate();
 
-    // ==========================================
-    // 🌟 ส่วนที่ 1: ระบบสร้างบิลอัตโนมัติ (Auto-Generate)
-    // ==========================================
-    
-    // ดึงเวลาปัจจุบันมาแปลงเป็น Format "HH:mm"
     const currentHour = String(now.getHours()).padStart(2, '0');
     const currentMinute = String(now.getMinutes()).padStart(2, '0');
     const currentTimeStr = `${currentHour}:${currentMinute}`;
-    
-    // ดึงเวลาที่แอดมินตั้งค่าไว้ (ถ้าไม่ได้ตั้งให้ยึด 08:00 เป็นหลัก)
     const generateTimeStr = config.invoiceGenerateTime || "08:00";
 
-    // หุ่นยนต์จะทำก็ต่อเมื่อ: วันที่ตรงกำหนด AND เวลาปัจจุบันมากกว่าหรือเท่ากับเวลาที่ตั้งไว้
     if (currentDay === config.invoiceGenerateDay && currentTimeStr >= generateTimeStr) {
       let targetMonth = now.getMonth() + 2; 
       let targetYear = now.getFullYear();
@@ -206,7 +203,6 @@ async function handleCronJob(request: Request) {
         targetYear += 1;
       }
 
-      // เช็คว่าเดือนนี้เคยสร้างบิลไปหรือยัง (กันสร้างเบิ้ล)
       const existingInvoice = await prisma.invoice.findFirst({
         where: { billingMonth: targetMonth, billingYear: targetYear }
       });
@@ -217,8 +213,6 @@ async function handleCronJob(request: Request) {
         const dayStr = String(now.getDate()).padStart(2, '0');
         const monthStr = String(now.getMonth() + 1).padStart(2, '0');
         const yearStrTh = String(now.getFullYear() + 543);
-
-        console.log(`กำลังสร้างบิลใหม่ประจำเดือน ${targetMonth}/${targetYear}...`);
 
         for (const house of houses) {
           const monthlyRate = truncateDecimals(
@@ -236,23 +230,19 @@ async function handleCronJob(request: Request) {
               baseAmount: monthlyRate,
               totalAmount: monthlyRate,
               status: 'PENDING',
-              isNotified: false, // 👈 มาร์คไว้ว่ายังไม่ได้ส่ง
+              isNotified: false,
               dueDate: dueDate,
-              scheduledSendAt: now, // 👈 พร้อมส่งทันที
+              scheduledSendAt: now,
               residentHouseId: house.id
             }
           });
         }
-        console.log('✅ สร้างบิลอัตโนมัติสำเร็จ!');
       }
     }
 
-    // ==========================================
-    // 🌟 ส่วนที่ 2: ระบบส่งบิล (Auto-Send)
-    // ==========================================
     const pendingInvoices = await prisma.invoice.findMany({
       where: {
-        isNotified: false, // ดึงเฉพาะบิลที่เพิ่งสร้างเมื่อกี้ หรือที่ยังค้างไม่ได้ส่ง
+        isNotified: false,
         scheduledSendAt: { lte: now },
         status: { in: ['PENDING', 'OVERDUE'] as any }
       },
@@ -273,11 +263,12 @@ async function handleCronJob(request: Request) {
       const dueDate = new Date(inv.dueDate); dueDate.setHours(0, 0, 0, 0);
       let currentPenalty = truncateDecimals(Number(inv.penaltyAmount || 0));
 
-      // คำนวณค่าปรับแบบรายเดือน (ถ้ามี)
       if (today > dueDate) {
         const diffTime = today.getTime() - dueDate.getTime();
         const overdueDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-        const overdueMonths = Math.floor(overdueDays / 30);
+        
+        // 🌟 ปัดเศษขึ้น (Math.ceil) ให้ค่าปรับเริ่มทันทีที่เกินกำหนด
+        const overdueMonths = Math.ceil(overdueDays / 30);
 
         currentPenalty = truncateDecimals(overdueMonths * penaltyRatePerMonth);
 
@@ -331,7 +322,10 @@ async function handleCronJob(request: Request) {
       const isOverdue = inv.status === 'OVERDUE' || allUnpaidForThisHouse.some(u => u.status === 'OVERDUE') || totalPenalty > 0;
 
       const due = new Date(inv.dueDate);
-      const dueDateText = `${String(due.getDate()).padStart(2, '0')}/${String(due.getMonth() + 1).padStart(2, '0')}/${due.getFullYear() + 543}`;
+      
+      // 🌟 เปลี่ยน Format วันที่เป็น 07/มิถุนายน/2569
+      const dueDateText = `${String(due.getDate()).padStart(2, '0')}/${fullThaiMonths[due.getMonth() + 1]}/${due.getFullYear() + 543}`;
+      
       const headerBillingMonthText = `${fullThaiMonths[inv.billingMonth]} ${inv.billingYear + 543}`;
 
       for (const resident of inv.house.residents) {
@@ -357,16 +351,12 @@ async function handleCronJob(request: Request) {
 
       await prisma.invoice.update({
         where: { id: inv.id },
-        data: { isNotified: true } // 👈 พอยิง LINE เสร็จปุ๊บ ล็อคทันทีไม่ให้ส่งซ้ำ
+        data: { isNotified: true }
       });
       stats.updatedInvoices++;
     }
 
-    return NextResponse.json({
-      success: true,
-      message: 'หุ่นยนต์สร้างบิลและส่งข้อความเสร็จสิ้น!',
-      stats
-    });
+    return NextResponse.json({ success: true, message: 'หุ่นยนต์สร้างบิลและส่งข้อความเสร็จสิ้น!', stats });
 
   } catch (error) {
     console.error("Cron Error:", error);
