@@ -70,7 +70,7 @@ export async function POST(request: Request) {
       }
     });
 
-    // 🌟 3. Flex Message (จัดยอดให้อยู่ตรงกลาง + ใช้ paymentReferenceId)
+    // 🌟 3. Flex Message (จัดยอดให้อยู่ตรงกลาง + ใช้ paymentReferenceId + ขยายขนาดตัวหนังสือ)
     const flexMessage: any = {
       type: "flex",
       altText: `แจ้งชำระค่าส่วนกลาง บ้านเลขที่ ${house.houseNo}`,
@@ -83,42 +83,38 @@ export async function POST(request: Request) {
             {
               type: "box", layout: "horizontal", alignItems: "center",
               contents: [
-                { type: "image", url: "https://img.icons8.com/fluency-systems-filled/48/376B64/home.png", size: "28px", flex: 0 },
-                { type: "text", text: `บ้านเลขที่ ${house.houseNo}`, weight: "bold", size: "xl", color: "#111827", margin: "md" }
+                { type: "image", url: "https://img.icons8.com/fluency-systems-filled/48/376B64/home.png", size: "32px", flex: 0 },
+                { type: "text", text: `บ้านเลขที่ ${house.houseNo}`, weight: "bold", size: "xxl", color: "#111827", margin: "md" }
               ]
             },
             {
-              type: "box", layout: "horizontal", margin: "md", backgroundColor: "#FFF7ED", cornerRadius: "20px", paddingAll: "sm", paddingStart: "md", paddingEnd: "md", alignItems: "center",
+              type: "box", layout: "horizontal", margin: "md", backgroundColor: "#FFF7ED", cornerRadius: "20px", paddingAll: "md", paddingStart: "lg", paddingEnd: "lg", alignItems: "center",
               contents: [
-                { type: "image", url: "https://img.icons8.com/fluency-systems-filled/48/ea580c/time.png", size: "16px", flex: 0, margin: "xs" },
-                { type: "text", text: "ส่งสลิปแล้ว เจ้าหน้าที่กำลังตรวจสอบ", size: "xs", color: "#EA580C", weight: "bold", margin: "sm", flex: 1 }
+                { type: "image", url: "https://img.icons8.com/fluency-systems-filled/48/ea580c/time.png", size: "24px", flex: 0, margin: "xs" },
+                { type: "text", text: "ส่งสลิปแล้ว กำลังตรวจสอบ", size: "md", color: "#EA580C", weight: "bold", margin: "md", flex: 1 }
               ]
             },
+            // 🌟 กล่องยอดเงินสีแดง: ซ้าย(หัวข้อ) - กลาง(ตัวเลข) - ขวา(บาท) ให้อยู่บรรทัดเดียวกัน
             {
-              type: "box", layout: "vertical", margin: "xl", backgroundColor: "#EBF5FB", cornerRadius: "lg", paddingAll: "lg", alignItems: "center",
+              type: "box", layout: "horizontal", margin: "xl", backgroundColor: "#FDEBEC", cornerRadius: "lg", paddingAll: "xl", alignItems: "center",
               contents: [
-                { type: "text", text: "แจ้งชำระค่าส่วนกลาง", size: "xs", color: "#0369A1", weight: "bold", align: "center" },
-                {
-                  type: "box", layout: "horizontal", margin: "sm", alignItems: "flex-end", spacing: "sm", justifyContent: "center",
-                  contents: [
-                    { type: "text", text: payAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 }), size: "xxl", weight: "bold", color: "#0369A1", align: "center" },
-                    { type: "text", text: "บาท", size: "sm", weight: "bold", color: "#0369A1", align: "center", flex: 0, margin: "xs" }
-                  ]
-                }
+                { type: "text", text: "ยอดแจ้งโอน", size: "md", color: "#EF4444", weight: "bold", align: "start", flex: 1 },
+                { type: "text", text: payAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 }), size: "3xl", weight: "bold", color: "#EF4444", adjustMode: "shrink-to-fit", align: "center", flex: 0 },
+                { type: "text", text: "บาท", size: "md", weight: "bold", color: "#EF4444", align: "end", flex: 1 }
               ]
             },
             {
               type: "box", layout: "vertical", margin: "lg",
               contents: [
                 {
-                  type: "box", layout: "horizontal", borderColor: "#E5E7EB", borderWidth: "light", cornerRadius: "lg", paddingAll: "md", alignItems: "center", backgroundColor: "#FFFFFF",
+                  type: "box", layout: "horizontal", borderColor: "#E5E7EB", borderWidth: "light", cornerRadius: "lg", paddingAll: "lg", alignItems: "center", backgroundColor: "#FFFFFF",
                   contents: [
-                    { type: "image", url: "https://img.icons8.com/fluency-systems-filled/48/376B64/calendar.png", size: "32px", flex: 0 },
+                    { type: "image", url: "https://img.icons8.com/fluency-systems-filled/48/376B64/calendar.png", size: "36px", flex: 0 },
                     {
                       type: "box", layout: "vertical", margin: "md",
                       contents: [
-                        { type: "text", text: "วันที่ชำระ", size: "xs", color: "#4B5563", weight: "bold" },
-                        { type: "text", text: `${dayStr}/${monthStr}/${yearStr}`, size: "md", color: "#111827", weight: "bold", margin: "xs" }
+                        { type: "text", text: "วันที่ส่งสลิป", size: "md", color: "#4B5563", weight: "bold" },
+                        { type: "text", text: `${dayStr}/${monthStr}/${yearStr}`, size: "xl", color: "#111827", weight: "bold", margin: "xs" }
                       ]
                     }
                   ]
@@ -135,10 +131,10 @@ export async function POST(request: Request) {
               action: { type: "uri", label: "ดูประวัติและสถานะบิล", uri: `https://liff.line.me/${process.env.NEXT_PUBLIC_LIFF_ID}/invoices` }
             },
             {
-              type: "box", layout: "horizontal", margin: "md",
+              type: "box", layout: "horizontal", margin: "lg",
               contents: [
-                { type: "text", text: "REF ID", size: "xxs", color: "#4B5563", weight: "bold", flex: 0 },
-                { type: "text", text: paymentReferenceId, size: "xxs", color: "#4B5563", weight: "bold", align: "end", flex: 1 }
+                { type: "text", text: "REF ID", size: "sm", color: "#4B5563", weight: "bold", flex: 0 },
+                { type: "text", text: paymentReferenceId, size: "sm", color: "#4B5563", weight: "bold", align: "end", flex: 1 }
               ]
             }
           ]
