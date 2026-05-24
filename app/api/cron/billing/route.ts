@@ -188,7 +188,17 @@ async function handleCronJob(request: Request) {
     // ==========================================
     // 🌟 ส่วนที่ 1: ระบบสร้างบิลอัตโนมัติ (Auto-Generate)
     // ==========================================
-    if (currentDay === config.invoiceGenerateDay) {
+    
+    // ดึงเวลาปัจจุบันมาแปลงเป็น Format "HH:mm"
+    const currentHour = String(now.getHours()).padStart(2, '0');
+    const currentMinute = String(now.getMinutes()).padStart(2, '0');
+    const currentTimeStr = `${currentHour}:${currentMinute}`;
+    
+    // ดึงเวลาที่แอดมินตั้งค่าไว้ (ถ้าไม่ได้ตั้งให้ยึด 08:00 เป็นหลัก)
+    const generateTimeStr = config.invoiceGenerateTime || "08:00";
+
+    // หุ่นยนต์จะทำก็ต่อเมื่อ: วันที่ตรงกำหนด AND เวลาปัจจุบันมากกว่าหรือเท่ากับเวลาที่ตั้งไว้
+    if (currentDay === config.invoiceGenerateDay && currentTimeStr >= generateTimeStr) {
       let targetMonth = now.getMonth() + 2; 
       let targetYear = now.getFullYear();
       if (targetMonth > 12) {
