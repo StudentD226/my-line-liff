@@ -253,6 +253,10 @@ function PaymentForm() {
 
   const isFormComplete = file !== null && transferDate !== '' && transferTime !== '';
 
+  // 🌟 ฟังก์ชันคำนวณขนาดตัวอักษรยอดเงินอัตโนมัติตามความยาวของตัวเลข
+  const balanceStr = outstandingBalance.toLocaleString('th-TH', { minimumFractionDigits: 2 });
+  const balanceTextSize = balanceStr.length > 10 ? 'text-[36px]' : balanceStr.length > 7 ? 'text-[44px]' : 'text-[52px]';
+
   if (loadingData) {
     return (
       <div className="min-h-screen bg-[#F4F7F6] flex items-center justify-center">
@@ -310,19 +314,19 @@ function PaymentForm() {
               )}
             </div>
 
-            <div className="flex items-end justify-center w-full my-2">
-              <span className="text-[42px] font-black text-gray-800 leading-none tracking-tight">
-                {outstandingBalance.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+            <div className="flex items-end justify-center w-full my-3">
+              <span className={`${balanceTextSize} font-black text-gray-800 leading-none tracking-tight transition-all`}>
+                {balanceStr}
               </span>
             </div>
 
-            <div className="flex justify-end w-full -mt-2">
+            <div className="flex justify-end w-full -mt-4">
               <span className="text-[15px] font-bold text-gray-400">บาท</span>
             </div>
             
-            <div className="text-center mt-6">
+            <div className="text-center mt-3">
               {fineAmount > 0 && (
-                <p className="text-[11px] text-rose-600 font-bold mb-2 bg-rose-50 px-3 py-1 rounded-full inline-block border border-rose-100">
+                <p className="text-[11px] text-rose-600 font-bold mb-1.5 bg-rose-50 px-3 py-1 rounded-full inline-block border border-rose-100">
                   *รวมค่าปรับล่าช้า {fineAmount.toLocaleString()} บาทแล้ว
                 </p>
               )}
