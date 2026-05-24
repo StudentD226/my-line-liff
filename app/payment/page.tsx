@@ -154,8 +154,9 @@ function PaymentForm() {
         const mm = String(d.getMonth() + 1).padStart(2, '0');
         const dd = String(d.getDate()).padStart(2, '0');
         let label = `${d.getDate()} ${['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'][d.getMonth()]} ${d.getFullYear() + 543}`;
-        if (i === 0) label = `วันนี้ (${label})`;
-        else if (i === 1) label = `เมื่อวาน (${label})`;
+        // 🌟 แก้ไขเอาวงเล็บออกตรงนี้ครับ 🌟
+        if (i === 0) label = `วันนี้ ${label}`;
+        else if (i === 1) label = `เมื่อวาน ${label}`;
         return { value: `${yyyy}-${mm}-${dd}`, label };
     });
   };
@@ -253,7 +254,6 @@ function PaymentForm() {
 
   const isFormComplete = file !== null && transferDate !== '' && transferTime !== '';
 
-  // 🌟 ฟังก์ชันคำนวณขนาดตัวอักษรยอดเงินอัตโนมัติตามความยาวของตัวเลข
   const balanceStr = outstandingBalance.toLocaleString('th-TH', { minimumFractionDigits: 2 });
   const balanceTextSize = balanceStr.length > 10 ? 'text-[36px]' : balanceStr.length > 7 ? 'text-[44px]' : 'text-[52px]';
 
@@ -457,7 +457,7 @@ function PaymentForm() {
                   <CalendarDays size={18} strokeWidth={2.5} className="text-gray-400" />
                 </div>
                 {transferDate 
-                  ? <span className="text-[14px] font-bold text-[#376B64]">{recentDates.find(d => d.value === transferDate)?.label.split(' ')[0] + ' ' + recentDates.find(d => d.value === transferDate)?.label.split(' ')[1]}</span>
+                  ? <span className="text-[14px] font-bold text-[#376B64]">{recentDates.find(d => d.value === transferDate)?.label}</span>
                   : <span className="text-[14px] font-medium text-gray-400">เลือกวันที่</span>
                 }
               </div>
