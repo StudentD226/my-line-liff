@@ -179,11 +179,70 @@ async function handleCronJob(request: Request) {
   }
 
   try {
-    const now = new Date();
+    const config = await prisma.systemConfig.findFirst();
+    if (!config) return NextResponse.json({ success: false, message: 'ไม่พบการตั้งค่าระบบ' });
 
+    const now = new Date();
+    const currentDay = now.getDate();
+
+    // ==========================================
+    // 🌟 ส่วนที่ 1: ระบบสร้างบิลอัตโนมัติ (Auto-Generate)
+    // ==========================================
+    if (currentDay === config.invoiceGenerateDay) {
+      let targetMonth = now.getMonth() + 2; 
+      let targetYear = now.getFullYear();
+      if (targetMonth > 12) {
+        targetMonth = 1;
+        targetYear += 1;
+      }
+
+      // เช็คว่าเดือนนี้เคยสร้างบิลไปหรือยัง (กันสร้างเบิ้ล)
+      const existingInvoice = await prisma.invoice.findFirst({
+        where: { billingMonth: targetMonth, billingYear: targetYear }
+      });
+
+      if (!existingInvoice) {
+        const houses = await prisma.house.findMany();
+        const dueDate = new Date(targetYear, targetMonth - 1, config.dueDateDay, 23, 59, 59);
+        const dayStr = String(now.getDate()).padStart(2, '0');
+        const monthStr = String(now.getMonth() + 1).padStart(2, '0');
+        const yearStrTh = String(now.getFullYear() + 543);
+
+        console.log(`กำลังสร้างบิลใหม่ประจำเดือน ${targetMonth}/${targetYear}...`);
+
+        for (const house of houses) {
+          const monthlyRate = truncateDecimals(
+            house.feeType === 'CALCULATED' && house.houseSize
+              ? Number(house.feeRate) * Number(house.houseSize)
+              : Number(house.feeRate || 1000)
+          );
+          const customInvoiceNo = `${house.houseNo}-${dayStr}${monthStr}${yearStrTh}-M${String(targetMonth).padStart(2, '0')}`;
+
+          await prisma.invoice.create({
+            data: {
+              invoiceNo: customInvoiceNo,
+              billingMonth: targetMonth,
+              billingYear: targetYear,
+              baseAmount: monthlyRate,
+              totalAmount: monthlyRate,
+              status: 'PENDING',
+              isNotified: false, // 👈 มาร์คไว้ว่ายังไม่ได้ส่ง
+              dueDate: dueDate,
+              scheduledSendAt: now, // 👈 พร้อมส่งทันที
+              residentHouseId: house.id
+            }
+          });
+        }
+        console.log('✅ สร้างบิลอัตโนมัติสำเร็จ!');
+      }
+    }
+
+    // ==========================================
+    // 🌟 ส่วนที่ 2: ระบบส่งบิล (Auto-Send)
+    // ==========================================
     const pendingInvoices = await prisma.invoice.findMany({
       where: {
-        isNotified: false,
+        isNotified: false, // ดึงเฉพาะบิลที่เพิ่งสร้างเมื่อกี้ หรือที่ยังค้างไม่ได้ส่ง
         scheduledSendAt: { lte: now },
         status: { in: ['PENDING', 'OVERDUE'] as any }
       },
@@ -196,9 +255,7 @@ async function handleCronJob(request: Request) {
       return NextResponse.json({ success: true, message: 'ไม่มีบิลที่ถึงกำหนดส่งในเวลานี้ครับ' });
     }
 
-    const config = await prisma.systemConfig.findFirst();
     const penaltyRatePerMonth = config?.penaltyRatePerDay ? Number(config.penaltyRatePerDay) : 100;
-
     let stats = { lineSent: 0, updatedInvoices: 0 };
 
     for (const inv of pendingInvoices) {
@@ -206,7 +263,7 @@ async function handleCronJob(request: Request) {
       const dueDate = new Date(inv.dueDate); dueDate.setHours(0, 0, 0, 0);
       let currentPenalty = truncateDecimals(Number(inv.penaltyAmount || 0));
 
-      // 🌟 คำนวณค่าปรับแบบรายเดือน (เดือนละ 100)
+      // คำนวณค่าปรับแบบรายเดือน (ถ้ามี)
       if (today > dueDate) {
         const diffTime = today.getTime() - dueDate.getTime();
         const overdueDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
@@ -280,7 +337,6 @@ async function handleCronJob(request: Request) {
             finalGrandTotal: finalGrandTotal,
             isOverdue: isOverdue,
             dueDateText: dueDateText,
-            // 🌟 แก้ตรงนี้ ดึง invoiceNo มา ไม่เอา id มั่วๆ
             invoiceNo: inv.invoiceNo || inv.id
           });
 
@@ -291,14 +347,14 @@ async function handleCronJob(request: Request) {
 
       await prisma.invoice.update({
         where: { id: inv.id },
-        data: { isNotified: true }
+        data: { isNotified: true } // 👈 พอยิง LINE เสร็จปุ๊บ ล็อคทันทีไม่ให้ส่งซ้ำ
       });
       stats.updatedInvoices++;
     }
 
     return NextResponse.json({
       success: true,
-      message: 'หุ่นยนต์ทำงานเสร็จสิ้น!',
+      message: 'หุ่นยนต์สร้างบิลและส่งข้อความเสร็จสิ้น!',
       stats
     });
 
@@ -308,6 +364,5 @@ async function handleCronJob(request: Request) {
   }
 }
 
-// 🌟 ส่งออกแบบแพ็คคู่ ไม่ว่าจะยิง POST หรือ GET ก็ทำงานได้หมด!
 export async function GET(request: Request) { return handleCronJob(request); }
 export async function POST(request: Request) { return handleCronJob(request); }
