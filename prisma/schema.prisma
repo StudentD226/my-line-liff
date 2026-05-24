@@ -103,6 +103,9 @@ model Invoice {
   penaltyAmount   Float         @default(0) // ยอดค่าปรับสะสม
   totalAmount     Float         // ยอดสุทธิ (base + penalty)
   
+  // 🌟 เพิ่มฟิลด์สำหรับเก็บยอดที่ลูกบ้านชำระมาแล้ว (รองรับการแบ่งจ่าย/ทยอยจ่าย)
+  paidAmount      Float         @default(0) 
+  
   dueDate         DateTime      
   status          InvoiceStatus @default(PENDING)
   
@@ -116,9 +119,9 @@ model Invoice {
   residentHouseId String
   house           House         @relation(fields: [residentHouseId], references: [id], onDelete: Cascade)
   
-  // 🌟 เพิ่มฟิลด์สำหรับระบบตั้งเวลาส่งบิลและแจ้งเตือนเข้า LINE อัตโนมัติ
+  // เพิ่มฟิลด์สำหรับระบบตั้งเวลาส่งบิลและแจ้งเตือนเข้า LINE อัตโนมัติ
   scheduledSendAt DateTime?     // วันและเวลาที่กำหนดให้ส่งบิล
-  isNotified      Boolean       @default(false) // สถานะการส่งแจ้งเตือนเข้า LINE ลูกบ้าน
+  isNotified      Boolean       @default(false) // Status การส่งแจ้งเตือนเข้า LINE ลูกบ้าน
 
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
@@ -128,7 +131,8 @@ enum InvoiceStatus {
   PENDING   // รอชำระ
   OVERDUE   // เกินกำหนด
   CHECKING  // รอตรวจสอบสลิป
-  PAID      // ชำระแล้ว
+  PARTIAL   // 🌟 สถานะชำระแล้วบางส่วน (ยอด paidAmount ยังไม่เท่ากับ totalAmount)
+  PAID      // ชำระครบแล้ว
   REJECTED  // สลิปไม่ถูกต้อง
 }
 
@@ -166,7 +170,6 @@ model News {
   content   String   @db.Text 
   imageUrl  String?
   createdAt DateTime @default(now())
-
 }
 
 // ------------------------------------------------------
@@ -181,7 +184,7 @@ model TransactionCategory {
   id          String   @id @default(cuid())
   name        String   // ชื่อหมวดหมู่ เช่น 'ค่าส่วนกลาง', 'ค่าจ้างยาม', 'ค่าจัดสวน'
   type        TransactionType 
-  isFavorite  Boolean  @default(false) // 🌟 ให้แอดมินกดดาว/ปักหมุดรายการที่ใช้บ่อยได้
+  isFavorite  Boolean  @default(false) // ให้แอดมินกดดาว/ปักหมุดรายการที่ใช้บ่อยได้
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
