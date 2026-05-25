@@ -155,10 +155,19 @@ function createInvoiceFlexMessage(data: any) {
 
 export async function POST(request: Request) {
   try {
-    const { invoiceId, type } = await request.json();
+    const body = await request.json();
+    
+    // 🌟 ดักจับทั้ง invoiceId และ id เผื่อหน้าเว็บส่งมาชื่อไหนก็รับได้หมด
+    const targetId = body.invoiceId || body.id; 
+    const type = body.type;
+
+    // ถ้าไม่มี ID ส่งมาเลย ให้เตะกลับไปเลย
+    if (!targetId) {
+      return NextResponse.json({ success: false, error: 'ไม่พบ ID ของบิล' }, { status: 400 });
+    }
 
     const invoice = await prisma.invoice.findUnique({
-      where: { id: invoiceId },
+      where: { id: targetId }, // ใช้ targetId ตรงนี้
       include: { house: { include: { residents: true, owner: true } } }
     });
     const config = await prisma.systemConfig.findFirst();
@@ -180,7 +189,7 @@ export async function POST(request: Request) {
         displayPenalty = truncateDecimals(overdueMonths * penaltyRatePerMonth);
         
         await prisma.invoice.update({
-          where: { id: invoiceId },
+          where: { id: targetId },
           data: { 
             penaltyAmount: displayPenalty, 
             totalAmount: truncateDecimals(Number(invoice.baseAmount) + displayPenalty), 
