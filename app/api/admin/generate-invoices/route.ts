@@ -53,6 +53,7 @@ export async function POST(request: Request) {
           residentHouseId: house.id,
           billingMonth: targetMonth,
           billingYear: targetYear,
+          invoiceNo: { not: { startsWith: 'TR-' } } // 🌟 พระเอกตัวจริง: ให้มองข้าม TR- ตอนเช็คบิลซ้ำ!
         }
       });
 
