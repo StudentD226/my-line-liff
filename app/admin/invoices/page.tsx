@@ -54,7 +54,8 @@ export default function AdminInvoicesPage() {
   // ==========================================
   const fetchInvoices = async () => {
     try {
-      const res  = await fetch('/api/admin/all-invoices');
+      // 🌟 พระเอกอยู่ตรงนี้ครับ! เติม { cache: 'no-store' } เพื่อสั่งไม่ให้เบราว์เซอร์จำข้อมูลเก่า
+      const res  = await fetch('/api/admin/all-invoices', { cache: 'no-store' });
       if (!res.ok) return;
       const data = await res.json();
 
