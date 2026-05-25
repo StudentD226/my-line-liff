@@ -158,10 +158,18 @@ function createInvoiceFlexMessage(data: any) {
 // ==========================================
 export async function POST(request: Request) {
   try {
-    const { invoiceId, type } = await request.json();
+    const body = await request.json();
+    
+    // 🌟 ดักจับทั้ง invoiceId และ id เพื่อแก้บั๊ก id: undefined
+    const targetId = body.invoiceId || body.id; 
+    const type = body.type;
+
+    if (!targetId) {
+      return NextResponse.json({ success: false, error: 'ไม่พบ ID ของบิล' }, { status: 400 });
+    }
 
     const invoice = await prisma.invoice.findUnique({
-      where: { id: invoiceId },
+      where: { id: targetId },
       include: { house: { include: { residents: true, owner: true } } }
     });
     const config = await prisma.systemConfig.findFirst();
@@ -171,7 +179,7 @@ export async function POST(request: Request) {
     let displayPenalty = 0;
     let penaltyRatePerMonth = config?.penaltyRatePerDay ? Number(config.penaltyRatePerDay) : 100;
 
-    // 🌟 คำนวณค่าปรับแบบรายเดือน (เดือนละ 100)
+    // คำนวณค่าปรับเฉพาะบิลนี้ 
     if (type === 'OVERDUE') {
       const today = new Date(); today.setHours(0, 0, 0, 0);
       const dueDate = new Date(invoice.dueDate); dueDate.setHours(0, 0, 0, 0);
@@ -180,11 +188,10 @@ export async function POST(request: Request) {
         const diffTime = today.getTime() - dueDate.getTime();
         const overdueDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); 
         const overdueMonths = Math.floor(overdueDays / 30);
-
         displayPenalty = truncateDecimals(overdueMonths * penaltyRatePerMonth);
         
         await prisma.invoice.update({
-          where: { id: invoiceId },
+          where: { id: targetId },
           data: { 
             penaltyAmount: displayPenalty, 
             totalAmount: truncateDecimals(Number(invoice.baseAmount) + displayPenalty), 
@@ -192,7 +199,7 @@ export async function POST(request: Request) {
           }
         });
       }
-    } else if (type === 'SEND') {
+    } else if (type === 'SEND' || type === 'REMINDER') {
       displayPenalty = truncateDecimals(Number(invoice.penaltyAmount || 0));
     }
 
@@ -206,7 +213,8 @@ export async function POST(request: Request) {
     const allUnpaidInvoices = await prisma.invoice.findMany({
       where: {
         residentHouseId: invoice.residentHouseId,
-        status: { in: ['PENDING', 'OVERDUE', 'REJECTED'] as any }
+        status: { in: ['PENDING', 'OVERDUE', 'REJECTED', 'PARTIAL'] as any }, // เพิ่ม PARTIAL
+        billingYear: { not: 9999 } 
       },
       orderBy: [{ billingYear: 'asc' }, { billingMonth: 'asc' }]
     });
@@ -217,24 +225,44 @@ export async function POST(request: Request) {
     let totalPenalty = 0;
     let grandTotalBase = 0;
 
-    const currentYear = invoice.billingYear;
+    const targetYear = invoice.billingYear;
+    const targetMonth = invoice.billingMonth;
 
     allUnpaidInvoices.forEach(inv => {
-      let base = truncateDecimals(Number(inv.baseAmount || 0));
-      let penalty = (inv.id === invoice.id) ? displayPenalty : truncateDecimals(Number(inv.penaltyAmount || 0));
+      // 🌟 ดักทางบิลอนาคต: ดึงเฉพาะบิลเป้าหมายและบิลที่เก่ากว่าเท่านั้น
+      const isTargetInvoice = inv.id === invoice.id;
+      const isOlderInvoice = inv.billingYear < targetYear || (inv.billingYear === targetYear && inv.billingMonth < targetMonth);
 
-      grandTotalBase += base;
-      totalPenalty += penalty;
+      if (isTargetInvoice || isOlderInvoice) {
+        let paid = truncateDecimals(Number(inv.paidAmount || 0));
+        let penalty = isTargetInvoice ? displayPenalty : truncateDecimals(Number(inv.penaltyAmount || 0));
+        let base = truncateDecimals(Number(inv.baseAmount || 0));
 
-      const label = `${fullThaiMonths[inv.billingMonth]} ${inv.billingYear + 543}`;
+        // 🌟 Logic หักเงินจ่ายบางส่วน (Partial)
+        if (paid > 0) {
+          if (paid >= penalty) {
+            base = truncateDecimals(base - (paid - penalty));
+            penalty = 0;
+          } else {
+            penalty = truncateDecimals(penalty - paid);
+          }
+        }
 
-      if (inv.id === invoice.id) {
-        currentInvoiceItem = { label, amount: base };
-      } else {
-        if (inv.billingYear < currentYear) {
-          pastYearTotals[inv.billingYear] = truncateDecimals((pastYearTotals[inv.billingYear] || 0) + base);
-        } else {
-          pastMonthItems.push({ label, amount: base });
+        if (base > 0 || penalty > 0) {
+          grandTotalBase += base;
+          totalPenalty += penalty;
+
+          const label = `${fullThaiMonths[inv.billingMonth]} ${inv.billingYear + 543}`;
+
+          if (isTargetInvoice) {
+            currentInvoiceItem = { label, amount: base };
+          } else {
+            if (inv.billingYear < targetYear) {
+              pastYearTotals[inv.billingYear] = truncateDecimals((pastYearTotals[inv.billingYear] || 0) + base);
+            } else {
+              pastMonthItems.push({ label, amount: base });
+            }
+          }
         }
       }
     });
@@ -255,7 +283,6 @@ export async function POST(request: Request) {
       finalGrandTotal,
       isOverdue: type === 'OVERDUE',
       dueDateText,
-      // 🌟 แก้ตรงนี้ ดึง invoiceNo มา ไม่เอา id มั่วๆ
       invoiceNo: invoice.invoiceNo || invoice.id 
     });
 
@@ -266,7 +293,7 @@ export async function POST(request: Request) {
     };
 
     for (const lineId of uniqueLineIds) {
-      await client.pushMessage({ to: lineId, messages: [flexMessage] });
+      await client.pushMessage({ to: lineId, messages: [flexMessage] }).catch(err => console.error("Line push err:", err));
     }
 
     return NextResponse.json({ success: true, message: 'ส่งแจ้งเตือนสำเร็จ' });
