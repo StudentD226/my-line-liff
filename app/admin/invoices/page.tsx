@@ -736,4 +736,4 @@ export default function AdminInvoicesPage() {
       )}
     </div>
   );
-}ฆ
+}
