@@ -55,8 +55,6 @@ export async function POST(request: Request) {
             continue;
           }
 
-          const config = await prisma.systemConfig.findFirst();
-          let flatPenaltyPerMonth = config?.penaltyRatePerDay ? Number(config.penaltyRatePerDay) : 100;
           const today = new Date(); today.setHours(0, 0, 0, 0);
           
           let pendingInvoices = user.residentHouse.invoices || [];
@@ -65,24 +63,18 @@ export async function POST(request: Request) {
           let totalPenalty = 0;
           let validInvoicesToDisplay: any[] = [];
 
-          // 🌟 1. วนลูปคำนวณยอดทั้งหมด (หักลบ paidAmount และรวมยอดเป๊ะๆ)
+          // 🌟 1. ดึงยอดจาก Database ตรงๆ ไม่ง้อการคำนวณวันแล้ว!
           pendingInvoices.forEach(inv => {
-            const dueDate = inv.dueDate ? new Date(inv.dueDate) : new Date(); 
-            dueDate.setHours(0, 0, 0, 0);
-            
             let paid = truncateDecimals(Number(inv.paidAmount || 0));
+            // 👉 ดึง penalty จากฐานข้อมูลมาใช้เลย แอดมินตั้งเท่าไหร่ ลูกบ้านต้องเห็นเท่านั้น!
             let penalty = truncateDecimals(Number(inv.penaltyAmount || 0));
             let base = truncateDecimals(Number(inv.baseAmount || 0));
 
-            // คิดค่าปรับถ้าเลยกำหนด (และยังไม่จ่ายครบ)
+            // เช็คแค่วันที่ เพื่อเปลี่ยนสถานะเฉยๆ ไม่ไปยุ่งกับตัวเงิน
+            const dueDate = inv.dueDate ? new Date(inv.dueDate) : new Date(); 
+            dueDate.setHours(0, 0, 0, 0);
             if (today > dueDate) {
-              const diffTime = today.getTime() - dueDate.getTime();
-              const overdueDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-              const overdueMonths = Math.floor(overdueDays / 30); 
-              penalty = truncateDecimals(overdueMonths * flatPenaltyPerMonth);
               inv.status = inv.status === 'PARTIAL' ? 'PARTIAL' : 'OVERDUE';
-            } else {
-              if (inv.status !== 'REJECTED' && inv.status !== 'PARTIAL') penalty = 0;
             }
 
             // หักยอดที่ทยอยจ่ายไปแล้วออกจากค่าปรับและยอดหลัก

@@ -30,9 +30,9 @@ export async function GET() {
     });
 
     const mappedInvoices = invoices.map(inv => {
-      // 🌟 แก้ไข 1: คิดหนี้รวมแบบเอา Base + Penalty สดๆ ชัวร์กว่าเชื่อ totalAmount ใน DB
+      // 🌟 คิดหนี้รวมแบบเอา Base + Penalty จากฐานข้อมูลมาบวกกันตรงๆ แอดมินตั้งเท่าไหร่เก็บเท่านั้น!
       const totalDebt = inv.house?.invoices.reduce((sum, item) => {
-        const itemTotal = Number(item.baseAmount || 0) + Number(item.penaltyAmount || 0); // บวกกันตรงนี้เลย!
+        const itemTotal = Number(item.baseAmount || 0) + Number(item.penaltyAmount || 0); 
         const debt = truncateDecimals(itemTotal - Number(item.paidAmount || 0));
         return sum + (debt > 0 ? debt : 0);
       }, 0) || 0;
@@ -87,7 +87,7 @@ export async function PATCH(request: Request) {
       for (const inv of unpaidInvoices) {
         if (remainingMoney <= 0) break;
 
-        // 🌟 แก้ไข 2: หาค่ายอดหนี้จริงด้วยการเอา Base + Penalty มาบวกกันใหม่!
+        // 🌟 ดึงค่ายอดหนี้จริงด้วยการเอา Base + Penalty จากฐานข้อมูลมาบวกกัน!
         const base = Number(inv.baseAmount || 0);
         const penalty = Number(inv.penaltyAmount || 0);
         const currentTotal = truncateDecimals(base + penalty); 
@@ -98,11 +98,11 @@ export async function PATCH(request: Request) {
         if (actualDebt <= 0) continue;
 
         if (remainingMoney < actualDebt) {
-          // 👉 จ่ายขาด → บันทึก PARTIAL
+          // 👉 จ่ายขาด (จ่ายไม่เต็ม) → บันทึก PARTIAL
           await prisma.invoice.update({
             where: { id: inv.id },
             data: {
-              totalAmount: currentTotal, // ซ่อมข้อมูล totalAmount ใน DB ให้กลับมาถูกต้องด้วย
+              totalAmount: currentTotal, 
               paidAmount: truncateDecimals(currentPaid + remainingMoney),
               status: 'PARTIAL',
             },
@@ -115,7 +115,7 @@ export async function PATCH(request: Request) {
           await prisma.invoice.update({
             where: { id: inv.id },
             data: {
-              totalAmount: currentTotal, // ซ่อมข้อมูล
+              totalAmount: currentTotal, 
               paidAmount: currentTotal,
               status: 'PAID',
               paidAt: new Date(),
