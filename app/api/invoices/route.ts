@@ -41,9 +41,10 @@ export async function GET(request: Request) {
     const updatedInvoices = invoices.map((inv) => {
       let base = truncateDecimals(Number(inv.baseAmount || 0));
       let penalty = truncateDecimals(Number(inv.penaltyAmount || 0));
-      let paid = truncateDecimals(Number(inv.paidAmount || 0)); // ดึงยอดที่จ่ายแล้วมาด้วย
+      let paid = truncateDecimals(Number(inv.paidAmount || 0));
       let currentStatus = inv.status;
 
+      // 1. คำนวณค่าปรับ (Logic เดิม)
       if (['PENDING', 'OVERDUE', 'REJECTED', 'PARTIAL'].includes(currentStatus)) {
         const dueDate = new Date(inv.dueDate);
         dueDate.setHours(0, 0, 0, 0);
@@ -59,21 +60,15 @@ export async function GET(request: Request) {
         }
       }
 
-      // 🌟 คำนวณยอดคงเหลือ
-      const remainingTotal = truncateDecimals((base + penalty) - paid);
-      
-      // 🌟 Logic การโชว์ตัวเลขที่ฉลาดที่สุด!
-      let displayAmount = 0;
-      if (currentStatus === 'PAID') {
-         displayAmount = truncateDecimals(base + penalty); // ถ้าจ่ายครบ โชว์ยอดเต็ม (ประวัติจะได้ไม่เป็น 0)
-      } else {
-         displayAmount = remainingTotal > 0 ? remainingTotal : 0; // ถ้าค้างหรือแบ่งจ่าย โชว์ "ยอดคงเหลือ" ที่ต้องตามเก็บ
-      }
+      // 2. คำนวณแบบแยกฟิลด์ชัดเจน
+      const fullTotal = truncateDecimals(base + penalty);      // ยอดรวมทั้งหมดของบิลนี้
+      const outstanding = truncateDecimals(fullTotal - paid);  // ยอดที่เหลือต้องจ่าย
 
       return {
         ...inv,
         penaltyAmount: penalty,
-        totalAmount: displayAmount, // ส่งยอดที่คำนวณแล้วไปโชว์ที่ตารางหน้าแอดมิน
+        totalAmount: fullTotal,          // 🌟 ส่ง "ยอดเต็ม" เสมอ (ตารางจะโชว์เลขนี้เป็นหลัก)
+        outstanding: outstanding > 0 ? outstanding : 0, // 🌟 ส่ง "ยอดค้าง" ไปให้หน้าบ้านเช็ค
         status: currentStatus
       };
     });
