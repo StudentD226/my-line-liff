@@ -42,9 +42,28 @@ export async function POST(request: Request) {
 
     if (!house) return NextResponse.json({ success: false, error: 'ไม่พบข้อมูลบ้าน' }, { status: 404 });
 
-    // 🌟 1. สร้าง Reference ID
+    // 🌟 พระเอก: ค้นหาบิลเก่าที่สุดที่ยังจ่ายไม่ครบ เพื่อเอาเดือน/ปี มาผูกกับสลิป CHECKING ใบนี้
+    const oldestUnpaidInvoice = await prisma.invoice.findFirst({
+      where: {
+        residentHouseId: house.id,
+        status: { in: ['PENDING', 'OVERDUE', 'REJECTED', 'PARTIAL'] },
+        invoiceNo: { not: { startsWith: 'TR-' } },
+        billingYear: { not: 9999 }
+      },
+      orderBy: [
+        { billingYear: 'asc' },
+        { billingMonth: 'asc' }
+      ]
+    });
+
     const now = new Date();
-    const currentYear = now.getFullYear(); // เก็บปีปัจจุบันไว้ใช้ไม่ให้บั๊ก
+    const currentYear = now.getFullYear();
+
+    // 🌟 ถ้ามีบิลค้างเก่า ให้เอาสลิปไปแปะที่เดือนค้างนั้นเลย แต่ถ้าไม่มีค้าง ค่อยใช้เดือนปัจจุบัน
+    const targetMonth = oldestUnpaidInvoice ? oldestUnpaidInvoice.billingMonth : (now.getMonth() + 1);
+    const targetYear = oldestUnpaidInvoice ? oldestUnpaidInvoice.billingYear : currentYear;
+
+    // 🌟 1. สร้าง Reference ID
     const dayStr = String(now.getDate()).padStart(2, '0');
     const monthStr = String(now.getMonth() + 1).padStart(2, '0');
     const yearStr = String(currentYear + 543);
@@ -52,16 +71,16 @@ export async function POST(request: Request) {
     
     const paymentReferenceId = `TR-${houseNo}-${dayStr}${monthStr}${yearStr}-${randomSuffix}`;
 
-    // 🌟 2. สร้างบิลพักยอด (แก้ปี 9999 เป็นปีจริง และเพิ่ม paidAmount)
+    // 🌟 2. สร้างบิลพักยอด (ใช้เดือนและปีตามตัวที่ค้างชำระเก่าสุด เพื่อให้หน้าแอดมินจัดเรียงถูกต้อง)
     await prisma.invoice.create({
       data: {
         invoiceNo: paymentReferenceId,
-        billingMonth: now.getMonth() + 1,
-        billingYear: currentYear, // 👈 ใช้ปีปัจจุบันแล้ว
+        billingMonth: targetMonth, // 👈 เปลี่ยนมาใช้เดือนของรอบบิลที่ค้างจริงแล้ว!
+        billingYear: targetYear,   // 👈 เปลี่ยนมาใช้ปีของรอบบิลที่ค้างจริงแล้ว!
         baseAmount: payAmount,
         penaltyAmount: 0,
         totalAmount: payAmount,
-        paidAmount: 0, // 👈 เติมฟิลด์นี้เข้าไปให้ระบบแบ่งจ่ายทำงานได้
+        paidAmount: 0, 
         status: 'CHECKING',
         slipUrl,
         transferDate,
@@ -72,7 +91,7 @@ export async function POST(request: Request) {
       }
     });
 
-    // 🌟 3. Flex Message (แก้เฉพาะกล่องยอดเงินให้จัดเรียงสวยงามและใหญ่ขึ้น)
+    // 🌟 3. Flex Message
     const flexMessage: any = {
       type: "flex",
       altText: `แจ้งชำระค่าส่วนกลาง บ้านเลขที่ ${house.houseNo}`,
@@ -96,7 +115,6 @@ export async function POST(request: Request) {
                 { type: "text", text: "ส่งสลิปแล้ว กำลังตรวจสอบ", size: "md", color: "#EA580C", weight: "bold", margin: "md", flex: 1 }
               ]
             },
-            // 👇 ตรงนี้ที่แก้ให้ยอดเงินอยู่บรรทัดเดียวกัน
             {
               type: "box", layout: "horizontal", margin: "xl", backgroundColor: "#FDEBEC", cornerRadius: "lg", paddingAll: "xl", alignItems: "center",
               contents: [
