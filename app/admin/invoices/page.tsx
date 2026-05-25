@@ -603,11 +603,10 @@ export default function AdminInvoicesPage() {
                     const thMonth    = thaiMonths.find(m => m.num === inv.billingMonth)?.short || inv.billingMonth;
                     const isSelected = selectedInvoices.includes(inv.id);
 
-                    // 🌟 ยอดที่โชว์ในคอลัมน์: PARTIAL → ค้างอยู่, อื่นๆ → totalAmount
-                    const displayAmount =
-                      inv.status === 'PARTIAL'
-                        ? Number(inv.totalAmount) - Number(inv.paidAmount || 0)
-                        : Number(inv.totalAmount);
+                    // 🌟 1. ดึงยอดหนี้ที่ต้องจ่ายจริง (ถ้าชำระแล้วโชว์ยอดเต็ม, ถ้าค้างให้โชว์ยอดคงเหลือ)
+                    const displayAmount = inv.status === 'PAID'
+                      ? Number(inv.totalAmount)
+                      : Number(inv.outstanding ?? (Number(inv.totalAmount) - Number(inv.paidAmount || 0)));
 
                     return (
                       <tr key={inv.id} className={`transition-colors hover:bg-gray-50/50 ${isSelected ? 'bg-teal-50/30' : ''}`}>
@@ -632,24 +631,24 @@ export default function AdminInvoicesPage() {
                         {/* ประจำเดือน */}
                         <td className="py-4 px-2 text-gray-700 font-bold text-sm">{thMonth} {inv.billingYear + 543}</td>
 
-                        {/* 🌟 ยอดชำระ (แก้ไขแล้ว) */}
+                        {/* 🌟 2. ช่องยอดชำระ (อัปเดตใหม่ ให้โชว์เลขตรงกับ LINE) */}
                         <td className="py-4 px-2">
                           <div className="flex flex-col font-bold">
                             <span className="text-gray-900 text-base">
                               {displayAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} ฿
                             </span>
 
-                            {/* PARTIAL: โชว์ว่าจ่ายไปแล้วเท่าไหร่ */}
+                            {/* PARTIAL: โชว์บอกแอดมินว่านี่คือยอดค้างนะ */}
                             {inv.status === 'PARTIAL' && Number(inv.paidAmount) > 0 && (
                               <span className="text-[10px] text-orange-600 bg-orange-100 px-2 py-0.5 rounded mt-1 w-fit">
-                                จ่ายแล้ว {Number(inv.paidAmount).toLocaleString('th-TH', { minimumFractionDigits: 2 })} ฿
+                                ยอดคงเหลือ (จ่ายแล้ว {Number(inv.paidAmount).toLocaleString('th-TH')} ฿)
                               </span>
                             )}
 
-                            {/* ค่าปรับ */}
+                            {/* ค่าปรับ (ถ้ามี) */}
                             {inv.penaltyAmount > 0 && (
                               <span className="text-[11px] text-rose-500 font-medium mt-0.5">
-                                (รวมค่าปรับ {Number(inv.penaltyAmount).toLocaleString('th-TH')} ฿)
+                                {inv.status === 'PAID' ? '(รวมค่าปรับแล้ว)' : `(รวมค่าปรับ ${Number(inv.penaltyAmount).toLocaleString('th-TH')} ฿)`}
                               </span>
                             )}
                           </div>
