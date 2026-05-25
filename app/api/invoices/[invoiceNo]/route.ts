@@ -1,3 +1,8 @@
+import { NextResponse } from 'next/server';
+import { PrismaClient } from '@prisma/client';
+const prisma = new PrismaClient();
+// 🌟 Helper ตัดทศนิยมทิ้ง ไม่ให้ปัดขึ้น
+const truncateDecimals = (val: number): number => Math.floor(Math.round(val * 10000) / 100) / 100;
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ invoiceNo: string }> } 
