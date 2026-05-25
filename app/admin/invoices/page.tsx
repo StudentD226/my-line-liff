@@ -82,6 +82,9 @@ export default function AdminInvoicesPage() {
   // ==========================================
   const filteredInvoices = useMemo(() => {
     return invoices.filter(inv => {
+      // 🌟 1. ดักจับ TR- แบบขั้นเด็ดขาด ไม่ให้โผล่มาหน้าตารางนี้!
+      if (inv.invoiceNo && inv.invoiceNo.startsWith('TR-')) return false;
+
       const matchHouse  = inv.house?.houseNo?.toLowerCase().includes(searchTerm.toLowerCase());
       const matchMonth  = filterMonth  === 0   || inv.billingMonth === filterMonth;
       const matchYear   = filterYear   === 0   || inv.billingYear  === filterYear;
@@ -603,10 +606,15 @@ export default function AdminInvoicesPage() {
                     const thMonth    = thaiMonths.find(m => m.num === inv.billingMonth)?.short || inv.billingMonth;
                     const isSelected = selectedInvoices.includes(inv.id);
 
-                    // 🌟 1. ดึงยอดหนี้ที่ต้องจ่ายจริง (ถ้าชำระแล้วโชว์ยอดเต็ม, ถ้าค้างให้โชว์ยอดคงเหลือ)
-                    const displayAmount = inv.status === 'PAID'
-                      ? Number(inv.totalAmount)
-                      : Number(inv.outstanding ?? (Number(inv.totalAmount) - Number(inv.paidAmount || 0)));
+                    // 🌟 2. คำนวณยอดแบบตรงไปตรงมาที่สุด ไม่พึ่งใคร!
+                    const base = Number(inv.baseAmount || 0);
+                    const penalty = Number(inv.penaltyAmount || 0);
+                    const paid = Number(inv.paidAmount || 0);
+                    const total = base + penalty;
+                    const outstanding = total - paid;
+
+                    // ถ้าเป็น PARTIAL ให้โชว์ยอดคงเหลือ ถ้าสถานะอื่นโชว์ยอดเต็มบิล
+                    const displayAmount = inv.status === 'PARTIAL' ? outstanding : total;
 
                     return (
                       <tr key={inv.id} className={`transition-colors hover:bg-gray-50/50 ${isSelected ? 'bg-teal-50/30' : ''}`}>
@@ -631,7 +639,7 @@ export default function AdminInvoicesPage() {
                         {/* ประจำเดือน */}
                         <td className="py-4 px-2 text-gray-700 font-bold text-sm">{thMonth} {inv.billingYear + 543}</td>
 
-                        {/* 🌟 2. ช่องยอดชำระ (อัปเดตใหม่ ให้โชว์เลขตรงกับ LINE) */}
+                        {/* 🌟 ช่องยอดชำระ */}
                         <td className="py-4 px-2">
                           <div className="flex flex-col font-bold">
                             <span className="text-gray-900 text-base">
@@ -639,16 +647,16 @@ export default function AdminInvoicesPage() {
                             </span>
 
                             {/* PARTIAL: โชว์บอกแอดมินว่านี่คือยอดค้างนะ */}
-                            {inv.status === 'PARTIAL' && Number(inv.paidAmount) > 0 && (
+                            {inv.status === 'PARTIAL' && paid > 0 && (
                               <span className="text-[10px] text-orange-600 bg-orange-100 px-2 py-0.5 rounded mt-1 w-fit">
-                                ยอดคงเหลือ (จ่ายแล้ว {Number(inv.paidAmount).toLocaleString('th-TH')} ฿)
+                                ยอดคงเหลือ (จ่ายแล้ว {paid.toLocaleString('th-TH', { minimumFractionDigits: 2 })} ฿)
                               </span>
                             )}
 
                             {/* ค่าปรับ (ถ้ามี) */}
-                            {inv.penaltyAmount > 0 && (
+                            {penalty > 0 && (
                               <span className="text-[11px] text-rose-500 font-medium mt-0.5">
-                                {inv.status === 'PAID' ? '(รวมค่าปรับแล้ว)' : `(รวมค่าปรับ ${Number(inv.penaltyAmount).toLocaleString('th-TH')} ฿)`}
+                                {inv.status === 'PAID' ? '(รวมค่าปรับแล้ว)' : `(รวมค่าปรับ ${penalty.toLocaleString('th-TH')} ฿)`}
                               </span>
                             )}
                           </div>
