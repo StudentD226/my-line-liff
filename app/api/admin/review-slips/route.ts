@@ -73,7 +73,7 @@ export async function PATCH(request: Request) {
       let remainingMoney = truncateDecimals(Number(transactionInvoice.totalAmount)); // ยอดเงินที่โอนมาจริงๆ
       let updatedInvoicesCount = 0;
 
-      // ดึงบิลเก่าที่ค้างอยู่ทั้งหมด (รวมถึง PARTIAL)
+      // ดึงบิลเก่าที่ค้างอยู่ทั้งหมด (รวมถึง PARTIAL) เรียงจากเก่าสุดก่อน
       const unpaidInvoices = await prisma.invoice.findMany({
         where: { 
           residentHouseId: transactionInvoice.residentHouseId,
@@ -84,72 +84,91 @@ export async function PATCH(request: Request) {
         orderBy: [{ billingYear: 'asc' }, { billingMonth: 'asc' }]
       });
 
+      // ==========================================
+      // 🌟 ลูป FIFO แท้ๆ: ตัดบิลเก่าสุดก่อน
+      //    ถ้าจ่ายไม่พอปิดบิลใบไหน → PARTIAL แล้ว break ทันที
+      //    ห้ามข้ามไปแตะบิลเดือนถัดไปเด็ดขาด!
+      // ==========================================
       for (const inv of unpaidInvoices) {
-        if (remainingMoney <= 0) break; 
-        
-        // 🌟 หนี้จริงๆ ของบิลใบนี้ = ยอดรวม - ยอดที่เคยจ่ายมาแล้ว
+        if (remainingMoney <= 0) break;
+
         const currentTotal = truncateDecimals(Number(inv.totalAmount || 0));
-        const currentPaid = truncateDecimals(Number(inv.paidAmount || 0));
-        const actualDebt = truncateDecimals(currentTotal - currentPaid);
+        const currentPaid  = truncateDecimals(Number(inv.paidAmount  || 0));
+        const actualDebt   = truncateDecimals(currentTotal - currentPaid);
 
-        if (actualDebt <= 0) continue; // ถ้าไม่เหลือหนี้ให้ข้ามไป
+        if (actualDebt <= 0) continue; // บิลนี้ไม่มีหนี้ค้าง ข้ามไป
 
-        if (remainingMoney >= actualDebt) {
-          // 👉 จ่ายครบพอดีปิดบิลนี้ (เปลี่ยนสถานะเป็น PAID และเติม paidAmount ให้เต็ม)
+        if (remainingMoney < actualDebt) {
+          // 👉 จ่ายขาด → บันทึก PARTIAL แล้วหยุดทันที ห้ามไปแตะบิลถัดไป
           await prisma.invoice.update({
             where: { id: inv.id },
-            data: { 
-              paidAmount: currentTotal, // เติมเงินให้เต็มกระปุก
-              status: 'PAID', 
-              paidAt: new Date() 
-            }
-          });
-          remainingMoney = truncateDecimals(remainingMoney - actualDebt);
-          updatedInvoicesCount++;
-        } else {
-          // 👉 จ่ายขาด (เงินหมดก่อนปิดบิล)
-          const newPaidAmount = truncateDecimals(currentPaid + remainingMoney);
-          await prisma.invoice.update({
-            where: { id: inv.id },
-            data: { 
-              paidAmount: newPaidAmount, // สะสมยอดโอนเพิ่มเข้าไป
-              status: 'PARTIAL' // เปลี่ยนเป็นสีส้ม
-            }
+            data: {
+              paidAmount: truncateDecimals(currentPaid + remainingMoney),
+              status: 'PARTIAL',
+            },
           });
           remainingMoney = 0;
           updatedInvoicesCount++;
+          break; // 🛑 พระเอกตัวจริง: หยุดการทำงานทันที
+        } else {
+          // 👉 จ่ายครบ → ปิดบิลนี้ แล้ววนต่อไปตัดบิลถัดไป
+          await prisma.invoice.update({
+            where: { id: inv.id },
+            data: {
+              paidAmount: currentTotal,
+              status: 'PAID',
+              paidAt: new Date(),
+            },
+          });
+          remainingMoney = truncateDecimals(remainingMoney - actualDebt);
+          updatedInvoicesCount++;
+          // ไม่ break → เงินยังเหลือ วนต่อไปตัดบิลถัดไปได้เลย
         }
       }
 
       // 👉 จ่ายเกิน (งอกบิลล่วงหน้า)
       if (remainingMoney > 0) {
         const house = await prisma.house.findUnique({ where: { id: transactionInvoice.residentHouseId } });
-        const monthlyRate = truncateDecimals(house?.feeType === 'CALCULATED' && house?.houseSize ? Number(house.feeRate) * Number(house.houseSize) : Number(house?.feeRate || 1000));
-        
-        let lastM = unpaidInvoices.length > 0 ? unpaidInvoices[unpaidInvoices.length - 1].billingMonth : new Date().getMonth() + 1;
-        let lastY = unpaidInvoices.length > 0 ? unpaidInvoices[unpaidInvoices.length - 1].billingYear : new Date().getFullYear();
+        const monthlyRate = truncateDecimals(
+          house?.feeType === 'CALCULATED' && house?.houseSize
+            ? Number(house.feeRate) * Number(house.houseSize)
+            : Number(house?.feeRate || 1000)
+        );
+
+        let lastM = unpaidInvoices.length > 0
+          ? unpaidInvoices[unpaidInvoices.length - 1].billingMonth
+          : new Date().getMonth() + 1;
+        let lastY = unpaidInvoices.length > 0
+          ? unpaidInvoices[unpaidInvoices.length - 1].billingYear
+          : new Date().getFullYear();
 
         // สมมติค่าส่วนกลาง 1000 แล้วโอนเกินมา 2500 ก็งอกบิลรัวๆ เลย
         while (remainingMoney >= monthlyRate) {
-          lastM++; if (lastM > 12) { lastM = 1; lastY++; }
+          lastM++;
+          if (lastM > 12) { lastM = 1; lastY++; }
           await prisma.invoice.create({
             data: {
               invoiceNo: `ADV-${house?.houseNo}-${String(lastM).padStart(2, '0')}${lastY}`,
-              billingMonth: lastM, 
-              billingYear: lastY,
-              baseAmount: monthlyRate, 
-              penaltyAmount: 0, 
-              totalAmount: monthlyRate, 
-              paidAmount: monthlyRate, // 🌟 งอกปุ๊บถือว่าจ่ายเต็มปั๊บ
-              status: 'PAID', 
-              paidAt: new Date(), 
-              dueDate: new Date(lastY, lastM - 1, 5),
-              residentHouseId: transactionInvoice.residentHouseId, 
-              isNotified: true
-            }
+              billingMonth: lastM,
+              billingYear:  lastY,
+              baseAmount:    monthlyRate,
+              penaltyAmount: 0,
+              totalAmount:   monthlyRate,
+              paidAmount:    monthlyRate, // 🌟 งอกปุ๊บถือว่าจ่ายเต็มปั๊บ
+              status:   'PAID',
+              paidAt:   new Date(),
+              dueDate:  new Date(lastY, lastM - 1, 5),
+              residentHouseId: transactionInvoice.residentHouseId,
+              isNotified: true,
+            },
           });
           remainingMoney = truncateDecimals(remainingMoney - monthlyRate);
           updatedInvoicesCount++;
+        }
+
+        // 🔔 เงินเหลือน้อยกว่า 1 รอบ (เศษที่ไม่พอเปิดบิลใหม่) → log ไว้ตรวจสอบ
+        if (remainingMoney > 0) {
+          console.warn(`[review-slips] invoiceId=${invoiceId} มีเงินเหลือ ${remainingMoney} บาท ไม่ถึง 1 รอบ (monthlyRate=${monthlyRate}) — เงินส่วนนี้ยังไม่ได้นำไปใช้`);
         }
       }
 
@@ -159,8 +178,12 @@ export async function PATCH(request: Request) {
         data: { status: 'PAID', paidAt: new Date() } 
       });
       
-      // ส่งแจ้งเตือนว่ารับเงินแล้ว
-      await sendStatusUpdateFlex(invoiceId, 'PAID');
+      // ส่งแจ้งเตือนว่ารับเงินแล้ว (แยก try/catch เพื่อกัน LINE API ล้มแล้ว throw ออกทั้ง route)
+      try {
+        await sendStatusUpdateFlex(invoiceId, 'PAID');
+      } catch (lineError) {
+        console.error('[review-slips] LINE notify failed (PAID):', lineError);
+      }
 
       return NextResponse.json({ success: true, message: `รับยอดโอนสำเร็จ (อัปเดตไป ${updatedInvoicesCount} รายการ)` });
     }
