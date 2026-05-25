@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 const truncateDecimals = (val: number) => Math.floor(Math.round(val * 10000) / 100) / 100;
 
 // ==========================================
-// 1. ดึงข้อมูลสลิปที่รอตรวจสอบ (พร้อมโชว์ยอดหนี้ที่หัก Partial แล้ว)
+// 1. ดึงข้อมูลสลิปที่รอตรวจสอบ 
 // ==========================================
 export async function GET() {
   try {
@@ -18,9 +18,9 @@ export async function GET() {
           include: {
             invoices: {
               where: { 
-                status: { in: ['PENDING', 'OVERDUE', 'REJECTED', 'PARTIAL'] }, // 🌟 เพิ่ม PARTIAL
+                status: { in: ['PENDING', 'OVERDUE', 'REJECTED', 'PARTIAL'] },
                 invoiceNo: { not: { startsWith: 'TR-' } },
-                billingYear: { not: 9999 } // กันบิลแปลกปลอม
+                billingYear: { not: 9999 }
               }
             }
           }
@@ -30,9 +30,10 @@ export async function GET() {
     });
 
     const mappedInvoices = invoices.map(inv => {
-      // 🌟 คิดหนี้รวมแบบหักเงินที่ทยอยจ่ายไปแล้ว (total - paid)
+      // 🌟 แก้ไข 1: คิดหนี้รวมแบบเอา Base + Penalty สดๆ ชัวร์กว่าเชื่อ totalAmount ใน DB
       const totalDebt = inv.house?.invoices.reduce((sum, item) => {
-        const debt = truncateDecimals(Number(item.totalAmount || 0) - Number(item.paidAmount || 0));
+        const itemTotal = Number(item.baseAmount || 0) + Number(item.penaltyAmount || 0); // บวกกันตรงนี้เลย!
+        const debt = truncateDecimals(itemTotal - Number(item.paidAmount || 0));
         return sum + (debt > 0 ? debt : 0);
       }, 0) || 0;
       
@@ -50,7 +51,7 @@ export async function GET() {
 }
 
 // ==========================================
-// 2. แอดมินกดอนุมัติ/ปฏิเสธ สลิป (ระบบ FIFO ของแท้!)
+// 2. แอดมินกดอนุมัติ/ปฏิเสธ สลิป (ระบบ FIFO)
 // ==========================================
 export async function PATCH(request: Request) {
   try {
@@ -70,10 +71,9 @@ export async function PATCH(request: Request) {
 
     // 🟢 แอดมินกด PAID (ยืนยันยอดเงิน)
     if (status === 'PAID') {
-      let remainingMoney = truncateDecimals(Number(transactionInvoice.totalAmount)); // ยอดเงินที่โอนมาจริงๆ
+      let remainingMoney = truncateDecimals(Number(transactionInvoice.totalAmount)); // ยอดที่โอนมา
       let updatedInvoicesCount = 0;
 
-      // ดึงบิลเก่าที่ค้างอยู่ทั้งหมด (รวมถึง PARTIAL) เรียงจากเก่าสุดก่อน
       const unpaidInvoices = await prisma.invoice.findMany({
         where: { 
           residentHouseId: transactionInvoice.residentHouseId,
@@ -84,37 +84,38 @@ export async function PATCH(request: Request) {
         orderBy: [{ billingYear: 'asc' }, { billingMonth: 'asc' }]
       });
 
-      // ==========================================
-      // 🌟 ลูป FIFO แท้ๆ: ตัดบิลเก่าสุดก่อน
-      //    ถ้าจ่ายไม่พอปิดบิลใบไหน → PARTIAL แล้ว break ทันที
-      //    ห้ามข้ามไปแตะบิลเดือนถัดไปเด็ดขาด!
-      // ==========================================
       for (const inv of unpaidInvoices) {
         if (remainingMoney <= 0) break;
 
-        const currentTotal = truncateDecimals(Number(inv.totalAmount || 0));
+        // 🌟 แก้ไข 2: หาค่ายอดหนี้จริงด้วยการเอา Base + Penalty มาบวกกันใหม่!
+        const base = Number(inv.baseAmount || 0);
+        const penalty = Number(inv.penaltyAmount || 0);
+        const currentTotal = truncateDecimals(base + penalty); 
+        
         const currentPaid  = truncateDecimals(Number(inv.paidAmount  || 0));
         const actualDebt   = truncateDecimals(currentTotal - currentPaid);
 
-        if (actualDebt <= 0) continue; // บิลนี้ไม่มีหนี้ค้าง ข้ามไป
+        if (actualDebt <= 0) continue;
 
         if (remainingMoney < actualDebt) {
-          // 👉 จ่ายขาด → บันทึก PARTIAL แล้วหยุดทันที ห้ามไปแตะบิลถัดไป
+          // 👉 จ่ายขาด → บันทึก PARTIAL
           await prisma.invoice.update({
             where: { id: inv.id },
             data: {
+              totalAmount: currentTotal, // ซ่อมข้อมูล totalAmount ใน DB ให้กลับมาถูกต้องด้วย
               paidAmount: truncateDecimals(currentPaid + remainingMoney),
               status: 'PARTIAL',
             },
           });
           remainingMoney = 0;
           updatedInvoicesCount++;
-          break; // 🛑 พระเอกตัวจริง: หยุดการทำงานทันที
+          break; 
         } else {
-          // 👉 จ่ายครบ → ปิดบิลนี้ แล้ววนต่อไปตัดบิลถัดไป
+          // 👉 จ่ายครบ → ปิดบิล PAID
           await prisma.invoice.update({
             where: { id: inv.id },
             data: {
+              totalAmount: currentTotal, // ซ่อมข้อมูล
               paidAmount: currentTotal,
               status: 'PAID',
               paidAt: new Date(),
@@ -122,7 +123,6 @@ export async function PATCH(request: Request) {
           });
           remainingMoney = truncateDecimals(remainingMoney - actualDebt);
           updatedInvoicesCount++;
-          // ไม่ break → เงินยังเหลือ วนต่อไปตัดบิลถัดไปได้เลย
         }
       }
 
@@ -142,7 +142,6 @@ export async function PATCH(request: Request) {
           ? unpaidInvoices[unpaidInvoices.length - 1].billingYear
           : new Date().getFullYear();
 
-        // สมมติค่าส่วนกลาง 1000 แล้วโอนเกินมา 2500 ก็งอกบิลรัวๆ เลย
         while (remainingMoney >= monthlyRate) {
           lastM++;
           if (lastM > 12) { lastM = 1; lastY++; }
@@ -154,7 +153,7 @@ export async function PATCH(request: Request) {
               baseAmount:    monthlyRate,
               penaltyAmount: 0,
               totalAmount:   monthlyRate,
-              paidAmount:    monthlyRate, // 🌟 งอกปุ๊บถือว่าจ่ายเต็มปั๊บ
+              paidAmount:    monthlyRate, 
               status:   'PAID',
               paidAt:   new Date(),
               dueDate:  new Date(lastY, lastM - 1, 5),
@@ -166,19 +165,17 @@ export async function PATCH(request: Request) {
           updatedInvoicesCount++;
         }
 
-        // 🔔 เงินเหลือน้อยกว่า 1 รอบ (เศษที่ไม่พอเปิดบิลใหม่) → log ไว้ตรวจสอบ
         if (remainingMoney > 0) {
-          console.warn(`[review-slips] invoiceId=${invoiceId} มีเงินเหลือ ${remainingMoney} บาท ไม่ถึง 1 รอบ (monthlyRate=${monthlyRate}) — เงินส่วนนี้ยังไม่ได้นำไปใช้`);
+          console.warn(`[review-slips] invoiceId=${invoiceId} มีเงินเหลือ ${remainingMoney} บาท เศษที่ไม่พอเปิดบิล`);
         }
       }
 
-      // สุดท้าย: เปลี่ยนสถานะสลิปที่รอยืนยัน (TR-) เป็น PAID
+      // ปิดงานสลิป TR- เป็น PAID
       await prisma.invoice.update({ 
         where: { id: invoiceId }, 
         data: { status: 'PAID', paidAt: new Date() } 
       });
       
-      // ส่งแจ้งเตือนว่ารับเงินแล้ว (แยก try/catch เพื่อกัน LINE API ล้มแล้ว throw ออกทั้ง route)
       try {
         await sendStatusUpdateFlex(invoiceId, 'PAID');
       } catch (lineError) {

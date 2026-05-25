@@ -19,7 +19,7 @@ export async function GET(request: Request) {
           include: {
             invoices: {
               where: { 
-                status: { in: ['PENDING', 'OVERDUE', 'REJECTED', 'PARTIAL'] }, // 🌟 ดึงหนี้ทุกประเภทที่ค้างอยู่
+                status: { in: ['PENDING', 'OVERDUE', 'REJECTED', 'PARTIAL'] }, // ดึงหนี้ทุกประเภทที่ค้างอยู่
                 invoiceNo: { not: { startsWith: 'TR-' } }, // ซ่อนสลิปรอเช็ก
                 billingYear: { not: 9999 } 
               },
@@ -41,16 +41,16 @@ export async function GET(request: Request) {
     let totalBase = 0;
     let totalFine = 0;
     
-    // 🌟 พระเอกอยู่ตรงนี้: คำนวณค่าปรับสด และหักยอดที่ทยอยจ่ายเหมือน Webhook เป๊ะ!
+    // 🌟 ประมวลผลบิลแต่ละใบแบบสมาร์ท สอดคล้องกับ Logic ของฝั่งแอดมิน อัปเดตล่าสุด
     house.invoices.forEach(inv => {
       const dueDate = inv.dueDate ? new Date(inv.dueDate) : new Date();
       dueDate.setHours(0, 0, 0, 0);
 
-      let paid = truncateDecimals(Number(inv.paidAmount || 0));
+      const base = truncateDecimals(Number(inv.baseAmount || 0));
       let penalty = truncateDecimals(Number(inv.penaltyAmount || 0));
-      let base = truncateDecimals(Number(inv.baseAmount || 0));
+      const currentPaid = truncateDecimals(Number(inv.paidAmount || 0));
 
-      // 1. คำนวณค่าปรับใหม่ถ้าเลยกำหนด (และยังจ่ายไม่ครบ)
+      // 1. คำนวณค่าปรับล่าสุดแบบไดนามิกตามเวลาปัจจุบัน
       if (today > dueDate) {
         const diffTime = today.getTime() - dueDate.getTime();
         const overdueDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
@@ -60,20 +60,18 @@ export async function GET(request: Request) {
         if (inv.status !== 'REJECTED' && inv.status !== 'PARTIAL') penalty = 0;
       }
 
-      // 2. หักยอดที่ทยอยจ่ายไปแล้ว
-      if (paid > 0) {
-        if (paid >= penalty) {
-          base = truncateDecimals(base - (paid - penalty));
-          penalty = 0;
-        } else {
-          penalty = truncateDecimals(penalty - paid);
-        }
-      }
+      // 2. คำนวณยอดหนี้รวมสุทธิของบิลใบนี้ (Base + ค่าปรับล่าสุด)
+      const currentTotal = truncateDecimals(base + penalty);
+      const actualDebt = truncateDecimals(currentTotal - currentPaid);
 
-      // 3. สะสมยอดคงเหลือจริงๆ
-      if (base > 0 || penalty > 0) {
-        totalBase += base;
-        totalFine += penalty;
+      // 3. 🎯 จัดสรรยอดหนี้แยกประเภทส่งให้ LINE:
+      //    ตัดจ่ายฝั่งค่าส่วนกลาง (Base) ก่อน ยอดเงินส่วนกลางหมดเกลี้ยงเมื่อไหร่ เศษหนี้ที่เหลืออยู่ถึงจะนับเป็นค่าปรับ (Fine)
+      if (actualDebt > 0) {
+        const remainingBase = Math.max(0, truncateDecimals(base - currentPaid));
+        const remainingPenalty = truncateDecimals(actualDebt - remainingBase);
+
+        totalBase += remainingBase;
+        totalFine += remainingPenalty;
       }
     });
 
@@ -82,8 +80,8 @@ export async function GET(request: Request) {
       houseData: {
         houseNo: house.houseNo,
         monthlyRate: house.feeRate ? truncateDecimals(Number(house.feeRate)) : 1000,
-        outstandingBalance: truncateDecimals(totalBase),
-        fineAmount: truncateDecimals(totalFine),
+        outstandingBalance: truncateDecimals(totalBase), // ยอดค้างค่าส่วนกลางแท้ๆ
+        fineAmount: truncateDecimals(totalFine),         // ยอดค้างค่าปรับแท้ๆ
         totalToPay: truncateDecimals(totalBase + totalFine) 
       }
     });
