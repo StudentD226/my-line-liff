@@ -390,6 +390,7 @@ export default function AdminInvoicesPage() {
       inputOptions: {
         'PENDING': 'รอชำระ (PENDING)',
         'OVERDUE': 'ค้างชำระ (OVERDUE)',
+        'PARTIAL': 'แบ่งจ่าย (PARTIAL)', // 🌟 เพิ่มสถานะนี้
         'PAID': 'ชำระแล้ว (PAID)',
         'CHECKING': 'รอตรวจสอบ (CHECKING)',
         'REJECTED': 'ถูกปฏิเสธ (REJECTED)'
@@ -443,6 +444,7 @@ export default function AdminInvoicesPage() {
       case 'REJECTED': return 'bg-rose-100 text-rose-700';
       case 'OVERDUE': return 'bg-rose-100 text-rose-700 font-extrabold';
       case 'PENDING': return 'bg-[#376B64]/10 text-[#376B64]';
+      case 'PARTIAL': return 'bg-orange-100 text-orange-700 font-bold'; // 🌟 เพิ่มสีให้ PARTIAL
       default: return 'bg-gray-100 text-gray-700';
     }
   };
@@ -513,6 +515,7 @@ export default function AdminInvoicesPage() {
                 <option value="ALL">ทุกสถานะ</option>
                 <option value="PENDING">รอชำระ (PENDING)</option>
                 <option value="OVERDUE">ค้างชำระ (OVERDUE)</option>
+                <option value="PARTIAL">แบ่งจ่าย (PARTIAL)</option> {/* 🌟 เพิ่มตัวกรอง PARTIAL */}
                 <option value="CHECKING">รอตรวจสอบ (CHECKING)</option>
                 <option value="PAID">ชำระแล้ว (PAID)</option>
                 <option value="REJECTED">ถูกปฏิเสธ (REJECTED)</option>
@@ -532,9 +535,7 @@ export default function AdminInvoicesPage() {
               </span>
 
               <div className="flex flex-1 items-center w-full">
-                {/* spacer ดันทุกอย่างไปชิดขวา */}
                 <div className="flex-1" />
-                {/* ปุ่มลบ — ตรงกับคอลัมน์ "จัดการบิล" */}
                 <div className="flex items-center justify-center border-l border-teal-200 px-6">
                   <button
                     onClick={() => handleDelete()}
@@ -543,7 +544,6 @@ export default function AdminInvoicesPage() {
                     <Trash2 size={14} className="mr-1.5" /> ลบข้อมูลที่เลือก
                   </button>
                 </div>
-                {/* ปุ่มแจ้งเตือน — ตรงกับคอลัมน์ "แจ้งเตือนผ่าน LINE" */}
                 <div className="flex flex-wrap items-center justify-center gap-2 border-l border-teal-200 px-4">
                   <button onClick={() => handleBulkNotify('SEND')} className="flex items-center px-4 py-2 bg-white hover:bg-blue-50 text-blue-600 border border-blue-200 text-xs font-bold rounded-xl transition shadow-sm hover:shadow active:scale-[0.98]">
                     <Send size={14} className="mr-1.5" /> ส่งบิล
@@ -555,7 +555,6 @@ export default function AdminInvoicesPage() {
                     <AlertCircle size={14} className="mr-1.5" /> ทวงยอดค้าง
                   </button>
                 </div>
-
               </div>
             </div>
           )}
@@ -613,7 +612,14 @@ export default function AdminInvoicesPage() {
                         <td className="py-4 px-2">
                           <div className="flex flex-col font-bold">
                             <span className="text-gray-900 text-base">{Number(inv.totalAmount).toLocaleString('th-TH', { minimumFractionDigits: 2 })} ฿</span>
-                            {inv.penaltyAmount > 0 && <span className="text-[11px] text-rose-500 font-medium">+ ค่าปรับ {Number(inv.penaltyAmount).toLocaleString('th-TH')}</span>}
+                            
+                            {/* 🌟 เพิ่ม Tag โชว์คำว่ายอดคงเหลือ ให้แอดมินเข้าใจง่ายถ้าเป็น PARTIAL */}
+                            {inv.status === 'PARTIAL' && (
+                              <span className="text-[10px] text-orange-600 bg-orange-100 px-2 py-0.5 rounded mt-1 w-fit">ยอดคงเหลือ</span>
+                            )}
+                            
+                            {/* 🌟 เปลี่ยนคำว่า + ค่าปรับ ให้ดูสวยและเคลียร์ขึ้น */}
+                            {inv.penaltyAmount > 0 && <span className="text-[11px] text-rose-500 font-medium mt-0.5">(รวมค่าปรับ {Number(inv.penaltyAmount).toLocaleString('th-TH')} ฿)</span>}
                           </div>
                         </td>
                         <td className="py-4 px-2">
@@ -669,7 +675,6 @@ export default function AdminInvoicesPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl w-full max-w-sm border border-gray-100 animate-in zoom-in-95 duration-200 relative">
 
-            {/* 🌟 เพิ่มปุ่ม X สำหรับปิดหน้าต่าง Modal */}
             <button
               onClick={() => setIsModalOpen(false)}
               className="absolute top-5 right-5 text-gray-400 hover:text-gray-600 bg-gray-50 hover:bg-gray-100 p-2.5 rounded-full transition-colors"
