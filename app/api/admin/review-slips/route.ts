@@ -8,12 +8,15 @@ const truncateDecimals = (val: number) => Math.floor(Math.round(val * 10000) / 1
 export async function GET() {
   try {
     const invoices = await prisma.invoice.findMany({
-      where: { status: 'CHECKING', billingYear: 9999 }, 
+      where: { status: 'CHECKING' }, 
       include: { 
         house: {
           include: {
             invoices: {
-              where: { status: { in: ['PENDING', 'OVERDUE', 'PARTIAL', 'REJECTED'] }, billingYear: { not: 9999 } }
+              where: { 
+                status: { in: ['PENDING', 'OVERDUE', 'REJECTED'] },
+                invoiceNo: { not: { startsWith: 'TR-' } }
+              }
             }
           }
         } 
@@ -22,11 +25,8 @@ export async function GET() {
     });
 
     const mappedInvoices = invoices.map(inv => {
-      const totalDebt = inv.house?.invoices.reduce((sum, item) => {
-        const remaining = Number(item.totalAmount || 0) - Number(item.paidAmount || 0);
-        return sum + (remaining > 0 ? remaining : 0);
-      }, 0) || 0;
-      
+      // รวมยอดหนี้ปัจจุบัน
+      const totalDebt = inv.house?.invoices.reduce((sum, item) => sum + Number(item.totalAmount || 0), 0) || 0;
       return {
         ...inv,
         totalDebt: truncateDecimals(totalDebt)
@@ -69,11 +69,12 @@ export async function PATCH(request: Request) {
       let remainingMoney = truncateDecimals(Number(transactionInvoice.totalAmount)); 
       let updatedInvoicesCount = 0;
 
+      // 🌟 1. ดึงหนี้เก่ามาหักลบก่อน (อัปเดตบิลเดิม ไม่สร้างใหม่)
       const unpaidInvoices = await prisma.invoice.findMany({
         where: { 
           residentHouseId: transactionInvoice.residentHouseId,
-          status: { in: ['PENDING', 'OVERDUE', 'PARTIAL', 'REJECTED'] },
-          billingYear: { not: 9999 } 
+          status: { in: ['PENDING', 'OVERDUE', 'REJECTED'] },
+          invoiceNo: { not: { startsWith: 'TR-' } } 
         },
         orderBy: [{ billingYear: 'asc' }, { billingMonth: 'asc' }]
       });
@@ -81,32 +82,32 @@ export async function PATCH(request: Request) {
       for (const inv of unpaidInvoices) {
         if (remainingMoney <= 0) break; 
 
-        const debtOfThisInvoice = truncateDecimals(Number(inv.totalAmount) - Number(inv.paidAmount));
+        const currentDebt = truncateDecimals(Number(inv.totalAmount));
 
-        if (remainingMoney >= debtOfThisInvoice) {
+        if (remainingMoney >= currentDebt) {
+          // จ่ายครบ: อัปเดตบิลนี้ให้เป็น 0 และสถานะ PAID
           await prisma.invoice.update({
             where: { id: inv.id },
-            data: { 
-              paidAmount: Number(inv.totalAmount), 
-              status: 'PAID', 
-              paidAt: new Date()
-            }
+            data: { baseAmount: 0, penaltyAmount: 0, totalAmount: 0, status: 'PAID', paidAt: new Date() }
           });
-          remainingMoney = truncateDecimals(remainingMoney - debtOfThisInvoice);
+          remainingMoney = truncateDecimals(remainingMoney - currentDebt);
           updatedInvoicesCount++;
         } else {
+          // จ่ายขาด: อัปเดตลดยอดลง แล้วเหลือสถานะเดิมไว้
+          const newTotal = truncateDecimals(currentDebt - remainingMoney);
+          let newBase = truncateDecimals(Number(inv.baseAmount) - remainingMoney);
+          if (newBase < 0) newBase = 0;
+
           await prisma.invoice.update({
             where: { id: inv.id },
-            data: { 
-              paidAmount: truncateDecimals(Number(inv.paidAmount) + remainingMoney),
-              status: 'PARTIAL' 
-            }
+            data: { baseAmount: newBase, totalAmount: newTotal }
           });
           remainingMoney = 0;
           updatedInvoicesCount++;
         }
       }
 
+      // 🌟 2. ถ้าตัดหนี้หมดแล้วยังมี "เงินเหลือ" -> ค่อยสร้างบิลล่วงหน้า
       if (remainingMoney > 0) {
         const house = await prisma.house.findUnique({ where: { id: transactionInvoice.residentHouseId } });
         const monthlyRate = truncateDecimals(house?.feeType === 'CALCULATED' && house?.houseSize ? Number(house.feeRate) * Number(house.houseSize) : Number(house?.feeRate || 1000));
@@ -114,6 +115,7 @@ export async function PATCH(request: Request) {
         let lastM = unpaidInvoices.length > 0 ? unpaidInvoices[unpaidInvoices.length - 1].billingMonth : new Date().getMonth() + 1;
         let lastY = unpaidInvoices.length > 0 ? unpaidInvoices[unpaidInvoices.length - 1].billingYear : new Date().getFullYear();
 
+        // เอาเงินที่เหลือไปสร้างบิล จ่ายล่วงหน้า (ADV) ตามจำนวนเดือนที่จ่ายเกินมา
         while (remainingMoney >= monthlyRate) {
           lastM++; if (lastM > 12) { lastM = 1; lastY++; }
           await prisma.invoice.create({
@@ -137,6 +139,7 @@ export async function PATCH(request: Request) {
         }
       }
 
+      // 3. ปิดจ๊อบสลิปที่ส่งมา
       await prisma.invoice.update({
         where: { id: invoiceId },
         data: { status: 'PAID', paidAt: new Date() }
@@ -146,7 +149,7 @@ export async function PATCH(request: Request) {
 
       return NextResponse.json({ 
         success: true, 
-        message: `รับยอดโอนสำเร็จ (ตัดหนี้ไป ${updatedInvoicesCount} รายการ)` 
+        message: `รับยอดโอนสำเร็จ (อัปเดตไป ${updatedInvoicesCount} รายการ)` 
       });
     }
 
