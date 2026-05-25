@@ -30,12 +30,11 @@ export async function POST(request: Request) {
               residentHouse: {
                 include: {
                   invoices: {
-                    // 🌟 เพิ่ม PARTIAL และกรองเอาบิลพักยอด 9999 ออก
                     where: { 
                       status: { in: ['PENDING', 'OVERDUE', 'REJECTED', 'PARTIAL'] },
                       billingYear: { not: 9999 }
                     },
-                    orderBy: { dueDate: 'asc' }
+                    orderBy: [{ billingYear: 'asc' }, { billingMonth: 'asc' }]
                   }
                 }
               }
@@ -49,19 +48,15 @@ export async function POST(request: Request) {
 
           const config = await prisma.systemConfig.findFirst();
           let flatPenaltyPerMonth = config?.penaltyRatePerDay || 100;
-
-          let pendingInvoices = await prisma.invoice.findMany({
-            where: { 
-              residentHouseId: user.residentHouse.id, 
-              status: { in: ['PENDING', 'OVERDUE', 'REJECTED', 'PARTIAL'] },
-              billingYear: { not: 9999 }
-            },
-            orderBy: [{ billingYear: 'asc' }, { billingMonth: 'asc' }]
-          });
-
           const today = new Date(); today.setHours(0, 0, 0, 0);
           
-          // 🌟 คำนวณยอดคงเหลือสุทธิ (หัก paidAmount)
+          let pendingInvoices = user.residentHouse.invoices;
+          
+          let grandTotalBase = 0;
+          let totalPenalty = 0;
+          let validInvoicesToDisplay: any[] = [];
+
+          // 🌟 1. วนลูปคำนวณยอดทั้งหมด (หักลบ paidAmount และรวมยอดเป๊ะๆ)
           pendingInvoices.forEach(inv => {
             const dueDate = new Date(inv.dueDate); dueDate.setHours(0, 0, 0, 0);
             
@@ -69,7 +64,7 @@ export async function POST(request: Request) {
             let penalty = truncateDecimals(Number(inv.penaltyAmount || 0));
             let base = truncateDecimals(Number(inv.baseAmount || 0));
 
-            // คิดค่าปรับ
+            // คิดค่าปรับถ้าเลยกำหนด (และยังไม่จ่ายครบ)
             if (today > dueDate) {
               const diffTime = today.getTime() - dueDate.getTime();
               const overdueDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
@@ -80,7 +75,7 @@ export async function POST(request: Request) {
               if (inv.status !== 'REJECTED' && inv.status !== 'PARTIAL') penalty = 0;
             }
 
-            // หักยอดที่จ่ายไปแล้วออกจากค่าปรับและยอดหลัก
+            // หักยอดที่ทยอยจ่ายไปแล้วออกจากค่าปรับและยอดหลัก
             if (paid > 0) {
               if (paid >= penalty) {
                 base = truncateDecimals(base - (paid - penalty));
@@ -90,22 +85,21 @@ export async function POST(request: Request) {
               }
             }
 
-            // บันทึกยอดที่หักแล้วกลับไปใน object เพื่อเอาไปแสดงผล
-            inv.baseAmount = base;
-            inv.penaltyAmount = penalty;
-            inv.totalAmount = truncateDecimals(base + penalty);
+            // ถ้ายอดรวมหนี้ยังเหลือ ค่อยเอามาแสดงและบวกเข้ายอดรวม
+            if (base > 0 || penalty > 0) {
+              inv.baseAmount = base;
+              inv.penaltyAmount = penalty;
+              inv.totalAmount = truncateDecimals(base + penalty);
+              
+              grandTotalBase += base;
+              totalPenalty += penalty;
+              
+              validInvoicesToDisplay.push(inv);
+            }
           });
 
-          // กรองเอาเฉพาะบิลที่ยอดรวม > 0 (ยังมีหนี้เหลือ)
-          pendingInvoices = pendingInvoices.filter(inv => inv.totalAmount > 0);
-
-          const hasPenalty = pendingInvoices.some(inv => (inv.penaltyAmount || 0) > 0);
-          if (hasPenalty) {
-            const currentMonth = new Date().getMonth() + 1;
-            const currentYear = new Date().getFullYear();
-            pendingInvoices = pendingInvoices.filter(inv => !(inv.billingMonth === currentMonth && inv.billingYear === currentYear && (inv.penaltyAmount || 0) === 0));
-          }
-
+          // 🌟 2. ใช้ลิสต์ที่เช็กเรียบร้อยแล้ว ไม่มีการ Filter ดักทางแปลกๆ อีกต่อไป
+          pendingInvoices = validInvoicesToDisplay;
           const hasPending = pendingInvoices.length > 0;
           const houseNo = user.residentHouse.houseNo;
           let flexMessage: any;
@@ -114,28 +108,27 @@ export async function POST(request: Request) {
             let currentInvoiceItem: any = null;
             let pastYearTotals: Record<number, number> = {};
             let pastMonthItems: { label: string, amount: number }[] = [];
-            let totalPenalty = 0;
-            let grandTotalBase = 0;
             const currentYear = new Date().getFullYear();
             const currentInvoiceId = pendingInvoices[pendingInvoices.length - 1].id;
 
+            // จัดกลุ่มยอดบิลแสดงใน Flex Message
             pendingInvoices.forEach(inv => {
-              let base = inv.baseAmount;
-              let penalty = inv.penaltyAmount || 0;
-              grandTotalBase += base; totalPenalty += penalty;
               const label = `${fullThaiMonths[inv.billingMonth]} ${inv.billingYear + 543}`;
               if (inv.id === currentInvoiceId) {
-                currentInvoiceItem = { label, amount: base };
+                currentInvoiceItem = { label, amount: inv.baseAmount };
               } else {
-                if (inv.billingYear < currentYear) pastYearTotals[inv.billingYear] = (pastYearTotals[inv.billingYear] || 0) + base;
-                else pastMonthItems.push({ label, amount: base });
+                if (inv.billingYear < currentYear) {
+                  pastYearTotals[inv.billingYear] = truncateDecimals((pastYearTotals[inv.billingYear] || 0) + inv.baseAmount);
+                } else {
+                  pastMonthItems.push({ label, amount: inv.baseAmount });
+                }
               }
             });
 
-            const finalGrandTotal = grandTotalBase + totalPenalty;
+            const finalGrandTotal = truncateDecimals(grandTotalBase + totalPenalty);
             const tableContents: any[] = [];
 
-            if (currentInvoiceItem) {
+            if (currentInvoiceItem && currentInvoiceItem.amount > 0) {
               tableContents.push({
                 type: "box", layout: "horizontal", margin: "md",
                 contents: [
@@ -147,23 +140,27 @@ export async function POST(request: Request) {
 
             Object.keys(pastYearTotals).forEach(yearStr => {
               const yearNum = parseInt(yearStr);
-              tableContents.push({
-                type: "box", layout: "horizontal", margin: "md",
-                contents: [
-                  { type: "text", text: `ยอดค้างชำระปี ${yearNum + 543}`, size: "sm", color: "#EF4444" },
-                  { type: "text", text: `${pastYearTotals[yearNum].toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end" }
-                ]
-              });
+              if (pastYearTotals[yearNum] > 0) {
+                tableContents.push({
+                  type: "box", layout: "horizontal", margin: "md",
+                  contents: [
+                    { type: "text", text: `ยอดค้างชำระปี ${yearNum + 543}`, size: "sm", color: "#EF4444" },
+                    { type: "text", text: `${pastYearTotals[yearNum].toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end" }
+                  ]
+                });
+              }
             });
 
             pastMonthItems.forEach(item => {
-              tableContents.push({
-                type: "box", layout: "horizontal", margin: "md",
-                contents: [
-                  { type: "text", text: item.label, size: "sm", color: "#EF4444" },
-                  { type: "text", text: `${item.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end" }
-                ]
-              });
+              if (item.amount > 0) {
+                tableContents.push({
+                  type: "box", layout: "horizontal", margin: "md",
+                  contents: [
+                    { type: "text", text: item.label, size: "sm", color: "#EF4444" },
+                    { type: "text", text: `${item.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end" }
+                  ]
+                });
+              }
             });
 
             if (totalPenalty > 0) {
@@ -177,15 +174,9 @@ export async function POST(request: Request) {
             }
 
             const isOverdue = pendingInvoices.some(inv => new Date() > new Date(inv.dueDate)) || pendingInvoices.length > 1 || totalPenalty > 0;
-            let boxBgColor = "#EBF5FB";
-            let mainTextColor = "#111827";
-            let mainTitle = "ยอดที่ต้องชำระ";
-
-            if (isOverdue) {
-              boxBgColor = "#FDEBEC";
-              mainTextColor = "#EF4444";
-              mainTitle = "ยอดค้างชำระ";
-            }
+            let boxBgColor = isOverdue ? "#FDEBEC" : "#EBF5FB";
+            let mainTextColor = isOverdue ? "#EF4444" : "#111827";
+            let mainTitle = isOverdue ? "ยอดค้างชำระ" : "ยอดที่ต้องชำระ";
 
             const lastInv = pendingInvoices[pendingInvoices.length - 1];
             const headerBillingMonthText = `${fullThaiMonths[lastInv.billingMonth]} ${lastInv.billingYear + 543}`;
@@ -215,7 +206,7 @@ export async function POST(request: Request) {
                       type: "box", layout: "horizontal", margin: "md", backgroundColor: "#D1E7E3", cornerRadius: "20px", paddingAll: "sm", paddingStart: "md", paddingEnd: "md", alignItems: "flex-start",
                       contents: [
                         { type: "image", url: "https://img.icons8.com/fluency-systems-filled/48/2a524c/info.png", size: "16px", flex: 0, margin: "xs" },
-                        { type: "text", text: `ใบแจ้งชำระค่าส่วนกลางประจำเดือน ${headerBillingMonthText}`, size: "xs", color: "#2A524C", weight: "bold", margin: "sm", wrap: true, flex: 1 }
+                        { type: "text", text: `ใบแจ้งชำระประจำเดือน ${headerBillingMonthText}`, size: "xs", color: "#2A524C", weight: "bold", margin: "sm", wrap: true, flex: 1 }
                       ]
                     },
                     {
