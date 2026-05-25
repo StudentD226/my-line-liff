@@ -36,7 +36,9 @@ export async function POST(request: Request) {
                   invoices: {
                     where: { 
                       status: { in: ['PENDING', 'OVERDUE', 'REJECTED', 'PARTIAL'] },
-                      billingYear: { not: 9999 }
+                      billingYear: { not: 9999 },
+                      // 🌟 ปราบผี TR-: ซ่อนสลิปที่รอยืนยันไม่ให้แสดงเป็นบิลจริง!
+                      invoiceNo: { not: { startsWith: 'TR-' } } 
                     },
                     orderBy: [{ billingYear: 'asc' }, { billingMonth: 'asc' }]
                   }
