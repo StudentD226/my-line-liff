@@ -19,8 +19,9 @@ export async function GET(request: Request) {
           include: {
             invoices: {
               where: { 
-                status: { in: ['PENDING', 'OVERDUE'] }, // 🌟 ดึงเฉพาะบิลหนี้
-                invoiceNo: { not: { startsWith: 'TR-' } } // 🌟 ซ่อนบิลสลิป (TR-) ไม่ให้เอามาโชว์เป็นหนี้
+                status: { in: ['PENDING', 'OVERDUE', 'REJECTED', 'PARTIAL'] }, // 🌟 ดึงหนี้ทุกประเภทที่ค้างอยู่
+                invoiceNo: { not: { startsWith: 'TR-' } }, // ซ่อนสลิปรอเช็ก
+                billingYear: { not: 9999 } 
               },
               orderBy: [{ billingYear: 'asc' }, { billingMonth: 'asc' }]
             }
@@ -31,14 +32,49 @@ export async function GET(request: Request) {
 
     if (!user?.residentHouse) return NextResponse.json({ success: false, error: 'ไม่พบข้อมูลบ้าน' }, { status: 404 });
 
+    const config = await prisma.systemConfig.findFirst();
+    const flatPenaltyPerMonth = config?.penaltyRatePerDay ? Number(config.penaltyRatePerDay) : 100;
+    const today = new Date(); 
+    today.setHours(0, 0, 0, 0);
+
     const house = user.residentHouse;
     let totalBase = 0;
     let totalFine = 0;
     
-    // 🌟 แค่บวกเลขตรงๆ เลย เพราะเราลดยอดจากฝั่งแอดมินให้แล้ว ง่ายและชัวร์!
+    // 🌟 พระเอกอยู่ตรงนี้: คำนวณค่าปรับสด และหักยอดที่ทยอยจ่ายเหมือน Webhook เป๊ะ!
     house.invoices.forEach(inv => {
-      totalBase += truncateDecimals(Number(inv.baseAmount || 0));
-      totalFine += truncateDecimals(Number(inv.penaltyAmount || 0));
+      const dueDate = inv.dueDate ? new Date(inv.dueDate) : new Date();
+      dueDate.setHours(0, 0, 0, 0);
+
+      let paid = truncateDecimals(Number(inv.paidAmount || 0));
+      let penalty = truncateDecimals(Number(inv.penaltyAmount || 0));
+      let base = truncateDecimals(Number(inv.baseAmount || 0));
+
+      // 1. คำนวณค่าปรับใหม่ถ้าเลยกำหนด (และยังจ่ายไม่ครบ)
+      if (today > dueDate) {
+        const diffTime = today.getTime() - dueDate.getTime();
+        const overdueDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        const overdueMonths = Math.floor(overdueDays / 30); 
+        penalty = truncateDecimals(overdueMonths * flatPenaltyPerMonth);
+      } else {
+        if (inv.status !== 'REJECTED' && inv.status !== 'PARTIAL') penalty = 0;
+      }
+
+      // 2. หักยอดที่ทยอยจ่ายไปแล้ว
+      if (paid > 0) {
+        if (paid >= penalty) {
+          base = truncateDecimals(base - (paid - penalty));
+          penalty = 0;
+        } else {
+          penalty = truncateDecimals(penalty - paid);
+        }
+      }
+
+      // 3. สะสมยอดคงเหลือจริงๆ
+      if (base > 0 || penalty > 0) {
+        totalBase += base;
+        totalFine += penalty;
+      }
     });
 
     return NextResponse.json({
