@@ -1,183 +1,87 @@
+export const dynamic = 'force-dynamic'; // 🌟 ดึงข้อมูลเรียลไทม์ ห้ามจำ!
 import { NextResponse } from 'next/server';
-import { v2 as cloudinary } from 'cloudinary';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
-
 const truncateDecimals = (val: number) => Math.floor(Math.round(val * 10000) / 100) / 100;
 
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
-
-export async function POST(request: Request) {
+export async function GET(request: Request) {
   try {
-    const formData = await request.formData();
-    const file = formData.get('slip') as File;
-    const houseNo = formData.get('houseNo') as string;
-    const transferDate = formData.get('transferDate') as string;
-    const transferTime = formData.get('transferTime') as string;
-    
-    const payAmount = truncateDecimals(parseFloat(formData.get('payAmount') as string || '0'));
+    const { searchParams } = new URL(request.url);
+    const lineId = searchParams.get('lineId');
 
-    if (!file || !houseNo || payAmount <= 0) 
-      return NextResponse.json({ success: false, error: 'ข้อมูลไม่ครบถ้วน' }, { status: 400 });
+    if (!lineId) return NextResponse.json({ success: false, error: 'ไม่พบ lineId' }, { status: 400 });
 
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    const uploadResult = await new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream({ folder: 'slips' }, (err, res) => {
-        if (err) reject(err); else resolve(res);
-      });
-      uploadStream.end(buffer);
-    });
-    const slipUrl = (uploadResult as any).secure_url;
-
-    const house = await prisma.house.findFirst({
-      where: { houseNo },
-      include: { residents: true }
-    });
-
-    if (!house) return NextResponse.json({ success: false, error: 'ไม่พบข้อมูลบ้าน' }, { status: 404 });
-
-    // ค้นหาบิลเก่าที่สุดที่ยังจ่ายไม่ครบ
-    const oldestUnpaidInvoice = await prisma.invoice.findFirst({
-      where: {
-        residentHouseId: house.id,
-        status: { in: ['PENDING', 'OVERDUE', 'REJECTED', 'PARTIAL'] },
-        invoiceNo: { not: { startsWith: 'TR-' } },
-        billingYear: { not: 9999 }
-      },
-      orderBy: [
-        { billingYear: 'asc' },
-        { billingMonth: 'asc' }
-      ]
-    });
-
-    const now = new Date();
-    const currentYear = now.getFullYear();
-
-    const targetMonth = oldestUnpaidInvoice ? oldestUnpaidInvoice.billingMonth : (now.getMonth() + 1);
-    const targetYear = oldestUnpaidInvoice ? oldestUnpaidInvoice.billingYear : currentYear;
-
-    // 1. สร้าง Reference ID
-    const dayStr = String(now.getDate()).padStart(2, '0');
-    const monthStr = String(now.getMonth() + 1).padStart(2, '0');
-    const yearStr = String(currentYear + 543);
-    const randomSuffix = Math.floor(Math.random() * 100).toString().padStart(2, '0');
-    
-    const paymentReferenceId = `TR-${houseNo}-${dayStr}${monthStr}${yearStr}-${randomSuffix}`;
-
-    // 2. สร้างบิลพักยอด (CHECKING)
-    await prisma.invoice.create({
-      data: {
-        invoiceNo: paymentReferenceId,
-        billingMonth: targetMonth, 
-        billingYear: targetYear,  
-        baseAmount: payAmount,
-        penaltyAmount: 0,
-        totalAmount: payAmount,
-        paidAmount: 0, 
-        status: 'CHECKING',
-        slipUrl,
-        transferDate,
-        transferTime,
-        residentHouseId: house.id,
-        dueDate: now,
-        isNotified: false
-      }
-    });
-
-    // 🌟 3. Flex Message (แก้บั๊ก LINE API Reject เรียบร้อย)
-    const flexMessage: any = {
-      type: "flex",
-      altText: `แจ้งชำระค่าส่วนกลาง บ้านเลขที่ ${house.houseNo}`,
-      contents: {
-        type: "bubble",
-        size: "kilo",
-        body: {
-          type: "box", layout: "vertical", paddingAll: "xl", backgroundColor: "#FFFFFF",
-          contents: [
-            {
-              type: "box", layout: "horizontal", alignItems: "center",
-              contents: [
-                { type: "image", url: "https://img.icons8.com/fluency-systems-filled/48/376B64/home.png", size: "32px", flex: 0 },
-                { type: "text", text: `บ้านเลขที่ ${house.houseNo}`, weight: "bold", size: "xxl", color: "#111827", margin: "md" }
-              ]
-            },
-            {
-              type: "box", layout: "horizontal", margin: "md", backgroundColor: "#FFF7ED", cornerRadius: "20px", paddingAll: "md", paddingStart: "lg", paddingEnd: "lg", alignItems: "center",
-              contents: [
-                { type: "image", url: "https://img.icons8.com/fluency-systems-filled/48/ea580c/time.png", size: "24px", flex: 0, margin: "xs" },
-                { type: "text", text: "ส่งสลิปแล้ว กำลังตรวจสอบ", size: "md", color: "#EA580C", weight: "bold", margin: "md", flex: 1 }
-              ]
-            },
-            {
-              type: "box", layout: "horizontal", margin: "xl", backgroundColor: "#FDEBEC", cornerRadius: "lg", paddingAll: "xl", alignItems: "center",
-              contents: [
-                { type: "text", text: "ยอดแจ้งโอน", size: "md", color: "#EF4444", weight: "bold", align: "start", flex: 1 },
-                { type: "text", text: payAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 }), size: "3xl", weight: "bold", color: "#EF4444", adjustMode: "shrink-to-fit", align: "center", flex: 0 },
-                { type: "text", text: "บาท", size: "md", weight: "bold", color: "#EF4444", align: "end", flex: 1 }
-              ]
-            },
-            {
-              type: "box", layout: "vertical", margin: "lg",
-              contents: [
-                {
-                  type: "box", layout: "horizontal", borderColor: "#E5E7EB", borderWidth: "light", cornerRadius: "lg", paddingAll: "lg", alignItems: "center", backgroundColor: "#FFFFFF",
-                  contents: [
-                    { type: "image", url: "https://img.icons8.com/fluency-systems-filled/48/376B64/calendar.png", size: "36px", flex: 0 },
-                    {
-                      type: "box", layout: "vertical", margin: "md",
-                      contents: [
-                        { type: "text", text: "วันที่ชำระ", size: "md", color: "#4B5563", weight: "bold" },
-                        { type: "text", text: `${dayStr}/${monthStr}/${yearStr}`, size: "xl", color: "#111827", weight: "bold", margin: "xs" }
-                      ]
-                    }
-                  ]
-                }
-              ]
+    const user = await prisma.user.findUnique({
+      where: { lineId },
+      include: { 
+        residentHouse: {
+          include: {
+            invoices: {
+              where: { 
+                status: { in: ['PENDING', 'OVERDUE', 'REJECTED', 'PARTIAL'] },
+                invoiceNo: { not: { startsWith: 'TR-' } }, // ซ่อนสลิปรอเช็ก TR-
+                billingYear: { not: 9999 } 
+              },
+              orderBy: [{ billingYear: 'asc' }, { billingMonth: 'asc' }]
             }
-          ]
-        },
-        footer: {
-          type: "box", layout: "vertical", paddingStart: "xl", paddingEnd: "xl", paddingBottom: "xl",
-          contents: [
-            {
-              type: "button", style: "primary", color: "#376B64", height: "sm",
-              action: { type: "uri", label: "ดูประวัติและสถานะบิล", uri: `https://liff.line.me/${process.env.NEXT_PUBLIC_LIFF_ID}/invoices` }
-            },
-            {
-              type: "box", layout: "horizontal", margin: "lg",
-              contents: [
-                // 🌟 เอา size: "sm" และ flex ที่มีปัญหาออก เพื่อให้ LINE API ไม่ตีกลับ
-                { type: "text", text: "REF ID", color: "#4B5563", weight: "bold" }, 
-                { type: "text", text: paymentReferenceId, color: "#4B5563", weight: "bold", align: "end" } 
-              ]
-            }
-          ]
-        }
+          }
+        } 
       }
-    };
+    });
 
-    const lineToken = process.env.LINE_CHANNEL_ACCESS_TOKEN;
-    if (lineToken) {
-      for (const res of house.residents) {
-        if (res.lineId && res.isNotify) {
-          await fetch('https://api.line.me/v2/bot/message/push', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${lineToken}` },
-            body: JSON.stringify({ to: res.lineId, messages: [flexMessage] })
-          });
-        }
+    if (!user?.residentHouse) return NextResponse.json({ success: false, error: 'ไม่พบข้อมูลบ้าน' }, { status: 404 });
+
+    const config = await prisma.systemConfig.findFirst();
+    const flatPenaltyPerMonth = config?.penaltyRatePerDay ? Number(config.penaltyRatePerDay) : 100;
+    const today = new Date(); 
+    today.setHours(0, 0, 0, 0);
+
+    const house = user.residentHouse;
+    let totalBase = 0;
+    let totalFine = 0;
+    
+    house.invoices.forEach(inv => {
+      const dueDate = inv.dueDate ? new Date(inv.dueDate) : new Date();
+      dueDate.setHours(0, 0, 0, 0);
+
+      const base = truncateDecimals(Number(inv.baseAmount || 0));
+      let penalty = truncateDecimals(Number(inv.penaltyAmount || 0));
+      const currentPaid = truncateDecimals(Number(inv.paidAmount || 0));
+
+      if (today > dueDate) {
+        const diffTime = today.getTime() - dueDate.getTime();
+        const overdueDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        const overdueMonths = Math.floor(overdueDays / 30); 
+        penalty = truncateDecimals(overdueMonths * flatPenaltyPerMonth);
+      } else {
+        if (inv.status !== 'REJECTED' && inv.status !== 'PARTIAL') penalty = 0;
       }
-    }
 
-    return NextResponse.json({ success: true });
+      const currentTotal = truncateDecimals(base + penalty);
+      const actualDebt = truncateDecimals(currentTotal - currentPaid);
+
+      if (actualDebt > 0) {
+        const remainingBase = Math.max(0, truncateDecimals(base - currentPaid));
+        const remainingPenalty = truncateDecimals(actualDebt - remainingBase);
+
+        totalBase += remainingBase;
+        totalFine += remainingPenalty;
+      }
+    });
+
+    return NextResponse.json({
+      success: true,
+      houseData: {
+        houseNo: house.houseNo,
+        monthlyRate: house.feeRate ? truncateDecimals(Number(house.feeRate)) : 1000,
+        outstandingBalance: truncateDecimals(totalBase),
+        fineAmount: truncateDecimals(totalFine),
+        totalToPay: truncateDecimals(totalBase + totalFine) 
+      }
+    });
   } catch (error) {
-    console.error("Payment API Error:", error);
-    return NextResponse.json({ success: false }, { status: 500 });
+    console.error("Smart Info Error:", error);
+    return NextResponse.json({ success: false, error: 'Internal Error' }, { status: 500 });
   }
 }
