@@ -209,10 +209,13 @@ export default function AdminInvoicesPage() {
     }
   };
 
+  // 🌟 จุดที่แก้ไข: ระบบลบแบบเจาะจง (ส่ง ID)
   const handleDelete = async (singleId?: string) => {
     const isBulk = !singleId;
-    const count = isBulk ? selectedInvoices.length : 1;
-    if (isBulk && count === 0) return;
+    const idsToDelete = isBulk ? selectedInvoices : [singleId];
+    const count = idsToDelete.length;
+
+    if (count === 0) return;
 
     Swal.fire({
       title: 'ยืนยันการลบ?',
@@ -233,10 +236,17 @@ export default function AdminInvoicesPage() {
       if (result.isConfirmed) {
         Swal.fire({ title: 'กำลังลบ...', allowOutsideClick: false, didOpen: () => Swal.showLoading(), customClass: { popup: 'rounded-[2rem]' } });
         try {
-          const res = await fetch('/api/admin/delete-pending', { method: 'POST' });
+          // 🌟 เปลี่ยนมายิง API ตัวใหม่ที่เรารับค่า Array ของ ID ได้
+          const res = await fetch('/api/admin/delete-invoices', { 
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids: idsToDelete }) 
+          });
           const data = await res.json();
+          
           if (data.success) {
             Toast.fire({ icon: 'success', title: `ลบเรียบร้อยแล้ว จำนวน ${data.count} ใบ` });
+            setSelectedInvoices([]); // ล้างค่าที่เลือกไว้
             fetchInvoices();
           } else {
             Toast.fire({ icon: 'error', title: 'เกิดข้อผิดพลาดในการลบ' });
@@ -390,7 +400,7 @@ export default function AdminInvoicesPage() {
       inputOptions: {
         'PENDING': 'รอชำระ (PENDING)',
         'OVERDUE': 'ค้างชำระ (OVERDUE)',
-        'PARTIAL': 'แบ่งจ่าย (PARTIAL)', // 🌟 เพิ่มสถานะนี้
+        'PARTIAL': 'แบ่งจ่าย (PARTIAL)',
         'PAID': 'ชำระแล้ว (PAID)',
         'CHECKING': 'รอตรวจสอบ (CHECKING)',
         'REJECTED': 'ถูกปฏิเสธ (REJECTED)'
@@ -444,7 +454,7 @@ export default function AdminInvoicesPage() {
       case 'REJECTED': return 'bg-rose-100 text-rose-700';
       case 'OVERDUE': return 'bg-rose-100 text-rose-700 font-extrabold';
       case 'PENDING': return 'bg-[#376B64]/10 text-[#376B64]';
-      case 'PARTIAL': return 'bg-orange-100 text-orange-700 font-bold'; // 🌟 เพิ่มสีให้ PARTIAL
+      case 'PARTIAL': return 'bg-orange-100 text-orange-700 font-bold';
       default: return 'bg-gray-100 text-gray-700';
     }
   };
@@ -515,7 +525,7 @@ export default function AdminInvoicesPage() {
                 <option value="ALL">ทุกสถานะ</option>
                 <option value="PENDING">รอชำระ (PENDING)</option>
                 <option value="OVERDUE">ค้างชำระ (OVERDUE)</option>
-                <option value="PARTIAL">แบ่งจ่าย (PARTIAL)</option> {/* 🌟 เพิ่มตัวกรอง PARTIAL */}
+                <option value="PARTIAL">แบ่งจ่าย (PARTIAL)</option>
                 <option value="CHECKING">รอตรวจสอบ (CHECKING)</option>
                 <option value="PAID">ชำระแล้ว (PAID)</option>
                 <option value="REJECTED">ถูกปฏิเสธ (REJECTED)</option>
@@ -613,12 +623,10 @@ export default function AdminInvoicesPage() {
                           <div className="flex flex-col font-bold">
                             <span className="text-gray-900 text-base">{Number(inv.totalAmount).toLocaleString('th-TH', { minimumFractionDigits: 2 })} ฿</span>
                             
-                            {/* 🌟 เพิ่ม Tag โชว์คำว่ายอดคงเหลือ ให้แอดมินเข้าใจง่ายถ้าเป็น PARTIAL */}
                             {inv.status === 'PARTIAL' && (
                               <span className="text-[10px] text-orange-600 bg-orange-100 px-2 py-0.5 rounded mt-1 w-fit">ยอดคงเหลือ</span>
                             )}
                             
-                            {/* 🌟 เปลี่ยนคำว่า + ค่าปรับ ให้ดูสวยและเคลียร์ขึ้น */}
                             {inv.penaltyAmount > 0 && <span className="text-[11px] text-rose-500 font-medium mt-0.5">(รวมค่าปรับ {Number(inv.penaltyAmount).toLocaleString('th-TH')} ฿)</span>}
                           </div>
                         </td>
@@ -728,4 +736,4 @@ export default function AdminInvoicesPage() {
       )}
     </div>
   );
-}
+}ฆ
