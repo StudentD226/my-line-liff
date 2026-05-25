@@ -1,8 +1,8 @@
+export const dynamic = 'force-dynamic'; // 🌟 ดึงข้อมูลเรียลไทม์ ห้ามจำ!
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
-
 const truncateDecimals = (val: number) => Math.floor(Math.round(val * 10000) / 100) / 100;
 
 export async function GET(request: Request) {
@@ -10,9 +10,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const lineId = searchParams.get('lineId');
 
-    if (!lineId) {
-      return NextResponse.json({ success: false, error: 'ไม่พบ lineId' }, { status: 400 });
-    }
+    if (!lineId) return NextResponse.json({ success: false, error: 'ไม่พบ lineId' }, { status: 400 });
 
     const user = await prisma.user.findUnique({
       where: { lineId },
@@ -21,8 +19,8 @@ export async function GET(request: Request) {
           include: {
             invoices: {
               where: { 
-                status: { in: ['PENDING', 'OVERDUE', 'REJECTED', 'PARTIAL'] },
-                billingYear: { not: 9999 } // ซ่อนบิลพักยอด
+                status: { in: ['PENDING', 'OVERDUE'] }, // 🌟 ดึงเฉพาะบิลหนี้
+                invoiceNo: { not: { startsWith: 'TR-' } } // 🌟 ซ่อนบิลสลิป (TR-) ไม่ให้เอามาโชว์เป็นหนี้
               },
               orderBy: [{ billingYear: 'asc' }, { billingMonth: 'asc' }]
             }
@@ -31,45 +29,26 @@ export async function GET(request: Request) {
       }
     });
 
-    if (!user?.residentHouse) {
-      return NextResponse.json({ success: false, error: 'ไม่พบข้อมูลบ้าน' }, { status: 404 });
-    }
+    if (!user?.residentHouse) return NextResponse.json({ success: false, error: 'ไม่พบข้อมูลบ้าน' }, { status: 404 });
 
     const house = user.residentHouse;
-    const pendingInvoices = house.invoices;
-
-    let remainingBaseTotal = 0;
-    let remainingFineTotal = 0;
+    let totalBase = 0;
+    let totalFine = 0;
     
-    pendingInvoices.forEach(inv => {
-      const paid = truncateDecimals(Number(inv.paidAmount || 0));
-      let unpaidPenalty = truncateDecimals(Number(inv.penaltyAmount || 0));
-      let unpaidBase = truncateDecimals(Number(inv.baseAmount || 0));
-
-      if (paid > 0) {
-        if (paid >= unpaidPenalty) {
-          unpaidBase = truncateDecimals(unpaidBase - (paid - unpaidPenalty));
-          unpaidPenalty = 0;
-        } else {
-          unpaidPenalty = truncateDecimals(unpaidPenalty - paid);
-        }
-      }
-
-      if (unpaidBase > 0) remainingBaseTotal += unpaidBase;
-      if (unpaidPenalty > 0) remainingFineTotal += unpaidPenalty;
+    // 🌟 แค่บวกเลขตรงๆ เลย เพราะเราลดยอดจากฝั่งแอดมินให้แล้ว ง่ายและชัวร์!
+    house.invoices.forEach(inv => {
+      totalBase += truncateDecimals(Number(inv.baseAmount || 0));
+      totalFine += truncateDecimals(Number(inv.penaltyAmount || 0));
     });
-
-    remainingBaseTotal = truncateDecimals(remainingBaseTotal);
-    remainingFineTotal = truncateDecimals(remainingFineTotal);
 
     return NextResponse.json({
       success: true,
       houseData: {
         houseNo: house.houseNo,
         monthlyRate: house.feeRate ? truncateDecimals(Number(house.feeRate)) : 1000,
-        outstandingBalance: remainingBaseTotal,
-        fineAmount: remainingFineTotal,
-        totalToPay: truncateDecimals(remainingBaseTotal + remainingFineTotal) 
+        outstandingBalance: truncateDecimals(totalBase),
+        fineAmount: truncateDecimals(totalFine),
+        totalToPay: truncateDecimals(totalBase + totalFine) 
       }
     });
   } catch (error) {

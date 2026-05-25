@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'; // 🌟 พระเอกของเรา สั่งให้ห้ามจำข้อมูลเก่า!
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { sendStatusUpdateFlex } from '@/lib/line-notify'; 
@@ -25,7 +26,6 @@ export async function GET() {
     });
 
     const mappedInvoices = invoices.map(inv => {
-      // รวมยอดหนี้ปัจจุบัน
       const totalDebt = inv.house?.invoices.reduce((sum, item) => sum + Number(item.totalAmount || 0), 0) || 0;
       return {
         ...inv,
@@ -44,23 +44,13 @@ export async function PATCH(request: Request) {
   try {
     const { invoiceId, status, note } = await request.json();
 
-    if (!invoiceId || !status) {
-      return NextResponse.json({ success: false, error: 'ข้อมูลไม่ครบถ้วน' }, { status: 400 });
-    }
+    if (!invoiceId || !status) return NextResponse.json({ success: false, error: 'ข้อมูลไม่ครบถ้วน' }, { status: 400 });
 
-    const transactionInvoice = await prisma.invoice.findUnique({
-      where: { id: invoiceId }
-    });
-
-    if (!transactionInvoice) {
-      return NextResponse.json({ success: false, error: 'ไม่พบรายการแจ้งโอน' }, { status: 404 });
-    }
+    const transactionInvoice = await prisma.invoice.findUnique({ where: { id: invoiceId } });
+    if (!transactionInvoice) return NextResponse.json({ success: false, error: 'ไม่พบรายการแจ้งโอน' }, { status: 404 });
 
     if (status === 'REJECTED') {
-      await prisma.invoice.update({
-        where: { id: invoiceId },
-        data: { status: 'REJECTED' } 
-      });
+      await prisma.invoice.update({ where: { id: invoiceId }, data: { status: 'REJECTED' } });
       await sendStatusUpdateFlex(invoiceId, 'REJECTED'); 
       return NextResponse.json({ success: true, message: `ปฏิเสธสลิปสำเร็จ` });
     }
@@ -69,7 +59,6 @@ export async function PATCH(request: Request) {
       let remainingMoney = truncateDecimals(Number(transactionInvoice.totalAmount)); 
       let updatedInvoicesCount = 0;
 
-      // 🌟 1. ดึงหนี้เก่ามาหักลบก่อน (อัปเดตบิลเดิม ไม่สร้างใหม่)
       const unpaidInvoices = await prisma.invoice.findMany({
         where: { 
           residentHouseId: transactionInvoice.residentHouseId,
@@ -81,11 +70,9 @@ export async function PATCH(request: Request) {
 
       for (const inv of unpaidInvoices) {
         if (remainingMoney <= 0) break; 
-
         const currentDebt = truncateDecimals(Number(inv.totalAmount));
 
         if (remainingMoney >= currentDebt) {
-          // จ่ายครบ: อัปเดตบิลนี้ให้เป็น 0 และสถานะ PAID
           await prisma.invoice.update({
             where: { id: inv.id },
             data: { baseAmount: 0, penaltyAmount: 0, totalAmount: 0, status: 'PAID', paidAt: new Date() }
@@ -93,7 +80,6 @@ export async function PATCH(request: Request) {
           remainingMoney = truncateDecimals(remainingMoney - currentDebt);
           updatedInvoicesCount++;
         } else {
-          // จ่ายขาด: อัปเดตลดยอดลง แล้วเหลือสถานะเดิมไว้
           const newTotal = truncateDecimals(currentDebt - remainingMoney);
           let newBase = truncateDecimals(Number(inv.baseAmount) - remainingMoney);
           if (newBase < 0) newBase = 0;
@@ -107,7 +93,6 @@ export async function PATCH(request: Request) {
         }
       }
 
-      // 🌟 2. ถ้าตัดหนี้หมดแล้วยังมี "เงินเหลือ" -> ค่อยสร้างบิลล่วงหน้า
       if (remainingMoney > 0) {
         const house = await prisma.house.findUnique({ where: { id: transactionInvoice.residentHouseId } });
         const monthlyRate = truncateDecimals(house?.feeType === 'CALCULATED' && house?.houseSize ? Number(house.feeRate) * Number(house.houseSize) : Number(house?.feeRate || 1000));
@@ -115,23 +100,15 @@ export async function PATCH(request: Request) {
         let lastM = unpaidInvoices.length > 0 ? unpaidInvoices[unpaidInvoices.length - 1].billingMonth : new Date().getMonth() + 1;
         let lastY = unpaidInvoices.length > 0 ? unpaidInvoices[unpaidInvoices.length - 1].billingYear : new Date().getFullYear();
 
-        // เอาเงินที่เหลือไปสร้างบิล จ่ายล่วงหน้า (ADV) ตามจำนวนเดือนที่จ่ายเกินมา
         while (remainingMoney >= monthlyRate) {
           lastM++; if (lastM > 12) { lastM = 1; lastY++; }
           await prisma.invoice.create({
             data: {
               invoiceNo: `ADV-${house?.houseNo}-${lastM}${lastY}`,
-              billingMonth: lastM,
-              billingYear: lastY,
-              baseAmount: monthlyRate,
-              penaltyAmount: 0,
-              totalAmount: monthlyRate, 
-              paidAmount: monthlyRate, 
-              status: 'PAID',
-              paidAt: new Date(),
-              dueDate: new Date(lastY, lastM - 1, 5),
-              residentHouseId: transactionInvoice.residentHouseId,
-              isNotified: true
+              billingMonth: lastM, billingYear: lastY,
+              baseAmount: monthlyRate, penaltyAmount: 0, totalAmount: monthlyRate, paidAmount: monthlyRate, 
+              status: 'PAID', paidAt: new Date(), dueDate: new Date(lastY, lastM - 1, 5),
+              residentHouseId: transactionInvoice.residentHouseId, isNotified: true
             }
           });
           remainingMoney -= monthlyRate;
@@ -139,20 +116,11 @@ export async function PATCH(request: Request) {
         }
       }
 
-      // 3. ปิดจ๊อบสลิปที่ส่งมา
-      await prisma.invoice.update({
-        where: { id: invoiceId },
-        data: { status: 'PAID', paidAt: new Date() }
-      });
-
+      await prisma.invoice.update({ where: { id: invoiceId }, data: { status: 'PAID', paidAt: new Date() } });
       await sendStatusUpdateFlex(invoiceId, 'PAID');
 
-      return NextResponse.json({ 
-        success: true, 
-        message: `รับยอดโอนสำเร็จ (อัปเดตไป ${updatedInvoicesCount} รายการ)` 
-      });
+      return NextResponse.json({ success: true, message: `รับยอดโอนสำเร็จ (อัปเดตไป ${updatedInvoicesCount} รายการ)` });
     }
-
   } catch (error) {
     console.error("Update Invoice Status Error:", error);
     return NextResponse.json({ success: false, error: 'เกิดข้อผิดพลาดในการอัปเดต' }, { status: 500 });
