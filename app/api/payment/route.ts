@@ -42,24 +42,26 @@ export async function POST(request: Request) {
 
     if (!house) return NextResponse.json({ success: false, error: 'ไม่พบข้อมูลบ้าน' }, { status: 404 });
 
-    // 🌟 1. สร้าง Reference ID ที่สื่อความหมายและไม่ซ้ำ (Auto-generated)
+    // 🌟 1. สร้าง Reference ID
     const now = new Date();
+    const currentYear = now.getFullYear(); // เก็บปีปัจจุบันไว้ใช้ไม่ให้บั๊ก
     const dayStr = String(now.getDate()).padStart(2, '0');
     const monthStr = String(now.getMonth() + 1).padStart(2, '0');
-    const yearStr = String(now.getFullYear() + 543);
+    const yearStr = String(currentYear + 543);
     const randomSuffix = Math.floor(Math.random() * 100).toString().padStart(2, '0');
     
     const paymentReferenceId = `TR-${houseNo}-${dayStr}${monthStr}${yearStr}-${randomSuffix}`;
 
-    // 🌟 2. สร้างบิลพักยอด (CHECKING)
+    // 🌟 2. สร้างบิลพักยอด (แก้ปี 9999 เป็นปีจริง และเพิ่ม paidAmount)
     await prisma.invoice.create({
       data: {
         invoiceNo: paymentReferenceId,
         billingMonth: now.getMonth() + 1,
-        billingYear: 9999, 
+        billingYear: currentYear, // 👈 ใช้ปีปัจจุบันแล้ว
         baseAmount: payAmount,
         penaltyAmount: 0,
         totalAmount: payAmount,
+        paidAmount: 0, // 👈 เติมฟิลด์นี้เข้าไปให้ระบบแบ่งจ่ายทำงานได้
         status: 'CHECKING',
         slipUrl,
         transferDate,
@@ -70,7 +72,7 @@ export async function POST(request: Request) {
       }
     });
 
-    // 🌟 3. Flex Message (จัดยอดให้อยู่ตรงกลาง + ใช้ paymentReferenceId + ขยายขนาดตัวหนังสือ)
+    // 🌟 3. Flex Message (แก้เฉพาะกล่องยอดเงินให้จัดเรียงสวยงามและใหญ่ขึ้น)
     const flexMessage: any = {
       type: "flex",
       altText: `แจ้งชำระค่าส่วนกลาง บ้านเลขที่ ${house.houseNo}`,
@@ -94,7 +96,7 @@ export async function POST(request: Request) {
                 { type: "text", text: "ส่งสลิปแล้ว กำลังตรวจสอบ", size: "md", color: "#EA580C", weight: "bold", margin: "md", flex: 1 }
               ]
             },
-            // 🌟 กล่องยอดเงินสีแดง: ซ้าย(หัวข้อ) - กลาง(ตัวเลข) - ขวา(บาท) ให้อยู่บรรทัดเดียวกัน
+            // 👇 ตรงนี้ที่แก้ให้ยอดเงินอยู่บรรทัดเดียวกัน
             {
               type: "box", layout: "horizontal", margin: "xl", backgroundColor: "#FDEBEC", cornerRadius: "lg", paddingAll: "xl", alignItems: "center",
               contents: [
@@ -113,7 +115,7 @@ export async function POST(request: Request) {
                     {
                       type: "box", layout: "vertical", margin: "md",
                       contents: [
-                        { type: "text", text: "วันที่ส่งสลิป", size: "md", color: "#4B5563", weight: "bold" },
+                        { type: "text", text: "วันที่ชำระ", size: "md", color: "#4B5563", weight: "bold" },
                         { type: "text", text: `${dayStr}/${monthStr}/${yearStr}`, size: "xl", color: "#111827", weight: "bold", margin: "xs" }
                       ]
                     }

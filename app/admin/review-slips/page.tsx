@@ -27,10 +27,7 @@ export default function AdminInvoiceReview() {
     } catch (error) {
       console.error("Fetch Invoices Error:", error);
       Swal.fire({ 
-        icon: 'error', 
-        title: 'ดึงข้อมูลล้มเหลว', 
-        text: 'ไม่สามารถโหลดข้อมูลสลิปได้', 
-        customClass: { popup: 'rounded-3xl' } 
+        icon: 'error', title: 'ดึงข้อมูลล้มเหลว', text: 'ไม่สามารถโหลดข้อมูลสลิปได้', customClass: { popup: 'rounded-3xl' } 
       });
     } finally {
       setLoading(false);
@@ -60,11 +57,7 @@ export default function AdminInvoiceReview() {
         cancelButtonColor: '#9ca3af',
         confirmButtonText: 'ยืนยันการปฏิเสธ',
         cancelButtonText: 'ยกเลิก',
-        customClass: { 
-          popup: 'rounded-[2rem]', 
-          confirmButton: 'rounded-xl font-bold px-6', 
-          cancelButton: 'rounded-xl font-bold px-6' 
-        }
+        customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl font-bold px-6', cancelButton: 'rounded-xl font-bold px-6' }
       });
 
       if (!isConfirmed) return;
@@ -79,11 +72,7 @@ export default function AdminInvoiceReview() {
         cancelButtonColor: '#9ca3af',
         confirmButtonText: 'ใช่, ยืนยันยอดนี้',
         cancelButtonText: 'ยกเลิก',
-        customClass: { 
-          popup: 'rounded-[2rem]', 
-          confirmButton: 'rounded-xl font-bold px-6', 
-          cancelButton: 'rounded-xl font-bold px-6' 
-        }
+        customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl font-bold px-6', cancelButton: 'rounded-xl font-bold px-6' }
       });
 
       if (!isConfirmed) return;
@@ -94,18 +83,14 @@ export default function AdminInvoiceReview() {
       const res = await fetch('/api/admin/review-slips', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ invoiceId, status: newStatus, note: reason })
+        body: JSON.stringify({ invoiceId: invoiceId, status: newStatus, note: reason })
       });
       
       const data = await res.json();
       if (data.success) {
         Swal.fire({
-          icon: 'success',
-          title: 'อัปเดตสำเร็จ',
-          text: newStatus === 'PAID' ? 'ยืนยันการชำระเงินเรียบร้อยแล้ว' : 'ปฏิเสธสลิปเรียบร้อยแล้ว',
-          timer: 2000,
-          showConfirmButton: false,
-          customClass: { popup: 'rounded-[2rem]' }
+          icon: 'success', title: 'อัปเดตสำเร็จ', text: newStatus === 'PAID' ? 'ยืนยันการชำระเงินเรียบร้อยแล้ว' : 'ปฏิเสธสลิปเรียบร้อยแล้ว',
+          timer: 2000, showConfirmButton: false, customClass: { popup: 'rounded-[2rem]' }
         });
         fetchPendingInvoices();
       } else {
@@ -129,7 +114,6 @@ export default function AdminInvoiceReview() {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans pb-20 relative">
-      
       <div className="bg-[#376B64] px-6 pt-10 pb-16 text-white shadow-md rounded-b-[2rem]">
         <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
           <div>
@@ -169,8 +153,6 @@ export default function AdminInvoiceReview() {
                 </div>
 
                 <div className="p-4 flex flex-col gap-4 flex-1">
-                  
-                  {/* บ้านเลขที่ */}
                   <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
                     <div className="w-10 h-10 bg-white text-[#376B64] rounded-xl flex items-center justify-center shadow-sm">
                       <Home size={20} strokeWidth={2.5} />
@@ -181,10 +163,8 @@ export default function AdminInvoiceReview() {
                     </div>
                   </div>
                   
-                  {/* 🌟 สลับตำแหน่ง: ยอดค้างจริง ขึ้นก่อน / ยอดแจ้งโอน ลงมาข้างล่าง พร้อมปรับขนาด */}
                   <div className="space-y-2">
-                    {/* 1. ยอดค้างจริงทั้งหมด (แดง) */}
-                    <div className="flex justify-between items-center bg-rose-50 px-3 py-2.5 rounded-xl border border-rose-100">
+                    <div className="flex justify-between items-center bg-rose-50 px-3 py-2 rounded-xl border border-rose-100">
                       <div className="flex items-center gap-1.5 text-rose-600">
                         <AlertCircle size={14} />
                         <span className="text-[11px] font-bold">ยอดค้างจริงทั้งหมด</span>
@@ -192,8 +172,7 @@ export default function AdminInvoiceReview() {
                       <span className="text-sm font-black text-rose-600">{(invoice.totalDebt || 0).toLocaleString('th-TH', { minimumFractionDigits: 2 })} ฿</span>
                     </div>
 
-                    {/* 2. ยอดแจ้งโอน (สลิป) (ฟ้า) */}
-                    <div className="flex justify-between items-center bg-[#EBF5FB] px-3 py-2.5 rounded-xl border border-blue-100 shadow-inner">
+                    <div className="flex justify-between items-center bg-[#EBF5FB] px-3 py-2 rounded-xl border border-blue-100 shadow-inner">
                       <div className="flex items-center gap-1.5 text-[#0369A1]">
                         <Wallet size={14} />
                         <span className="text-[11px] font-bold">ยอดโอน (ตามสลิป)</span>
@@ -202,7 +181,6 @@ export default function AdminInvoiceReview() {
                     </div>
                   </div>
 
-                  {/* สลิปโอนเงิน */}
                   <div className="flex gap-4 pt-1">
                     <div className="w-[90px] flex-shrink-0">
                       {invoice.slipUrl ? (
@@ -229,10 +207,8 @@ export default function AdminInvoiceReview() {
                       <p className="text-[11px] font-medium text-slate-500 mt-0.5">{invoice.transferTime} น.</p>
                     </div>
                   </div>
-
                 </div>
 
-                {/* ปุ่ม Action */}
                 <div className="p-3 border-t border-slate-100 grid grid-cols-2 gap-2 bg-slate-50/50">
                   <button 
                     onClick={() => handleUpdateStatus(invoice.id, 'REJECTED')}
@@ -261,7 +237,6 @@ export default function AdminInvoiceReview() {
         )}
       </div>
 
-      {/* Lightbox Modal */}
       {zoomedImage && (
         <div 
           className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4 cursor-zoom-out"

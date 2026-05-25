@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
+
 const truncateDecimals = (val: number) => Math.floor(Math.round(val * 10000) / 100) / 100;
 
 export async function GET(request: Request) {
@@ -13,7 +14,6 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, error: 'ไม่พบ lineId' }, { status: 400 });
     }
 
-    // ดึงข้อมูลบ้านและบิลที่ยังไม่ชำระครบ
     const user = await prisma.user.findUnique({
       where: { lineId },
       include: { 
@@ -21,8 +21,8 @@ export async function GET(request: Request) {
           include: {
             invoices: {
               where: { 
-                status: { in: ['PENDING', 'OVERDUE', 'PARTIAL'] },
-                billingYear: { not: 9999 } 
+                status: { in: ['PENDING', 'OVERDUE', 'REJECTED', 'PARTIAL'] },
+                billingYear: { not: 9999 } // ซ่อนบิลพักยอด
               },
               orderBy: [{ billingYear: 'asc' }, { billingMonth: 'asc' }]
             }
@@ -36,16 +36,16 @@ export async function GET(request: Request) {
     }
 
     const house = user.residentHouse;
+    const pendingInvoices = house.invoices;
+
     let remainingBaseTotal = 0;
     let remainingFineTotal = 0;
     
-    // คำนวณยอดค้างสุทธิโดยหัก paidAmount ออก
-    house.invoices.forEach(inv => {
+    pendingInvoices.forEach(inv => {
       const paid = truncateDecimals(Number(inv.paidAmount || 0));
       let unpaidPenalty = truncateDecimals(Number(inv.penaltyAmount || 0));
       let unpaidBase = truncateDecimals(Number(inv.baseAmount || 0));
 
-      // หักเงิน: หักค่าปรับก่อน แล้วค่อยหักยอดหลัก
       if (paid > 0) {
         if (paid >= unpaidPenalty) {
           unpaidBase = truncateDecimals(unpaidBase - (paid - unpaidPenalty));
@@ -59,13 +59,16 @@ export async function GET(request: Request) {
       if (unpaidPenalty > 0) remainingFineTotal += unpaidPenalty;
     });
 
+    remainingBaseTotal = truncateDecimals(remainingBaseTotal);
+    remainingFineTotal = truncateDecimals(remainingFineTotal);
+
     return NextResponse.json({
       success: true,
       houseData: {
         houseNo: house.houseNo,
         monthlyRate: house.feeRate ? truncateDecimals(Number(house.feeRate)) : 1000,
-        outstandingBalance: truncateDecimals(remainingBaseTotal),
-        fineAmount: truncateDecimals(remainingFineTotal),
+        outstandingBalance: remainingBaseTotal,
+        fineAmount: remainingFineTotal,
         totalToPay: truncateDecimals(remainingBaseTotal + remainingFineTotal) 
       }
     });

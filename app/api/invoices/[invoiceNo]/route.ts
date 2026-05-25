@@ -39,13 +39,14 @@ export async function GET(
 
     let base = truncateDecimals(Number(invoice.baseAmount || 0));
     let penalty = truncateDecimals(Number(invoice.penaltyAmount || 0));
+    let paid = truncateDecimals(Number(invoice.paidAmount || 0)); // 🌟 ดึงยอดที่จ่ายไปแล้วมาด้วย
     let currentStatus = invoice.status;
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // 🌟 คำนวณค่าปรับแบบรายเดือน (เดือนละ 100)
-    if (['PENDING', 'OVERDUE', 'REJECTED'].includes(currentStatus)) {
+    // 🌟 คำนวณค่าปรับแบบรายเดือน (รวมสถานะ PARTIAL เข้ามาคิดด้วย)
+    if (['PENDING', 'OVERDUE', 'REJECTED', 'PARTIAL'].includes(currentStatus)) {
       const dueDate = new Date(invoice.dueDate);
       dueDate.setHours(0, 0, 0, 0);
 
@@ -55,20 +56,23 @@ export async function GET(
         const overdueMonths = Math.floor(overdueDays / 30);
         
         penalty = truncateDecimals(overdueMonths * penaltyRatePerMonth);
-        currentStatus = 'OVERDUE';
+        currentStatus = currentStatus === 'PARTIAL' ? 'PARTIAL' : 'OVERDUE'; // ถ้าจ่ายบางส่วนแล้ว ก็คงสถานะ PARTIAL ไว้
       } else {
-        if (currentStatus !== 'REJECTED') {
+        if (currentStatus !== 'REJECTED' && currentStatus !== 'PARTIAL') {
           penalty = 0;
         }
       }
     }
+
+    // 🌟 คำนวณยอดคงเหลือสุทธิ (เอา base + ค่าปรับ - ยอดที่เคยทยอยจ่าย)
+    const remainingTotal = truncateDecimals((base + penalty) - paid);
 
     return NextResponse.json({
       success: true,
       invoice: {
         ...invoice,
         penaltyAmount: penalty, 
-        totalAmount: truncateDecimals(base + penalty), 
+        totalAmount: remainingTotal > 0 ? remainingTotal : 0, // 👈 ส่งยอด "คงเหลือ" ไปโชว์ให้ลูกบ้าน/แอดมินดู
         status: currentStatus,
         displayMonthYear: `${invoice.billingMonth}/${invoice.billingYear + 543}`
       }

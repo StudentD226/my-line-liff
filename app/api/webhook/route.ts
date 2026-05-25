@@ -7,7 +7,11 @@ const prisma = new PrismaClient();
 const client = new messagingApi.MessagingApiClient({
   channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN || '',
 });
+
 const fullThaiMonths = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+
+// 🌟 Helper ตัดทศนิยมทิ้ง ไม่ให้ปัดขึ้น
+const truncateDecimals = (val: number) => Math.floor(Math.round(val * 10000) / 100) / 100;
 
 export async function POST(request: Request) {
   try {
@@ -26,7 +30,11 @@ export async function POST(request: Request) {
               residentHouse: {
                 include: {
                   invoices: {
-                    where: { status: { in: ['PENDING', 'OVERDUE', 'REJECTED'] } },
+                    // 🌟 เพิ่ม PARTIAL และกรองเอาบิลพักยอด 9999 ออก
+                    where: { 
+                      status: { in: ['PENDING', 'OVERDUE', 'REJECTED', 'PARTIAL'] },
+                      billingYear: { not: 9999 }
+                    },
                     orderBy: { dueDate: 'asc' }
                   }
                 }
@@ -43,22 +51,53 @@ export async function POST(request: Request) {
           let flatPenaltyPerMonth = config?.penaltyRatePerDay || 100;
 
           let pendingInvoices = await prisma.invoice.findMany({
-            where: { residentHouseId: user.residentHouse.id, status: { in: ['PENDING', 'OVERDUE', 'REJECTED'] } },
+            where: { 
+              residentHouseId: user.residentHouse.id, 
+              status: { in: ['PENDING', 'OVERDUE', 'REJECTED', 'PARTIAL'] },
+              billingYear: { not: 9999 }
+            },
             orderBy: [{ billingYear: 'asc' }, { billingMonth: 'asc' }]
           });
 
           const today = new Date(); today.setHours(0, 0, 0, 0);
-          for (let inv of pendingInvoices) {
+          
+          // 🌟 คำนวณยอดคงเหลือสุทธิ (หัก paidAmount)
+          pendingInvoices.forEach(inv => {
             const dueDate = new Date(inv.dueDate); dueDate.setHours(0, 0, 0, 0);
+            
+            let paid = truncateDecimals(Number(inv.paidAmount || 0));
+            let penalty = truncateDecimals(Number(inv.penaltyAmount || 0));
+            let base = truncateDecimals(Number(inv.baseAmount || 0));
+
+            // คิดค่าปรับ
             if (today > dueDate) {
               const diffTime = today.getTime() - dueDate.getTime();
               const overdueDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-              const overdueMonths = Math.floor(overdueDays / 30); // 🌟 แก้เป็น Math.floor (ครบ 30 วันถึงนับ 1 เดือน)
-              inv.penaltyAmount = overdueMonths * flatPenaltyPerMonth;
-              inv.totalAmount = inv.baseAmount + inv.penaltyAmount;
-              inv.status = 'OVERDUE';
+              const overdueMonths = Math.floor(overdueDays / 30); 
+              penalty = truncateDecimals(overdueMonths * flatPenaltyPerMonth);
+              inv.status = inv.status === 'PARTIAL' ? 'PARTIAL' : 'OVERDUE';
+            } else {
+              if (inv.status !== 'REJECTED' && inv.status !== 'PARTIAL') penalty = 0;
             }
-          }
+
+            // หักยอดที่จ่ายไปแล้วออกจากค่าปรับและยอดหลัก
+            if (paid > 0) {
+              if (paid >= penalty) {
+                base = truncateDecimals(base - (paid - penalty));
+                penalty = 0;
+              } else {
+                penalty = truncateDecimals(penalty - paid);
+              }
+            }
+
+            // บันทึกยอดที่หักแล้วกลับไปใน object เพื่อเอาไปแสดงผล
+            inv.baseAmount = base;
+            inv.penaltyAmount = penalty;
+            inv.totalAmount = truncateDecimals(base + penalty);
+          });
+
+          // กรองเอาเฉพาะบิลที่ยอดรวม > 0 (ยังมีหนี้เหลือ)
+          pendingInvoices = pendingInvoices.filter(inv => inv.totalAmount > 0);
 
           const hasPenalty = pendingInvoices.some(inv => (inv.penaltyAmount || 0) > 0);
           if (hasPenalty) {
@@ -246,13 +285,12 @@ export async function POST(request: Request) {
               }
             };
           } else {
-            // 🌟 แก้ไขส่วนนี้: เปลี่ยนขนาดเป็น kilo และเอากรอบดำออก
             flexMessage = {
               type: "flex",
               altText: `ตรวจสอบค่าส่วนกลาง บ้านเลขที่ ${houseNo}`,
               contents: {
                 type: "bubble",
-                size: "kilo", // 👈 ปรับให้ขนาดเท่ากับบิลเรียกเก็บเงิน
+                size: "kilo", 
                 body: {
                   type: "box", layout: "vertical", paddingAll: "xl", backgroundColor: "#FFFFFF",
                   contents: [
