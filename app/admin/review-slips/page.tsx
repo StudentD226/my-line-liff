@@ -19,7 +19,8 @@ export default function AdminInvoiceReview() {
 
   const fetchPendingInvoices = async () => {
     try {
-      const res = await fetch('/api/admin/review-slips');
+      // 🌟 พระเอกปิดจ๊อบ: เติม { cache: 'no-store' } สั่งห้ามจำข้อมูลสลิปเก่า
+      const res = await fetch('/api/admin/review-slips', { cache: 'no-store' });
       const data = await res.json();
       if (data.success) {
         setInvoices(data.invoices || []);
@@ -92,7 +93,7 @@ export default function AdminInvoiceReview() {
           icon: 'success', title: 'อัปเดตสำเร็จ', text: newStatus === 'PAID' ? 'ยืนยันการชำระเงินเรียบร้อยแล้ว' : 'ปฏิเสธสลิปเรียบร้อยแล้ว',
           timer: 2000, showConfirmButton: false, customClass: { popup: 'rounded-[2rem]' }
         });
-        fetchPendingInvoices();
+        fetchPendingInvoices(); // โหลดข้อมูลใหม่ทันที
       } else {
         Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: data.error, customClass: { popup: 'rounded-[2rem]' } });
       }

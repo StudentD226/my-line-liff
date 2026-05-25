@@ -13,7 +13,8 @@ export default function AdminMaintenanceManager() {
 
   const fetchRequests = async () => {
     try {
-      const res = await fetch('/api/admin/maintenance');
+      // 🌟 พระเอกมาแล้ว! เติม { cache: 'no-store' } เพื่อให้ตารางแจ้งซ่อมดึงข้อมูลสดใหม่เสมอ
+      const res = await fetch('/api/admin/maintenance', { cache: 'no-store' });
       const data = await res.json();
       if (data.success) {
         setRequests(data.requests);
@@ -39,6 +40,7 @@ export default function AdminMaintenanceManager() {
 
     if (isConfirmed) {
       try {
+        // ⚠️ ตรงนี้เป็น PATCH (ส่งข้อมูล) ไม่ต้องใส่ no-store ถูกต้องแล้วครับ!
         const res = await fetch('/api/admin/maintenance', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
@@ -47,7 +49,7 @@ export default function AdminMaintenanceManager() {
         
         if (res.ok) {
           Swal.fire({ icon: 'success', title: 'อัปเดตสำเร็จ', text: 'แจ้งเตือนลูกบ้านเข้า LINE เรียบร้อย', showConfirmButton: false, timer: 1500, customClass: { popup: 'rounded-3xl' } });
-          fetchRequests();
+          fetchRequests(); // โหลดข้อมูลใหม่ทันทีหลังอัปเดตเสร็จ
         }
       } catch (err) {
         Swal.fire('Error', 'เกิดข้อผิดพลาด', 'error');

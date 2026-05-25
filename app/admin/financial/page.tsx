@@ -31,8 +31,8 @@ export default function FinancialDashboard() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      // ดึงข้อมูลบัญชี
-      const resTx = await fetch("/api/financial/transactions");
+      // 🌟 พระเอกคนที่ 1: ดึงข้อมูลบัญชี (GET - ต้องห้ามจำ)
+      const resTx = await fetch("/api/financial/transactions", { cache: 'no-store' });
       const resultTx = await resTx.json();
       if (resultTx.success) {
         setSummary({
@@ -44,8 +44,8 @@ export default function FinancialDashboard() {
         setData(resultTx.data || []);
       }
 
-      // ดึงหมวดหมู่มาเตรียมไว้ใน Dropdown
-      const resCat = await fetch("/api/financial/categories");
+      // 🌟 พระเอกคนที่ 2: ดึงหมวดหมู่มาเตรียมไว้ใน Dropdown (GET - ต้องห้ามจำ)
+      const resCat = await fetch("/api/financial/categories", { cache: 'no-store' });
       const resultCat = await resCat.json();
       if (resultCat.success) setCategories(resultCat.data || []);
 
@@ -68,9 +68,10 @@ export default function FinancialDashboard() {
     try {
       let finalCategoryId = formData.categoryId;
 
-      // ถ้าแอดมินเลือก "สร้างหมวดหมู่ใหม่" ให้ยิง API สร้างหมวดหมู่ก่อน
+      // 🌟 ถ้าแอดมินเลือก "สร้างหมวดหมู่ใหม่" ให้ยิง API สร้างหมวดหมู่ก่อน
       if (formData.categoryId === "NEW") {
-        const catRes = await fetch("/api/financial/categories", {
+        // ⚠️ จุดที่แก้: เอา { cache: 'no-store' } ออกไปแล้ว เพราะนี่คือการ POST ข้อมูลใหม่
+        const catRes = await fetch("/api/financial/categories", { 
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name: formData.newCategoryName, type: formData.type })
@@ -80,7 +81,7 @@ export default function FinancialDashboard() {
         else throw new Error("สร้างหมวดหมู่ไม่สำเร็จ");
       }
 
-      // ยิง API บันทึกรายรับ-รายจ่าย
+      // 🌟 ยิง API บันทึกรายรับ-รายจ่าย (POST ข้อมูลใหม่)
       const txRes = await fetch("/api/financial/transactions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -98,7 +99,7 @@ export default function FinancialDashboard() {
         showAlert("บันทึกข้อมูลเรียบร้อยแล้ว!", "success");
         setIsModalOpen(false);
         setFormData({ ...formData, amount: "", description: "", categoryId: "", newCategoryName: "" }); // รีเซ็ตฟอร์ม
-        fetchData(); // โหลดกราฟและตารางใหม่ทันที
+        fetchData(); // 🌟 โหลดกราฟและตารางใหม่ทันที (ซึ่งฟังก์ชันนี้มี cache: 'no-store' ดักไว้แล้ว)
       } else {
         showAlert("เกิดข้อผิดพลาดในการบันทึก", "error");
       }
