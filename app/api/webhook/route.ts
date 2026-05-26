@@ -276,13 +276,14 @@ export async function POST(request: Request) {
                     {
                       type: "box", layout: "horizontal", margin: "md",
                       contents: [
-                        { type: "text", text: "PAYMENT ID", size: "xxs", color: "#4B5563", weight: "bold", flex: 0 },
+                        // 🎯 แก้จุดนี้แล้วครับ เปลี่ยนจาก xxs เป็น xs
+                        { type: "text", text: "PAYMENT ID", size: "xs", color: "#4B5563", weight: "bold", flex: 0 },
                         {
                           type: "text",
                           text: (user.residentHouse.invoices?.[0]?.invoiceNo && !user.residentHouse.invoices[0].invoiceNo.startsWith('INV'))
                             ? user.residentHouse.invoices[0].invoiceNo
                             : customTeacherInvoiceNo,
-                          size: "xxs",
+                          size: "xs", // 🎯 แก้จุดนี้แล้วครับ เปลี่ยนจาก xxs เป็น xs
                           color: "#4B5563",
                           weight: "bold",
                           align: "end",
