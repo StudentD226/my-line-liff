@@ -124,8 +124,8 @@ export async function POST(request: Request) {
               type: "box", layout: "horizontal", margin: "lg",
               contents: [
                 { type: "text", text: "วันที่ชำระ", size: "sm", color: "#4B5563" },
-                // 🌟 ดึงชื่อเดือนภาษาไทยมาใช้งาน
-                { type: "text", text: `${dayStr}/${fullThaiMonths[parseInt(monthStr, 10)]}/${yearStr}`, size: "sm", color: "#111827", weight: "bold", align: "end" }
+                // 🌟 แก้ไขตรงนี้: เอา / ออก เปลี่ยนเป็นเว้นวรรค และเอา weight: "bold" ออก
+                { type: "text", text: `${dayStr} ${fullThaiMonths[parseInt(monthStr, 10)]} ${yearStr}`, size: "sm", color: "#111827", align: "end" }
               ]
             }
           ]

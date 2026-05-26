@@ -122,9 +122,10 @@ function createInvoiceFlexMessage(data: any) {
                 {
                   type: "box", layout: "vertical", margin: "md",
                   contents: [
-                    { type: "text", text: "กรุณาชำระภายในวันที่", size: "xs", color: "#4B5563", weight: "bold" },
-                    // 🌟 แสดงวันที่แบบ DD/เดือนภาษาไทย/YYYY 
-                    { type: "text", text: data.dueDateText, size: "md", color: "#EF4444", weight: "bold", margin: "xs" }
+                    // 🌟 1. ปรับ "กรุณาชำระภายในวันที่" ให้ใหญ่ขึ้น (size: "sm")
+                    { type: "text", text: "กรุณาชำระภายในวันที่", size: "sm", color: "#4B5563", weight: "bold" },
+                    // 🌟 2. แสดงวันที่แบบเว้นวรรค (size: "xs", weight: "regular") 
+                    { type: "text", text: data.dueDateText, size: "xs", color: "#EF4444", weight: "regular", margin: "xs" }
                   ]
                 }
               ]
@@ -340,8 +341,8 @@ async function handleCronJob(request: Request) {
       const isOverdue = inv.status === 'OVERDUE' || allUnpaidForThisHouse.some(u => u.status === 'OVERDUE') || totalPenalty > 0;
 
       const due = new Date(inv.dueDate);
-      // 🌟 ดึงข้อมูลเดือนเป็นภาษาไทยมาใช้ (เช่น 07/พฤษภาคม/2569)
-      const dueDateText = `${String(due.getDate()).padStart(2, '0')}/${fullThaiMonths[due.getMonth() + 1]}/${due.getFullYear() + 543}`;
+      // 🌟 ดึงข้อมูลวันที่แบบใช้เว้นวรรค
+      const dueDateText = `${String(due.getDate()).padStart(2, '0')} ${fullThaiMonths[due.getMonth() + 1]} ${due.getFullYear() + 543}`;
       const headerBillingMonthText = `${fullThaiMonths[inv.billingMonth]} ${inv.billingYear + 543}`;
 
       for (const resident of inv.house.residents) {

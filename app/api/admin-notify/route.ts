@@ -126,8 +126,10 @@ function createInvoiceFlexMessage(data: any) {
                 {
                   type: "box", layout: "vertical", margin: "md",
                   contents: [
-                    { type: "text", text: "กรุณาชำระภายในวันที่", size: "xs", color: "#4B5563", weight: "bold" },
-                    { type: "text", text: data.dueDateText, size: "md", color: "#EF4444", weight: "bold", margin: "xs" }
+                    // 🌟 1. ขยายให้ใหญ่ขึ้น (size: "sm")
+                    { type: "text", text: "กรุณาชำระภายในวันที่", size: "sm", color: "#4B5563", weight: "bold" },
+                    // 🌟 2. ย่อวันที่ (size: "xs") และเป็นตัวธรรมดา (weight: "regular")
+                    { type: "text", text: data.dueDateText, size: "xs", color: "#EF4444", weight: "regular", margin: "xs" }
                   ]
                 }
               ]
@@ -273,8 +275,8 @@ export async function POST(request: Request) {
     const headerBillingMonthText = `${fullThaiMonths[invoice.billingMonth]} ${invoice.billingYear + 543}`;
     const dueDateObj = new Date(invoice.dueDate);
     
-    // 🌟 เปลี่ยน Format วันที่ให้เป็น 07/เมษายน/2569
-    const dueDateText = `${String(dueDateObj.getDate()).padStart(2, '0')}/${fullThaiMonths[dueDateObj.getMonth() + 1]}/${dueDateObj.getFullYear() + 543}`;
+    // 🌟 เปลี่ยน Format วันที่ให้ใช้เว้นวรรค 07 เมษายน 2569
+    const dueDateText = `${String(dueDateObj.getDate()).padStart(2, '0')} ${fullThaiMonths[dueDateObj.getMonth() + 1]} ${dueDateObj.getFullYear() + 543}`;
 
     const flexBubble = createInvoiceFlexMessage({
       type: type,

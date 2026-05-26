@@ -139,7 +139,7 @@ export async function POST(request: Request) {
             const finalGrandTotal = truncateDecimals(grandTotalBase + totalPenalty);
             const tableContents: any[] = [];
 
-            // 1. แถวเดือนปัจจุบัน (เอา weight: "bold" ออก)
+            // 1. แถวเดือนปัจจุบัน
             if (currentInvoiceItem && currentInvoiceItem.amount > 0) {
               tableContents.push({
                 type: "box", layout: "horizontal", margin: "md",
@@ -150,7 +150,7 @@ export async function POST(request: Request) {
               });
             }
 
-            // 2. แถวหนี้ข้ามปี (เอา weight: "bold" ออก)
+            // 2. แถวหนี้ข้ามปี
             Object.keys(pastYearTotals).forEach(yearStr => {
               const yearNum = parseInt(yearStr);
               if (pastYearTotals[yearNum] > 0) {
@@ -164,7 +164,7 @@ export async function POST(request: Request) {
               }
             });
 
-            // 3. แถวหนี้เดือนเก่าปีนี้ (เอา weight: "bold" ออก)
+            // 3. แถวหนี้เดือนเก่าปีนี้
             pastMonthItems.forEach(item => {
               if (item.amount > 0) {
                 tableContents.push({
@@ -177,7 +177,7 @@ export async function POST(request: Request) {
               }
             });
 
-            // 4. แถวค่าปรับ (เอา weight: "bold" ออก)
+            // 4. แถวค่าปรับ
             if (totalPenalty > 0) {
               tableContents.push({
                 type: "box", layout: "horizontal", margin: "md",
@@ -201,8 +201,8 @@ export async function POST(request: Request) {
             const headerBillingMonthText = `${fullThaiMonths[lastInv.billingMonth]} ${lastInv.billingYear + 543}`;
             const dueDateObj = lastInv.dueDate ? new Date(lastInv.dueDate) : new Date();
             
-            // 🌟 แสดงวันที่แบบ DD/เดือนภาษาไทย/YYYY 
-            const dueDateText = `${String(dueDateObj.getDate()).padStart(2, '0')}/${fullThaiMonths[dueDateObj.getMonth() + 1]}/${dueDateObj.getFullYear() + 543}`;
+            // 🌟 แสดงวันที่แบบไม่มีเครื่องหมาย / (เช่น 07 กรกฎาคม 2569)
+            const dueDateText = `${String(dueDateObj.getDate()).padStart(2, '0')} ${fullThaiMonths[dueDateObj.getMonth() + 1]} ${dueDateObj.getFullYear() + 543}`;
 
             const autoRefDate = `${String(today.getDate()).padStart(2, '0')}${String(today.getMonth() + 1).padStart(2, '0')}${today.getFullYear() + 543}`;
             const customTeacherInvoiceNo = `${houseNo}-${autoRefDate}`;
@@ -227,7 +227,6 @@ export async function POST(request: Request) {
                       type: "box", layout: "horizontal", margin: "md", backgroundColor: "#D1E7E3", cornerRadius: "20px", paddingAll: "sm", paddingStart: "md", paddingEnd: "md", alignItems: "flex-start",
                       contents: [
                         { type: "image", url: "https://img.icons8.com/fluency-systems-filled/48/2a524c/info.png", size: "16px", flex: 0, margin: "xs" },
-                        // 🌟 เอาตัวหนา (weight: "bold") ออกจากบรรทัดนี้
                         { type: "text", text: `ใบแจ้งชำระค่าส่วนกลาง\nประจำเดือน ${headerBillingMonthText}`, size: "xs", color: "#2A524C", margin: "sm", wrap: true, flex: 1 }
                       ]
                     },
@@ -259,9 +258,10 @@ export async function POST(request: Request) {
                             {
                               type: "box", layout: "vertical", margin: "md",
                               contents: [
-                                { type: "text", text: "กรุณาชำระภายในวันที่", size: "xs", color: "#4B5563", weight: "bold" },
-                                // 🌟 ใช้วันที่ที่แปลงเดือนเป็นภาษาไทยแล้ว
-                                { type: "text", text: dueDateText, size: "md", color: "#EF4444", weight: "bold", margin: "xs" }
+                                // 🌟 1. ปรับ "กรุณาชำระภายในวันที่" ให้ใหญ่ขึ้น (size: "sm")
+                                { type: "text", text: "กรุณาชำระภายในวันที่", size: "sm", color: "#4B5563", weight: "bold" },
+                                // 🌟 2. ปรับวันที่ให้เล็กลง (size: "xs") และเอาตัวหนาออก (weight: "regular")
+                                { type: "text", text: dueDateText, size: "xs", color: "#EF4444", weight: "regular", margin: "xs" }
                               ]
                             }
                           ]

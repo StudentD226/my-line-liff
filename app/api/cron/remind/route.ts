@@ -90,7 +90,6 @@ function createInvoiceFlexMessage(data: any) {
           type: "box", layout: "horizontal", margin: "md", backgroundColor: "#D1E7E3", cornerRadius: "20px", paddingAll: "sm", paddingStart: "md", paddingEnd: "md", alignItems: "flex-start",
           contents: [
             { type: "image", url: "https://img.icons8.com/fluency-systems-filled/48/2a524c/info.png", size: "16px", flex: 0, margin: "xs" },
-            // 🌟 แก้คำเป็น "ใบแจ้งชำระ" และเอาตัวหนาออก
             { type: "text", text: `ใบแจ้งชำระค่าส่วนกลาง\nประจำเดือน ${data.headerBillingMonthText}`, size: "xs", color: "#2A524C", margin: "sm", wrap: true, flex: 1 }
           ]
         },
@@ -122,9 +121,10 @@ function createInvoiceFlexMessage(data: any) {
                 {
                   type: "box", layout: "vertical", margin: "md",
                   contents: [
-                    { type: "text", text: "กรุณาชำระภายในวันที่", size: "xs", color: "#4B5563", weight: "bold" },
-                    // 🌟 แสดงวันที่แบบ DD/เดือนภาษาไทย/YYYY 
-                    { type: "text", text: data.dueDateText, size: "md", color: "#EF4444", weight: "bold", margin: "xs" }
+                    // 🌟 1. ปรับ "กรุณาชำระภายในวันที่" ให้ใหญ่ขึ้น (size: "sm")
+                    { type: "text", text: "กรุณาชำระภายในวันที่", size: "sm", color: "#4B5563", weight: "bold" },
+                    // 🌟 2. ปรับวันที่ให้เล็กลง (size: "xs") และเอาตัวหนาออก (weight: "regular")
+                    { type: "text", text: data.dueDateText, size: "xs", color: "#EF4444", weight: "regular", margin: "xs" }
                   ]
                 }
               ]
@@ -148,7 +148,7 @@ function createInvoiceFlexMessage(data: any) {
               type: "text",
               text: data.invoiceNo || "N/A", 
               size: "xxs",
-              color: "#6B7280", // 🌟 เอาช่องว่างหน้ารหัสสีออกให้คลีนๆ
+              color: "#6B7280", 
               align: "end",
               flex: 1
             }
@@ -283,8 +283,8 @@ async function handleRemindCronJob(request: Request) {
       const isOverdue = reminderType === 'OVERDUE' || currentPenalty > 0;
       const due = new Date(inv.dueDate);
       
-      // 🌟 ดึงข้อมูลเดือนเป็นภาษาไทยมาใช้ (เช่น 07/พฤษภาคม/2569)
-      const dueDateText = `${String(due.getDate()).padStart(2, '0')}/${fullThaiMonths[due.getMonth() + 1]}/${due.getFullYear() + 543}`;
+      // 🌟 นำเครื่องหมาย / ออก และใช้เว้นวรรคแทน
+      const dueDateText = `${String(due.getDate()).padStart(2, '0')} ${fullThaiMonths[due.getMonth() + 1]} ${due.getFullYear() + 543}`;
       
       const headerBillingMonthText = `${fullThaiMonths[inv.billingMonth]} ${inv.billingYear + 543}`;
 
