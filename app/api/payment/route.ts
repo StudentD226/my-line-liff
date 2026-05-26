@@ -1,15 +1,21 @@
+export const dynamic = 'force-dynamic'; 
 import { NextResponse } from 'next/server';
 import { v2 as cloudinary } from 'cloudinary';
 import { PrismaClient } from '@prisma/client';
+import { messagingApi } from '@line/bot-sdk'; // 🌟 ใช้ SDK ของ LINE ชัวร์กว่ามาก!
 
 const prisma = new PrismaClient();
-
 const truncateDecimals = (val: number) => Math.floor(Math.round(val * 10000) / 100) / 100;
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+// 🌟 ตั้งค่า LINE Client สำหรับดัน Flex Message
+const client = new messagingApi.MessagingApiClient({
+  channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN || '',
 });
 
 export async function POST(request: Request) {
@@ -107,7 +113,7 @@ export async function POST(request: Request) {
               type: "box", layout: "horizontal", margin: "md", backgroundColor: "#FFF7ED", cornerRadius: "20px", paddingAll: "md", paddingStart: "lg", paddingEnd: "lg", alignItems: "center",
               contents: [
                 { type: "image", url: "https://img.icons8.com/fluency-systems-filled/48/ea580c/time.png", size: "24px", flex: 0, margin: "xs" },
-                { type: "text", text: "ส่งสลิปแล้ว กำลังตรวจสอบ", size: "md", color: "#EA580C", weight: "bold", margin: "md", flex: 1 }
+                { type: "text", text: "เจ้าหน้าที่ได้รับข้อมูลแล้ว รอการตรวจสอบ", size: "md", color: "#EA580C", weight: "normal", margin: "md", flex: 1 }
               ]
             },
             {
@@ -148,8 +154,8 @@ export async function POST(request: Request) {
             {
               type: "box", layout: "horizontal", margin: "lg",
               contents: [
-                { type: "text", text: "REF ID", color: "#4B5563", weight: "bold" }, 
-                { type: "text", text: paymentReferenceId, color: "#4B5563", weight: "bold", align: "end" } 
+                { type: "text", text: "REF ID", color: "#4B5563", weight: "bold", size: "xs" }, 
+                { type: "text", text: paymentReferenceId, color: "#4B5563", weight: "bold", align: "end", size: "xs" } 
               ]
             }
           ]
@@ -157,14 +163,15 @@ export async function POST(request: Request) {
       }
     };
 
-    const lineToken = process.env.LINE_CHANNEL_ACCESS_TOKEN;
-    if (lineToken) {
+    if (client) {
       for (const res of house.residents) {
-        if (res.lineId && res.isNotify) {
-          await fetch('https://api.line.me/v2/bot/message/push', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${lineToken}` },
-            body: JSON.stringify({ to: res.lineId, messages: [flexMessage] })
+        // 🌟 ปลดล็อก! ไม่เช็ค isNotify แล้ว ขอแค่ลูกบ้านมี lineId ส่งใบเสร็จให้ทันที 100%
+        if (res.lineId) {
+          await client.pushMessage({
+            to: res.lineId,
+            messages: [flexMessage]
+          }).catch(e => {
+            console.error("❌ LINE Push Error in Payment API:", JSON.stringify(e.response?.data || e.message, null, 2));
           });
         }
       }
