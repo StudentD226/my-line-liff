@@ -45,16 +45,36 @@ export async function POST(request: Request) {
             continue;
           }
 
+          // 🌟 1. ดึงการตั้งค่าของแอดมินกลับมาแล้วครับ! (ใช้ penaltyRatePerDay ตามในรูปเลย)
+          const config = await prisma.systemConfig.findFirst();
+          const penaltyRate = config?.penaltyRatePerDay ? Number(config.penaltyRatePerDay) : 100;
+
           let pendingInvoices = user.residentHouse.invoices || [];
           let grandTotalBase = 0;
           let totalPenalty = 0;
           const tableContents: any[] = [];
+          const today = new Date(); 
+          today.setHours(0, 0, 0, 0);
 
-          // 🌟 วนลูปดึงยอดจากฐานข้อมูล 100% (ไม่เช็ควันหมดอายุเพื่อลบค่าปรับอีกต่อไป!)
+          // 🌟 2. วนลูปคำนวณ
           pendingInvoices.forEach(inv => {
             let paid = truncateDecimals(Number(inv.paidAmount || 0));
-            let penalty = truncateDecimals(Number(inv.penaltyAmount || 0)); // ดึงจาก DB มาตรงๆ
+            let penalty = truncateDecimals(Number(inv.penaltyAmount || 0)); 
             let base = truncateDecimals(Number(inv.baseAmount || 0));
+
+            const dueDate = inv.dueDate ? new Date(inv.dueDate) : new Date();
+            dueDate.setHours(0, 0, 0, 0);
+
+            if (today > dueDate) {
+              inv.status = inv.status === 'PARTIAL' ? 'PARTIAL' : 'OVERDUE';
+              
+              // 🌟 3. ถ้าระบบยังไม่แสตมป์ค่าปรับ (เป็น 0) ให้คำนวณสดจาก Config แบบปลอดภัย ไม่มีทางเป็น 0!
+              if (penalty === 0) {
+                let monthsLate = (today.getFullYear() - dueDate.getFullYear()) * 12 + (today.getMonth() - dueDate.getMonth());
+                if (monthsLate <= 0) monthsLate = 1; // เลยกำหนดปุ๊บ บังคับขั้นต่ำ 1 เดือน (100 บาท) ทันที!
+                penalty = truncateDecimals(monthsLate * penaltyRate);
+              }
+            }
 
             // หักลดยอดที่จ่ายแล้ว (กรณี PARTIAL)
             if (paid > 0) {
@@ -70,7 +90,6 @@ export async function POST(request: Request) {
               
               const label = `${fullThaiMonths[inv.billingMonth]} ${inv.billingYear + 543}`;
               
-              // ใส่ยอดรวมของเดือนนั้นลงตาราง (Base + Penalty)
               tableContents.push({
                 type: "box", layout: "horizontal", margin: "md",
                 contents: [
@@ -93,13 +112,12 @@ export async function POST(request: Request) {
               tableContents.push({
                 type: "box", layout: "horizontal", margin: "md",
                 contents: [
-                  { type: "text", text: `(รวมค่าปรับล่าช้า)`, size: "xs", color: "#EA580C", weight: "bold" },
+                  { type: "text", text: `(รวมค่าปรับล่าช้าแล้ว)`, size: "xs", color: "#EA580C", weight: "bold" },
                   { type: "text", text: `${totalPenalty.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "xs", color: "#EA580C", align: "end", weight: "bold" }
                 ]
               });
             }
 
-            const today = new Date();
             const autoRefDate = `${String(today.getDate()).padStart(2, '0')}${String(today.getMonth() + 1).padStart(2, '0')}${today.getFullYear() + 543}`;
             const customInvoiceNo = `${houseNo}-${autoRefDate}`;
 
