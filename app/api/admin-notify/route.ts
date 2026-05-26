@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { messagingApi } from '@line/bot-sdk';
 import { PrismaClient } from '@prisma/client';
@@ -19,8 +20,8 @@ function createInvoiceFlexMessage(data: any) {
     tableContents.push({
       type: "box", layout: "horizontal", margin: "md",
       contents: [
-        { type: "text", text: data.currentInvoiceItem.label, size: "sm", color: "#059669", weight: "bold" },
-        { type: "text", text: `${data.currentInvoiceItem.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#059669", align: "end", weight: "bold" }
+        { type: "text", text: data.currentInvoiceItem.label, size: "sm", color: "#059669" }, // เอา weight: "bold" ออก
+        { type: "text", text: `${data.currentInvoiceItem.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#059669", align: "end" } // เอา weight: "bold" ออก
       ]
     });
   }
@@ -31,7 +32,7 @@ function createInvoiceFlexMessage(data: any) {
         type: "box", layout: "horizontal", margin: "md",
         contents: [
           { type: "text", text: item.label, size: "sm", color: "#EF4444" },
-          { type: "text", text: `${item.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end", weight: "bold" }
+          { type: "text", text: `${item.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end" } // เอา weight: "bold" ออก
         ]
       });
     });
@@ -46,7 +47,7 @@ function createInvoiceFlexMessage(data: any) {
           type: "box", layout: "horizontal", margin: "md",
           contents: [
             { type: "text", text: `ยอดค้างชำระปี ${yearNum + 543}`, size: "sm", color: "#EF4444" },
-            { type: "text", text: `${data.pastYearTotals[yearNum].toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end", weight: "bold" }
+            { type: "text", text: `${data.pastYearTotals[yearNum].toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end" } // เอา weight: "bold" ออก
           ]
         });
     });
@@ -57,7 +58,7 @@ function createInvoiceFlexMessage(data: any) {
       type: "box", layout: "horizontal", margin: "md",
       contents: [
         { type: "text", text: `ค่าปรับ`, size: "sm", color: "#EA580C" },
-        { type: "text", text: `${data.totalPenalty.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EA580C", align: "end", weight: "bold" }
+        { type: "text", text: `${data.totalPenalty.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EA580C", align: "end" } // เอา weight: "bold" ออก
       ]
     });
   }
@@ -93,7 +94,8 @@ function createInvoiceFlexMessage(data: any) {
           type: "box", layout: "horizontal", margin: "md", backgroundColor: "#D1E7E3", cornerRadius: "20px", paddingAll: "sm", paddingStart: "md", paddingEnd: "md", alignItems: "flex-start",
           contents: [
             { type: "image", url: "https://img.icons8.com/fluency-systems-filled/48/2a524c/info.png", size: "16px", flex: 0, margin: "xs" },
-            { type: "text", text: `ใบเสร็จเรียกเก็บเงิน\nประจำเดือน ${data.headerBillingMonthText}`, size: "xs", color: "#2A524C", weight: "bold", margin: "sm", wrap: true, flex: 1 }
+            // 🌟 แก้ข้อความและเอา weight: "bold" ออก
+            { type: "text", text: `ใบแจ้งชำระค่าส่วนกลาง\nประจำเดือน ${data.headerBillingMonthText}`, size: "xs", color: "#2A524C", margin: "sm", wrap: true, flex: 1 }
           ]
         },
         {
@@ -270,7 +272,9 @@ export async function POST(request: Request) {
     const finalGrandTotal = truncateDecimals(grandTotalBase + totalPenalty);
     const headerBillingMonthText = `${fullThaiMonths[invoice.billingMonth]} ${invoice.billingYear + 543}`;
     const dueDateObj = new Date(invoice.dueDate);
-    const dueDateText = `${String(dueDateObj.getDate()).padStart(2, '0')}/${String(dueDateObj.getMonth() + 1).padStart(2, '0')}/${dueDateObj.getFullYear() + 543}`;
+    
+    // 🌟 เปลี่ยน Format วันที่ให้เป็น 07/เมษายน/2569
+    const dueDateText = `${String(dueDateObj.getDate()).padStart(2, '0')}/${fullThaiMonths[dueDateObj.getMonth() + 1]}/${dueDateObj.getFullYear() + 543}`;
 
     const flexBubble = createInvoiceFlexMessage({
       type: type,

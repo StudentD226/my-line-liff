@@ -1,7 +1,9 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
+
 const fullThaiMonths = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
 
 // 🌟 Helper ตัดทศนิยมทิ้ง
@@ -14,8 +16,8 @@ function createInvoiceFlexMessage(data: any) {
     tableContents.push({
       type: "box", layout: "horizontal", margin: "md",
       contents: [
-        { type: "text", text: data.currentInvoiceItem.label, size: "sm", color: "#059669" },
-        { type: "text", text: `${data.currentInvoiceItem.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#059669", align: "end" }
+        { type: "text", text: data.currentInvoiceItem.label, size: "sm", color: "#059669" }, // เอาตัวหนาออก
+        { type: "text", text: `${data.currentInvoiceItem.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#059669", align: "end" } // เอาตัวหนาออก
       ]
     });
   }
@@ -25,8 +27,8 @@ function createInvoiceFlexMessage(data: any) {
       tableContents.push({
         type: "box", layout: "horizontal", margin: "md",
         contents: [
-          { type: "text", text: item.label, size: "sm", color: "#EF4444" },
-          { type: "text", text: `${item.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end" }
+          { type: "text", text: item.label, size: "sm", color: "#EF4444" }, // เอาตัวหนาออก
+          { type: "text", text: `${item.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end" } // เอาตัวหนาออก
         ]
       });
     });
@@ -40,8 +42,8 @@ function createInvoiceFlexMessage(data: any) {
         tableContents.push({
           type: "box", layout: "horizontal", margin: "md",
           contents: [
-            { type: "text", text: `ยอดค้างชำระปี ${yearNum + 543}`, size: "sm", color: "#EF4444" },
-            { type: "text", text: `${data.pastYearTotals[yearNum].toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end" }
+            { type: "text", text: `ยอดค้างชำระปี ${yearNum + 543}`, size: "sm", color: "#EF4444" }, // เอาตัวหนาออก
+            { type: "text", text: `${data.pastYearTotals[yearNum].toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end" } // เอาตัวหนาออก
           ]
         });
       });
@@ -51,8 +53,8 @@ function createInvoiceFlexMessage(data: any) {
     tableContents.push({
       type: "box", layout: "horizontal", margin: "md",
       contents: [
-        { type: "text", text: `ค่าปรับ`, size: "sm", color: "#EA580C" },
-        { type: "text", text: `${data.totalPenalty.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EA580C", align: "end" }
+        { type: "text", text: `ค่าปรับ`, size: "sm", color: "#EA580C" }, // เอาตัวหนาออก
+        { type: "text", text: `${data.totalPenalty.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EA580C", align: "end" } // เอาตัวหนาออก
       ]
     });
   }
@@ -88,7 +90,8 @@ function createInvoiceFlexMessage(data: any) {
           type: "box", layout: "horizontal", margin: "md", backgroundColor: "#D1E7E3", cornerRadius: "20px", paddingAll: "sm", paddingStart: "md", paddingEnd: "md", alignItems: "flex-start",
           contents: [
             { type: "image", url: "https://img.icons8.com/fluency-systems-filled/48/2a524c/info.png", size: "16px", flex: 0, margin: "xs" },
-            { type: "text", text: `ใบเสร็จเรียกเก็บเงิน\nประจำเดือน ${data.headerBillingMonthText}`, size: "xs", color: "#2A524C", margin: "sm", wrap: true, flex: 1 }
+            // 🌟 แก้คำเป็น "ใบแจ้งชำระ" และเอาตัวหนาออก
+            { type: "text", text: `ใบแจ้งชำระค่าส่วนกลาง\nประจำเดือน ${data.headerBillingMonthText}`, size: "xs", color: "#2A524C", margin: "sm", wrap: true, flex: 1 }
           ]
         },
         {
@@ -120,6 +123,7 @@ function createInvoiceFlexMessage(data: any) {
                   type: "box", layout: "vertical", margin: "md",
                   contents: [
                     { type: "text", text: "กรุณาชำระภายในวันที่", size: "xs", color: "#4B5563", weight: "bold" },
+                    // 🌟 แสดงวันที่แบบ DD/เดือนภาษาไทย/YYYY 
                     { type: "text", text: data.dueDateText, size: "md", color: "#EF4444", weight: "bold", margin: "xs" }
                   ]
                 }
@@ -144,7 +148,7 @@ function createInvoiceFlexMessage(data: any) {
               type: "text",
               text: data.invoiceNo || "N/A", 
               size: "xxs",
-              color: " #6B7280", 
+              color: "#6B7280", // 🌟 เอาช่องว่างหน้ารหัสสีออกให้คลีนๆ
               align: "end",
               flex: 1
             }
@@ -278,7 +282,10 @@ async function handleRemindCronJob(request: Request) {
       const finalGrandTotal = truncateDecimals(grandTotalBase + totalPenalty);
       const isOverdue = reminderType === 'OVERDUE' || currentPenalty > 0;
       const due = new Date(inv.dueDate);
+      
+      // 🌟 ดึงข้อมูลเดือนเป็นภาษาไทยมาใช้ (เช่น 07/พฤษภาคม/2569)
       const dueDateText = `${String(due.getDate()).padStart(2, '0')}/${fullThaiMonths[due.getMonth() + 1]}/${due.getFullYear() + 543}`;
+      
       const headerBillingMonthText = `${fullThaiMonths[inv.billingMonth]} ${inv.billingYear + 543}`;
 
       for (const resident of inv.house.residents) {

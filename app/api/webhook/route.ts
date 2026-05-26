@@ -139,18 +139,18 @@ export async function POST(request: Request) {
             const finalGrandTotal = truncateDecimals(grandTotalBase + totalPenalty);
             const tableContents: any[] = [];
 
-            // 1. แถวเดือนปัจจุบัน
+            // 1. แถวเดือนปัจจุบัน (เอา weight: "bold" ออก)
             if (currentInvoiceItem && currentInvoiceItem.amount > 0) {
               tableContents.push({
                 type: "box", layout: "horizontal", margin: "md",
                 contents: [
-                  { type: "text", text: currentInvoiceItem.label, size: "sm", color: "#059669", weight: "bold" },
-                  { type: "text", text: `${currentInvoiceItem.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#111827", align: "end", weight: "bold" }
+                  { type: "text", text: currentInvoiceItem.label, size: "sm", color: "#059669" },
+                  { type: "text", text: `${currentInvoiceItem.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#111827", align: "end" }
                 ]
               });
             }
 
-            // 2. แถวหนี้ข้ามปี
+            // 2. แถวหนี้ข้ามปี (เอา weight: "bold" ออก)
             Object.keys(pastYearTotals).forEach(yearStr => {
               const yearNum = parseInt(yearStr);
               if (pastYearTotals[yearNum] > 0) {
@@ -158,32 +158,32 @@ export async function POST(request: Request) {
                   type: "box", layout: "horizontal", margin: "md",
                   contents: [
                     { type: "text", text: `ยอดค้างชำระปี ${yearNum + 543}`, size: "sm", color: "#EF4444" },
-                    { type: "text", text: `${pastYearTotals[yearNum].toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end", weight: "bold" }
+                    { type: "text", text: `${pastYearTotals[yearNum].toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end" }
                   ]
                 });
               }
             });
 
-            // 3. แถวหนี้เดือนเก่าปีนี้
+            // 3. แถวหนี้เดือนเก่าปีนี้ (เอา weight: "bold" ออก)
             pastMonthItems.forEach(item => {
               if (item.amount > 0) {
                 tableContents.push({
                   type: "box", layout: "horizontal", margin: "md",
                   contents: [
                     { type: "text", text: item.label, size: "sm", color: "#EF4444" },
-                    { type: "text", text: `${item.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end", weight: "bold" }
+                    { type: "text", text: `${item.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end" }
                   ]
                 });
               }
             });
 
-            // 4. แถวค่าปรับ
+            // 4. แถวค่าปรับ (เอา weight: "bold" ออก)
             if (totalPenalty > 0) {
               tableContents.push({
                 type: "box", layout: "horizontal", margin: "md",
                 contents: [
-                  { type: "text", text: `ค่าปรับล่าช้า`, size: "sm", color: "#EA580C", weight: "bold" },
-                  { type: "text", text: `${totalPenalty.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EA580C", align: "end", weight: "bold" }
+                  { type: "text", text: `ค่าปรับล่าช้า`, size: "sm", color: "#EA580C" },
+                  { type: "text", text: `${totalPenalty.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EA580C", align: "end" }
                 ]
               });
             }
@@ -200,7 +200,9 @@ export async function POST(request: Request) {
             const lastInv = pendingInvoices[pendingInvoices.length - 1];
             const headerBillingMonthText = `${fullThaiMonths[lastInv.billingMonth]} ${lastInv.billingYear + 543}`;
             const dueDateObj = lastInv.dueDate ? new Date(lastInv.dueDate) : new Date();
-            const dueDateText = `${String(dueDateObj.getDate()).padStart(2, '0')}/${String(dueDateObj.getMonth() + 1).padStart(2, '0')}/${dueDateObj.getFullYear() + 543}`;
+            
+            // 🌟 แสดงวันที่แบบ DD/เดือนภาษาไทย/YYYY 
+            const dueDateText = `${String(dueDateObj.getDate()).padStart(2, '0')}/${fullThaiMonths[dueDateObj.getMonth() + 1]}/${dueDateObj.getFullYear() + 543}`;
 
             const autoRefDate = `${String(today.getDate()).padStart(2, '0')}${String(today.getMonth() + 1).padStart(2, '0')}${today.getFullYear() + 543}`;
             const customTeacherInvoiceNo = `${houseNo}-${autoRefDate}`;
@@ -225,7 +227,8 @@ export async function POST(request: Request) {
                       type: "box", layout: "horizontal", margin: "md", backgroundColor: "#D1E7E3", cornerRadius: "20px", paddingAll: "sm", paddingStart: "md", paddingEnd: "md", alignItems: "flex-start",
                       contents: [
                         { type: "image", url: "https://img.icons8.com/fluency-systems-filled/48/2a524c/info.png", size: "16px", flex: 0, margin: "xs" },
-                        { type: "text", text: `ใบแจ้งชำระ\nประจำเดือน ${headerBillingMonthText}`, size: "xs", color: "#2A524C", weight: "bold", margin: "sm", wrap: true, flex: 1 }
+                        // 🌟 เอาตัวหนา (weight: "bold") ออกจากบรรทัดนี้
+                        { type: "text", text: `ใบแจ้งชำระค่าส่วนกลาง\nประจำเดือน ${headerBillingMonthText}`, size: "xs", color: "#2A524C", margin: "sm", wrap: true, flex: 1 }
                       ]
                     },
                     {
@@ -257,6 +260,7 @@ export async function POST(request: Request) {
                               type: "box", layout: "vertical", margin: "md",
                               contents: [
                                 { type: "text", text: "กรุณาชำระภายในวันที่", size: "xs", color: "#4B5563", weight: "bold" },
+                                // 🌟 ใช้วันที่ที่แปลงเดือนเป็นภาษาไทยแล้ว
                                 { type: "text", text: dueDateText, size: "md", color: "#EF4444", weight: "bold", margin: "xs" }
                               ]
                             }
@@ -276,14 +280,13 @@ export async function POST(request: Request) {
                     {
                       type: "box", layout: "horizontal", margin: "md",
                       contents: [
-                        // 🎯 แก้จุดนี้แล้วครับ เปลี่ยนจาก xxs เป็น xs
                         { type: "text", text: "PAYMENT ID", size: "xs", color: "#4B5563", weight: "bold", flex: 0 },
                         {
                           type: "text",
                           text: (user.residentHouse.invoices?.[0]?.invoiceNo && !user.residentHouse.invoices[0].invoiceNo.startsWith('INV'))
                             ? user.residentHouse.invoices[0].invoiceNo
                             : customTeacherInvoiceNo,
-                          size: "xs", // 🎯 แก้จุดนี้แล้วครับ เปลี่ยนจาก xxs เป็น xs
+                          size: "xs", 
                           color: "#4B5563",
                           weight: "bold",
                           align: "end",

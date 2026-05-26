@@ -7,6 +7,8 @@ import { messagingApi } from '@line/bot-sdk';
 const prisma = new PrismaClient();
 const truncateDecimals = (val: number) => Math.floor(Math.round(val * 10000) / 100) / 100;
 
+const fullThaiMonths = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -90,7 +92,6 @@ export async function POST(request: Request) {
       }
     });
 
-    // 🌟 โครงสร้าง Flex Message ที่ใช้คลาสพื้นฐาน 100% ปลอดภัย ไร้บั๊ก 400 แน่นอน
     const flexMessage: any = {
       type: "flex",
       altText: `แจ้งชำระค่าส่วนกลาง บ้านเลขที่ ${house.houseNo}`,
@@ -123,7 +124,8 @@ export async function POST(request: Request) {
               type: "box", layout: "horizontal", margin: "lg",
               contents: [
                 { type: "text", text: "วันที่ชำระ", size: "sm", color: "#4B5563" },
-                { type: "text", text: `${dayStr}/${monthStr}/${yearStr}`, size: "sm", color: "#111827", weight: "bold", align: "end" }
+                // 🌟 ดึงชื่อเดือนภาษาไทยมาใช้งาน
+                { type: "text", text: `${dayStr}/${fullThaiMonths[parseInt(monthStr, 10)]}/${yearStr}`, size: "sm", color: "#111827", weight: "bold", align: "end" }
               ]
             }
           ]
@@ -150,7 +152,6 @@ export async function POST(request: Request) {
             to: res.lineId,
             messages: [flexMessage]
           }).catch(e => {
-            // 🌟 เพิ่มการจับ Error แบบเจาะลึก ถ้ายังพังอีก เราจะได้รู้ว่ามันฟ้องบรรทัดไหน!
             console.error("❌ LINE Push Error Details:", JSON.stringify(e.originalError?.response?.data || e, null, 2));
           });
         }
