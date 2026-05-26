@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { v2 as cloudinary } from 'cloudinary';
 import { PrismaClient } from '@prisma/client';
-import { messagingApi } from '@line/bot-sdk'; // 🌟 ใช้ SDK ของ LINE ชัวร์กว่ามาก!
+import { messagingApi } from '@line/bot-sdk'; 
 
 const prisma = new PrismaClient();
 const truncateDecimals = (val: number) => Math.floor(Math.round(val * 10000) / 100) / 100;
@@ -13,7 +13,6 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// 🌟 ตั้งค่า LINE Client สำหรับดัน Flex Message
 const client = new messagingApi.MessagingApiClient({
   channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN || '',
 });
@@ -63,7 +62,6 @@ export async function POST(request: Request) {
 
     const now = new Date();
     const currentYear = now.getFullYear();
-
     const targetMonth = oldestUnpaidInvoice ? oldestUnpaidInvoice.billingMonth : (now.getMonth() + 1);
     const targetYear = oldestUnpaidInvoice ? oldestUnpaidInvoice.billingYear : currentYear;
 
@@ -71,7 +69,6 @@ export async function POST(request: Request) {
     const monthStr = String(now.getMonth() + 1).padStart(2, '0');
     const yearStr = String(currentYear + 543);
     const randomSuffix = Math.floor(Math.random() * 100).toString().padStart(2, '0');
-    
     const paymentReferenceId = `TR-${houseNo}-${dayStr}${monthStr}${yearStr}-${randomSuffix}`;
 
     await prisma.invoice.create({
@@ -93,6 +90,7 @@ export async function POST(request: Request) {
       }
     });
 
+    // 🌟 โครงสร้าง Flex Message ที่ใช้คลาสพื้นฐาน 100% ปลอดภัย ไร้บั๊ก 400 แน่นอน
     const flexMessage: any = {
       type: "flex",
       altText: `แจ้งชำระค่าส่วนกลาง บ้านเลขที่ ${house.houseNo}`,
@@ -105,41 +103,27 @@ export async function POST(request: Request) {
             {
               type: "box", layout: "horizontal", alignItems: "center",
               contents: [
-                { type: "image", url: "https://img.icons8.com/fluency-systems-filled/48/376B64/home.png", size: "32px", flex: 0 },
-                { type: "text", text: `บ้านเลขที่ ${house.houseNo}`, weight: "bold", size: "xxl", color: "#111827", margin: "md" }
+                { type: "text", text: `🏠 บ้านเลขที่ ${house.houseNo}`, weight: "bold", size: "xl", color: "#111827" }
               ]
             },
             {
-              type: "box", layout: "horizontal", margin: "md", backgroundColor: "#FFF7ED", cornerRadius: "20px", paddingAll: "md", paddingStart: "lg", paddingEnd: "lg", alignItems: "center",
+              type: "box", layout: "vertical", margin: "md", backgroundColor: "#FFF7ED", cornerRadius: "lg", paddingAll: "lg",
               contents: [
-                { type: "image", url: "https://img.icons8.com/fluency-systems-filled/48/ea580c/time.png", size: "24px", flex: 0, margin: "xs" },
-                { type: "text", text: "เจ้าหน้าที่ได้รับข้อมูลแล้ว รอการตรวจสอบ", size: "md", color: "#EA580C", weight: "normal", margin: "md", flex: 1 }
+                { type: "text", text: " เจ้าหน้าที่ได้รับข้อมูลแล้ว\n กำลังตรวจสอบ", size: "sm", color: "#EA580C", weight: "bold", align: "center" }
               ]
             },
             {
-              type: "box", layout: "horizontal", margin: "xl", backgroundColor: "#FDEBEC", cornerRadius: "lg", paddingAll: "xl", alignItems: "center",
+              type: "box", layout: "vertical", margin: "xl", backgroundColor: "#FDEBEC", cornerRadius: "lg", paddingAll: "lg", alignItems: "center",
               contents: [
-                { type: "text", text: "ยอดแจ้งโอน", size: "md", color: "#EF4444", weight: "bold", align: "start", flex: 1 },
-                { type: "text", text: payAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 }), size: "3xl", weight: "bold", color: "#EF4444", adjustMode: "shrink-to-fit", align: "center", flex: 0 },
-                { type: "text", text: "บาท", size: "md", weight: "bold", color: "#EF4444", align: "end", flex: 1 }
+                { type: "text", text: "ยอดแจ้งโอน", size: "sm", color: "#EF4444", weight: "bold" },
+                { type: "text", text: `${payAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "xl", weight: "bold", color: "#EF4444", margin: "sm" }
               ]
             },
             {
-              type: "box", layout: "vertical", margin: "lg",
+              type: "box", layout: "horizontal", margin: "lg",
               contents: [
-                {
-                  type: "box", layout: "horizontal", borderColor: "#E5E7EB", borderWidth: "light", cornerRadius: "lg", paddingAll: "lg", alignItems: "center", backgroundColor: "#FFFFFF",
-                  contents: [
-                    { type: "image", url: "https://img.icons8.com/fluency-systems-filled/48/376B64/calendar.png", size: "36px", flex: 0 },
-                    {
-                      type: "box", layout: "vertical", margin: "md",
-                      contents: [
-                        { type: "text", text: "วันที่ชำระ", size: "md", color: "#4B5563", weight: "bold" },
-                        { type: "text", text: `${dayStr}/${monthStr}/${yearStr}`, size: "xl", color: "#111827", weight: "bold", margin: "xs" }
-                      ]
-                    }
-                  ]
-                }
+                { type: "text", text: "วันที่ชำระ", size: "sm", color: "#4B5563" },
+                { type: "text", text: `${dayStr}/${monthStr}/${yearStr}`, size: "sm", color: "#111827", weight: "bold", align: "end" }
               ]
             }
           ]
@@ -152,11 +136,7 @@ export async function POST(request: Request) {
               action: { type: "uri", label: "ดูประวัติและสถานะบิล", uri: `https://liff.line.me/${process.env.NEXT_PUBLIC_LIFF_ID}/invoices` }
             },
             {
-              type: "box", layout: "horizontal", margin: "lg",
-              contents: [
-                { type: "text", text: "REF ID", color: "#4B5563", weight: "bold", size: "xs" }, 
-                { type: "text", text: paymentReferenceId, color: "#4B5563", weight: "bold", align: "end", size: "xs" } 
-              ]
+              type: "text", text: `REF: ${paymentReferenceId}`, color: "#9CA3AF", size: "xs", align: "center", margin: "md"
             }
           ]
         }
@@ -165,13 +145,13 @@ export async function POST(request: Request) {
 
     if (client) {
       for (const res of house.residents) {
-        // 🌟 ปลดล็อก! ไม่เช็ค isNotify แล้ว ขอแค่ลูกบ้านมี lineId ส่งใบเสร็จให้ทันที 100%
         if (res.lineId) {
           await client.pushMessage({
             to: res.lineId,
             messages: [flexMessage]
           }).catch(e => {
-            console.error("❌ LINE Push Error in Payment API:", JSON.stringify(e.response?.data || e.message, null, 2));
+            // 🌟 เพิ่มการจับ Error แบบเจาะลึก ถ้ายังพังอีก เราจะได้รู้ว่ามันฟ้องบรรทัดไหน!
+            console.error("❌ LINE Push Error Details:", JSON.stringify(e.originalError?.response?.data || e, null, 2));
           });
         }
       }

@@ -33,7 +33,7 @@ export async function GET(request: Request) {
     if (!user?.residentHouse) return NextResponse.json({ success: false, error: 'ไม่พบข้อมูลบ้าน' }, { status: 404 });
 
     const config = await prisma.systemConfig.findFirst();
-    const flatPenaltyPerMonth = config?.penaltyRatePerDay ? Number(config.penaltyRatePerDay) : 100;
+    const penaltyRate = config?.penaltyRatePerDay ? Number(config.penaltyRatePerDay) : 100;
     const today = new Date(); 
     today.setHours(0, 0, 0, 0);
 
@@ -46,14 +46,16 @@ export async function GET(request: Request) {
       dueDate.setHours(0, 0, 0, 0);
 
       const base = truncateDecimals(Number(inv.baseAmount || 0));
-      let penalty = truncateDecimals(Number(inv.penaltyAmount || 0));
+      let penalty = truncateDecimals(Number(inv.penaltyAmount || 0)); // 🌟 ดึงค่าปรับจาก DB ตรงๆ
       const currentPaid = truncateDecimals(Number(inv.paidAmount || 0));
 
       if (today > dueDate) {
-        const diffTime = today.getTime() - dueDate.getTime();
-        const overdueDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-        const overdueMonths = Math.floor(overdueDays / 30); 
-        penalty = truncateDecimals(overdueMonths * flatPenaltyPerMonth);
+        // 🌟 ถ้าระบบยังไม่แสตมป์ค่าปรับ (เป็น 0) ให้คำนวณสดจาก Config เหมือน Webhook เด๊ะๆ
+        if (penalty === 0) {
+          let monthsLate = (today.getFullYear() - dueDate.getFullYear()) * 12 + (today.getMonth() - dueDate.getMonth());
+          if (monthsLate <= 0) monthsLate = 1; // เลยกำหนดปุ๊บ บังคับ 1 เดือนทันที
+          penalty = truncateDecimals(monthsLate * penaltyRate);
+        }
       } else {
         if (inv.status !== 'REJECTED' && inv.status !== 'PARTIAL') penalty = 0;
       }
@@ -62,8 +64,18 @@ export async function GET(request: Request) {
       const actualDebt = truncateDecimals(currentTotal - currentPaid);
 
       if (actualDebt > 0) {
-        const remainingBase = Math.max(0, truncateDecimals(base - currentPaid));
-        const remainingPenalty = truncateDecimals(actualDebt - remainingBase);
+        // หักยอดที่เคยจ่ายมาแล้วออกแบบลดต้นลดดอก (หักค่าปรับก่อน)
+        let remainingBase = base;
+        let remainingPenalty = penalty;
+
+        if (currentPaid > 0) {
+          if (currentPaid >= penalty) {
+            remainingBase = truncateDecimals(base - (currentPaid - penalty));
+            remainingPenalty = 0;
+          } else {
+            remainingPenalty = truncateDecimals(penalty - currentPaid);
+          }
+        }
 
         totalBase += remainingBase;
         totalFine += remainingPenalty;
