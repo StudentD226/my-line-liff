@@ -37,7 +37,6 @@ export async function POST(request: Request) {
                     where: { 
                       status: { in: ['PENDING', 'OVERDUE', 'REJECTED', 'PARTIAL'] },
                       billingYear: { not: 9999 },
-                      // 🌟 ปราบผี TR-: ซ่อนสลิปที่รอยืนยันไม่ให้แสดงเป็นบิลจริง!
                       invoiceNo: { not: { startsWith: 'TR-' } } 
                     },
                     orderBy: [{ billingYear: 'asc' }, { billingMonth: 'asc' }]
@@ -55,7 +54,8 @@ export async function POST(request: Request) {
             continue;
           }
 
-          const today = new Date(); today.setHours(0, 0, 0, 0);
+          const today = new Date(); 
+          today.setHours(0, 0, 0, 0);
           
           let pendingInvoices = user.residentHouse.invoices || [];
           
@@ -63,21 +63,20 @@ export async function POST(request: Request) {
           let totalPenalty = 0;
           let validInvoicesToDisplay: any[] = [];
 
-          // 🌟 1. ดึงยอดจาก Database ตรงๆ ไม่ง้อการคำนวณวันแล้ว!
+          // 🌟 ดึงยอดจาก Database ตรงๆ ตัดระบบคำนวณวันทิ้งไปเลย!
           pendingInvoices.forEach(inv => {
             let paid = truncateDecimals(Number(inv.paidAmount || 0));
-            // 👉 ดึง penalty จากฐานข้อมูลมาใช้เลย แอดมินตั้งเท่าไหร่ ลูกบ้านต้องเห็นเท่านั้น!
-            let penalty = truncateDecimals(Number(inv.penaltyAmount || 0));
+            let penalty = truncateDecimals(Number(inv.penaltyAmount || 0)); // ดึงค่าปรับจาก DB 100%
             let base = truncateDecimals(Number(inv.baseAmount || 0));
 
-            // เช็คแค่วันที่ เพื่อเปลี่ยนสถานะเฉยๆ ไม่ไปยุ่งกับตัวเงิน
+            // เปลี่ยนแค่ป้ายสถานะเฉยๆ ถ้าเลยกำหนด (ไม่แตะตัวเงิน)
             const dueDate = inv.dueDate ? new Date(inv.dueDate) : new Date(); 
             dueDate.setHours(0, 0, 0, 0);
             if (today > dueDate) {
               inv.status = inv.status === 'PARTIAL' ? 'PARTIAL' : 'OVERDUE';
             }
 
-            // หักยอดที่ทยอยจ่ายไปแล้วออกจากค่าปรับและยอดหลัก
+            // หักยอดที่เคยจ่ายมาแล้วออกแบบลดต้นลดดอก (หักค่าปรับก่อน)
             if (paid > 0) {
               if (paid >= penalty) {
                 base = truncateDecimals(base - (paid - penalty));
@@ -87,14 +86,14 @@ export async function POST(request: Request) {
               }
             }
 
-            // ถ้ายอดรวมหนี้ยังเหลือ ค่อยเอามาแสดงและบวกเข้ายอดรวม
+            // ถ้ายอดรวมหนี้ยังเหลือ เอามาบวกเข้ายอดรวม
             if (base > 0 || penalty > 0) {
               inv.baseAmount = base;
               inv.penaltyAmount = penalty;
               inv.totalAmount = truncateDecimals(base + penalty);
               
               grandTotalBase += base;
-              totalPenalty += penalty;
+              totalPenalty += penalty; // สะสมค่าปรับเข้า total
               
               validInvoicesToDisplay.push(inv);
             }
@@ -112,7 +111,7 @@ export async function POST(request: Request) {
             const currentYear = today.getFullYear();
             const currentInvoiceId = pendingInvoices[pendingInvoices.length - 1].id;
 
-            // จัดกลุ่มยอดบิลแสดงใน Flex Message
+            // จัดกลุ่มยอดบิลแยกเดือน/ปี
             pendingInvoices.forEach(inv => {
               const label = `${fullThaiMonths[inv.billingMonth]} ${inv.billingYear + 543}`;
               if (inv.id === currentInvoiceId) {
@@ -126,19 +125,22 @@ export async function POST(request: Request) {
               }
             });
 
+            // 🌟 รวมหนี้สุทธิ (ส่วนกลาง + ค่าปรับ)
             const finalGrandTotal = truncateDecimals(grandTotalBase + totalPenalty);
             const tableContents: any[] = [];
 
+            // 1. แถวเดือนปัจจุบัน
             if (currentInvoiceItem && currentInvoiceItem.amount > 0) {
               tableContents.push({
                 type: "box", layout: "horizontal", margin: "md",
                 contents: [
-                  { type: "text", text: currentInvoiceItem.label, size: "sm", color: "#059669" },
-                  { type: "text", text: `${currentInvoiceItem.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#059669", align: "end" }
+                  { type: "text", text: currentInvoiceItem.label, size: "sm", color: "#059669", weight: "bold" },
+                  { type: "text", text: `${currentInvoiceItem.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#111827", align: "end", weight: "bold" }
                 ]
               });
             }
 
+            // 2. แถวหนี้ข้ามปี
             Object.keys(pastYearTotals).forEach(yearStr => {
               const yearNum = parseInt(yearStr);
               if (pastYearTotals[yearNum] > 0) {
@@ -146,30 +148,32 @@ export async function POST(request: Request) {
                   type: "box", layout: "horizontal", margin: "md",
                   contents: [
                     { type: "text", text: `ยอดค้างชำระปี ${yearNum + 543}`, size: "sm", color: "#EF4444" },
-                    { type: "text", text: `${pastYearTotals[yearNum].toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end" }
+                    { type: "text", text: `${pastYearTotals[yearNum].toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end", weight: "bold" }
                   ]
                 });
               }
             });
 
+            // 3. แถวหนี้เดือนเก่าปีนี้
             pastMonthItems.forEach(item => {
               if (item.amount > 0) {
                 tableContents.push({
                   type: "box", layout: "horizontal", margin: "md",
                   contents: [
                     { type: "text", text: item.label, size: "sm", color: "#EF4444" },
-                    { type: "text", text: `${item.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end" }
+                    { type: "text", text: `${item.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end", weight: "bold" }
                   ]
                 });
               }
             });
 
+            // 🌟 4. แถวค่าปรับ (ดึงมาโชว์ถ้าใน DB มีค่าปรับ)
             if (totalPenalty > 0) {
               tableContents.push({
                 type: "box", layout: "horizontal", margin: "md",
                 contents: [
-                  { type: "text", text: `ค่าปรับ`, size: "sm", color: "#EA580C" },
-                  { type: "text", text: `${totalPenalty.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EA580C", align: "end" }
+                  { type: "text", text: `ค่าปรับล่าช้า`, size: "sm", color: "#EA580C", weight: "bold" },
+                  { type: "text", text: `${totalPenalty.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EA580C", align: "end", weight: "bold" }
                 ]
               });
             }
@@ -181,7 +185,7 @@ export async function POST(request: Request) {
 
             let boxBgColor = isOverdue ? "#FDEBEC" : "#EBF5FB";
             let mainTextColor = isOverdue ? "#EF4444" : "#111827";
-            let mainTitle = isOverdue ? "ยอดค้างชำระ" : "ยอดที่ต้องชำระ";
+            let mainTitle = isOverdue ? "ยอดค้างชำระทั้งหมด" : "ยอดที่ต้องชำระ";
 
             const lastInv = pendingInvoices[pendingInvoices.length - 1];
             const headerBillingMonthText = `${fullThaiMonths[lastInv.billingMonth]} ${lastInv.billingYear + 543}`;
@@ -322,7 +326,6 @@ export async function POST(request: Request) {
             };
           }
 
-          // 🌟 ตัวจับบั๊ก LINE ขั้นสุดยอด ป้องกัน 400 Bad Request
           try {
             await client.replyMessage({ 
               replyToken: event.replyToken, 
@@ -330,7 +333,6 @@ export async function POST(request: Request) {
             });
           } catch (lineError: any) {
             console.error("❌ LINE Flex Validation Error:", JSON.stringify(lineError.response?.data || lineError.message, null, 2));
-            // ส่ง Text กลับไปบอกลูกบ้านแทน หาก Flex Message มีปัญหา
             await client.replyMessage({
               replyToken: event.replyToken,
               messages: [{ type: "text", text: `⚠️ ระบบสามารถคำนวณยอดให้ได้แล้ว แต่มียอดชำระซับซ้อนเกินไป กรุณากดปุ่มดูประวัติบิลผ่านเว็บแทนครับ` }]
