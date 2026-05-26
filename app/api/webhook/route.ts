@@ -9,18 +9,12 @@ const client = new messagingApi.MessagingApiClient({
 });
 
 const fullThaiMonths = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
-
-// 🌟 Helper ตัดทศนิยมทิ้ง ไม่ให้ปัดขึ้น
 const truncateDecimals = (val: number) => Math.floor(Math.round(val * 10000) / 100) / 100;
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    
-    // ดักไว้ก่อน เผื่อ LINE ส่งมารีเช็กสถานะ Webhook (Verify)
-    if (!body.events || body.events.length === 0) {
-      return NextResponse.json({ status: 'ok', message: 'Webhook is working!' }, { status: 200 });
-    }
+    if (!body.events || body.events.length === 0) return NextResponse.json({ status: 'ok' }, { status: 200 });
 
     for (const event of body.events) {
       if (event.type === 'message' && event.message.type === 'text') {
@@ -47,160 +41,72 @@ export async function POST(request: Request) {
           });
 
           if (!user || !user.residentHouse) {
-            await client.replyMessage({ 
-              replyToken: event.replyToken, 
-              messages: [{ type: "text", text: "คุณยังไม่ได้ลงทะเบียนข้อมูลบ้าน กรุณากดปุ่ม 'ลงทะเบียน' ที่เมนูด้านล่างก่อนนะครับ" }] 
-            });
+            await client.replyMessage({ replyToken: event.replyToken, messages: [{ type: "text", text: "กรุณาลงทะเบียนข้อมูลบ้านก่อนครับ" }] });
             continue;
           }
 
-          const today = new Date(); 
-          today.setHours(0, 0, 0, 0);
-          
           let pendingInvoices = user.residentHouse.invoices || [];
-          
           let grandTotalBase = 0;
           let totalPenalty = 0;
-          let validInvoicesToDisplay: any[] = [];
+          const tableContents: any[] = [];
 
-          // 🌟 ดึงยอดจาก Database ตรงๆ ตัดระบบคำนวณวันทิ้งไปเลย!
+          // 🌟 วนลูปดึงยอดจากฐานข้อมูล 100% (ไม่เช็ควันหมดอายุเพื่อลบค่าปรับอีกต่อไป!)
           pendingInvoices.forEach(inv => {
             let paid = truncateDecimals(Number(inv.paidAmount || 0));
-            let penalty = truncateDecimals(Number(inv.penaltyAmount || 0)); // ดึงค่าปรับจาก DB 100%
+            let penalty = truncateDecimals(Number(inv.penaltyAmount || 0)); // ดึงจาก DB มาตรงๆ
             let base = truncateDecimals(Number(inv.baseAmount || 0));
 
-            // เปลี่ยนแค่ป้ายสถานะเฉยๆ ถ้าเลยกำหนด (ไม่แตะตัวเงิน)
-            const dueDate = inv.dueDate ? new Date(inv.dueDate) : new Date(); 
-            dueDate.setHours(0, 0, 0, 0);
-            if (today > dueDate) {
-              inv.status = inv.status === 'PARTIAL' ? 'PARTIAL' : 'OVERDUE';
-            }
-
-            // หักยอดที่เคยจ่ายมาแล้วออกแบบลดต้นลดดอก (หักค่าปรับก่อน)
+            // หักลดยอดที่จ่ายแล้ว (กรณี PARTIAL)
             if (paid > 0) {
-              if (paid >= penalty) {
-                base = truncateDecimals(base - (paid - penalty));
-                penalty = 0;
-              } else {
-                penalty = truncateDecimals(penalty - paid);
-              }
+              if (paid >= penalty) { base = truncateDecimals(base - (paid - penalty)); penalty = 0; } 
+              else { penalty = truncateDecimals(penalty - paid); }
             }
 
-            // ถ้ายอดรวมหนี้ยังเหลือ เอามาบวกเข้ายอดรวม
-            if (base > 0 || penalty > 0) {
-              inv.baseAmount = base;
-              inv.penaltyAmount = penalty;
-              inv.totalAmount = truncateDecimals(base + penalty);
-              
+            const rowTotal = truncateDecimals(base + penalty);
+
+            if (rowTotal > 0) {
               grandTotalBase += base;
-              totalPenalty += penalty; // สะสมค่าปรับเข้า total
+              totalPenalty += penalty;
               
-              validInvoicesToDisplay.push(inv);
+              const label = `${fullThaiMonths[inv.billingMonth]} ${inv.billingYear + 543}`;
+              
+              // ใส่ยอดรวมของเดือนนั้นลงตาราง (Base + Penalty)
+              tableContents.push({
+                type: "box", layout: "horizontal", margin: "md",
+                contents: [
+                  { type: "text", text: label, size: "sm", color: "#4B5563", weight: "bold" },
+                  { type: "text", text: `${rowTotal.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#111827", align: "end", weight: "bold" }
+                ]
+              });
             }
           });
 
-          pendingInvoices = validInvoicesToDisplay;
-          const hasPending = pendingInvoices.length > 0;
+          const hasPending = tableContents.length > 0;
           const houseNo = user.residentHouse.houseNo || 'ไม่ระบุ';
           let flexMessage: any;
 
           if (hasPending) {
-            let currentInvoiceItem: any = null;
-            let pastYearTotals: Record<number, number> = {};
-            let pastMonthItems: { label: string, amount: number }[] = [];
-            const currentYear = today.getFullYear();
-            const currentInvoiceId = pendingInvoices[pendingInvoices.length - 1].id;
-
-            // จัดกลุ่มยอดบิลแยกเดือน/ปี
-            pendingInvoices.forEach(inv => {
-              const label = `${fullThaiMonths[inv.billingMonth]} ${inv.billingYear + 543}`;
-              if (inv.id === currentInvoiceId) {
-                currentInvoiceItem = { label, amount: inv.baseAmount };
-              } else {
-                if (inv.billingYear < currentYear) {
-                  pastYearTotals[inv.billingYear] = truncateDecimals((pastYearTotals[inv.billingYear] || 0) + inv.baseAmount);
-                } else {
-                  pastMonthItems.push({ label, amount: inv.baseAmount });
-                }
-              }
-            });
-
-            // 🌟 รวมหนี้สุทธิ (ส่วนกลาง + ค่าปรับ)
             const finalGrandTotal = truncateDecimals(grandTotalBase + totalPenalty);
-            const tableContents: any[] = [];
-
-            // 1. แถวเดือนปัจจุบัน
-            if (currentInvoiceItem && currentInvoiceItem.amount > 0) {
-              tableContents.push({
-                type: "box", layout: "horizontal", margin: "md",
-                contents: [
-                  { type: "text", text: currentInvoiceItem.label, size: "sm", color: "#059669", weight: "bold" },
-                  { type: "text", text: `${currentInvoiceItem.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#111827", align: "end", weight: "bold" }
-                ]
-              });
-            }
-
-            // 2. แถวหนี้ข้ามปี
-            Object.keys(pastYearTotals).forEach(yearStr => {
-              const yearNum = parseInt(yearStr);
-              if (pastYearTotals[yearNum] > 0) {
-                tableContents.push({
-                  type: "box", layout: "horizontal", margin: "md",
-                  contents: [
-                    { type: "text", text: `ยอดค้างชำระปี ${yearNum + 543}`, size: "sm", color: "#EF4444" },
-                    { type: "text", text: `${pastYearTotals[yearNum].toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end", weight: "bold" }
-                  ]
-                });
-              }
-            });
-
-            // 3. แถวหนี้เดือนเก่าปีนี้
-            pastMonthItems.forEach(item => {
-              if (item.amount > 0) {
-                tableContents.push({
-                  type: "box", layout: "horizontal", margin: "md",
-                  contents: [
-                    { type: "text", text: item.label, size: "sm", color: "#EF4444" },
-                    { type: "text", text: `${item.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end", weight: "bold" }
-                  ]
-                });
-              }
-            });
-
-            // 🌟 4. แถวค่าปรับ (ดึงมาโชว์ถ้าใน DB มีค่าปรับ)
+            
+            // เพิ่มแถวค่าปรับแยกโชว์ให้ชัดๆ ถ้าระบบมีค่าปรับ
             if (totalPenalty > 0) {
               tableContents.push({
                 type: "box", layout: "horizontal", margin: "md",
                 contents: [
-                  { type: "text", text: `ค่าปรับล่าช้า`, size: "sm", color: "#EA580C", weight: "bold" },
-                  { type: "text", text: `${totalPenalty.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EA580C", align: "end", weight: "bold" }
+                  { type: "text", text: `(รวมค่าปรับล่าช้า)`, size: "xs", color: "#EA580C", weight: "bold" },
+                  { type: "text", text: `${totalPenalty.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "xs", color: "#EA580C", align: "end", weight: "bold" }
                 ]
               });
             }
 
-            const isOverdue = pendingInvoices.some(inv => {
-              const dDate = inv.dueDate ? new Date(inv.dueDate) : new Date();
-              return today > dDate;
-            }) || pendingInvoices.length > 1 || totalPenalty > 0;
-
-            let boxBgColor = isOverdue ? "#FDEBEC" : "#EBF5FB";
-            let mainTextColor = isOverdue ? "#EF4444" : "#111827";
-            let mainTitle = isOverdue ? "ยอดค้างชำระทั้งหมด" : "ยอดที่ต้องชำระ";
-
-            const lastInv = pendingInvoices[pendingInvoices.length - 1];
-            const headerBillingMonthText = `${fullThaiMonths[lastInv.billingMonth]} ${lastInv.billingYear + 543}`;
-            const dueDateObj = lastInv.dueDate ? new Date(lastInv.dueDate) : new Date();
-            const dueDateText = `${String(dueDateObj.getDate()).padStart(2, '0')}/${String(dueDateObj.getMonth() + 1).padStart(2, '0')}/${dueDateObj.getFullYear() + 543}`;
-
+            const today = new Date();
             const autoRefDate = `${String(today.getDate()).padStart(2, '0')}${String(today.getMonth() + 1).padStart(2, '0')}${today.getFullYear() + 543}`;
-            const customTeacherInvoiceNo = `${houseNo}-${autoRefDate}`;
+            const customInvoiceNo = `${houseNo}-${autoRefDate}`;
 
             flexMessage = {
-              type: 'flex',
-              altText: `ใบแจ้งชำระค่าส่วนกลาง บ้านเลขที่ ${houseNo}`,
+              type: 'flex', altText: `ใบแจ้งชำระค่าส่วนกลาง บ้านเลขที่ ${houseNo}`,
               contents: {
-                type: "bubble",
-                size: "kilo",
+                type: "bubble", size: "kilo",
                 body: {
                   type: "box", layout: "vertical", paddingAll: "xl", backgroundColor: "#FFFFFF",
                   contents: [
@@ -212,72 +118,31 @@ export async function POST(request: Request) {
                       ]
                     },
                     {
-                      type: "box", layout: "horizontal", margin: "md", backgroundColor: "#D1E7E3", cornerRadius: "20px", paddingAll: "sm", paddingStart: "md", paddingEnd: "md", alignItems: "flex-start",
+                      type: "box", layout: "vertical", margin: "xl", backgroundColor: "#FDEBEC", cornerRadius: "lg", paddingAll: "lg",
                       contents: [
-                        { type: "image", url: "https://img.icons8.com/fluency-systems-filled/48/2a524c/info.png", size: "16px", flex: 0, margin: "xs" },
-                        { type: "text", text: `ใบแจ้งชำระ\nประจำเดือน ${headerBillingMonthText}`, size: "xs", color: "#2A524C", weight: "bold", margin: "sm", wrap: true, flex: 1 }
-                      ]
-                    },
-                    {
-                      type: "box", layout: "vertical", margin: "xl", backgroundColor: boxBgColor, cornerRadius: "lg", paddingAll: "lg",
-                      contents: [
-                        { type: "text", text: mainTitle, size: "xs", color: mainTextColor, weight: "bold", align: "start" },
+                        { type: "text", text: "ยอดค้างชำระทั้งหมด", size: "xs", color: "#EF4444", weight: "bold", align: "start" },
                         {
                           type: "box", layout: "horizontal", margin: "sm", alignItems: "flex-end",
                           contents: [
                             { type: "text", text: " ", flex: 1 },
-                            { type: "text", text: finalGrandTotal.toLocaleString('th-TH', { minimumFractionDigits: 2 }), size: "xxl", weight: "bold", color: mainTextColor, align: "center", flex: 0, adjustMode: "shrink-to-fit" },
-                            { type: "text", text: "บาท", size: "sm", weight: "bold", color: mainTextColor, align: "end", flex: 1 }
+                            { type: "text", text: finalGrandTotal.toLocaleString('th-TH', { minimumFractionDigits: 2 }), size: "xxl", weight: "bold", color: "#EF4444", align: "center", flex: 0 },
+                            { type: "text", text: "บาท", size: "sm", weight: "bold", color: "#EF4444", align: "end", flex: 1 }
                           ]
                         }
                       ]
                     },
-                    {
-                      type: "box", layout: "vertical", margin: "md", borderColor: "#E5E7EB", borderWidth: "light", cornerRadius: "lg", paddingAll: "md",
-                      contents: tableContents.length > 0 ? tableContents : [{ type: "text", text: "ไม่พบข้อมูลรายการ", size: "sm", color: "#9CA3AF", align: "center" }]
-                    },
-                    {
-                      type: "box", layout: "vertical", margin: "lg",
-                      contents: [
-                        {
-                          type: "box", layout: "horizontal", borderColor: "#E5E7EB", borderWidth: "light", cornerRadius: "lg", paddingAll: "md", alignItems: "center", backgroundColor: "#FFFFFF",
-                          contents: [
-                            { type: "image", url: "https://img.icons8.com/fluency-systems-filled/48/376B64/calendar.png", size: "32px", flex: 0 },
-                            {
-                              type: "box", layout: "vertical", margin: "md",
-                              contents: [
-                                { type: "text", text: "กรุณาชำระภายในวันที่", size: "xs", color: "#4B5563", weight: "bold" },
-                                { type: "text", text: dueDateText, size: "md", color: "#EF4444", weight: "bold", margin: "xs" }
-                              ]
-                            }
-                          ]
-                        }
-                      ]
-                    }
+                    { type: "box", layout: "vertical", margin: "md", borderColor: "#E5E7EB", borderWidth: "light", cornerRadius: "lg", paddingAll: "md", contents: tableContents }
                   ]
                 },
                 footer: {
                   type: "box", layout: "vertical", paddingStart: "xl", paddingEnd: "xl", paddingBottom: "xl",
                   contents: [
-                    {
-                      type: "button", style: "primary", color: "#376B64", height: "sm",
-                      action: { type: "uri", label: "ดูประวัติและชำระเงิน", uri: `https://liff.line.me/${process.env.NEXT_PUBLIC_LIFF_ID}/invoices` }
-                    },
+                    { type: "button", style: "primary", color: "#376B64", height: "sm", action: { type: "uri", label: "ดูประวัติและชำระเงิน", uri: `https://liff.line.me/${process.env.NEXT_PUBLIC_LIFF_ID}/invoices` } },
                     {
                       type: "box", layout: "horizontal", margin: "md",
                       contents: [
                         { type: "text", text: "PAYMENT ID", size: "xxs", color: "#4B5563", weight: "bold", flex: 0 },
-                        {
-                          type: "text",
-                          text: (user.residentHouse.invoices?.[0]?.invoiceNo && !user.residentHouse.invoices[0].invoiceNo.startsWith('INV'))
-                            ? user.residentHouse.invoices[0].invoiceNo
-                            : customTeacherInvoiceNo,
-                          size: "xxs",
-                          color: "#4B5563",
-                          weight: "bold",
-                          align: "end",
-                          flex: 1
-                        }
+                        { type: "text", text: customInvoiceNo, size: "xxs", color: "#4B5563", weight: "bold", align: "end", flex: 1 }
                       ]
                     }
                   ]
@@ -286,65 +151,18 @@ export async function POST(request: Request) {
             };
           } else {
             flexMessage = {
-              type: "flex",
-              altText: `ตรวจสอบค่าส่วนกลาง บ้านเลขที่ ${houseNo}`,
-              contents: {
-                type: "bubble",
-                size: "kilo", 
-                body: {
-                  type: "box", layout: "vertical", paddingAll: "xl", backgroundColor: "#FFFFFF",
-                  contents: [
-                    {
-                      type: "box", layout: "horizontal", margin: "sm", alignItems: "center",
-                      contents: [
-                        {
-                          type: "box", layout: "vertical", backgroundColor: "#2d5a52", cornerRadius: "md", width: "48px", height: "48px", alignItems: "center", justifyContent: "center", flex: 0,
-                          contents: [{ type: "image", url: "https://img.icons8.com/fluency-systems-filled/48/ffffff/home.png", size: "24px" }]
-                        },
-                        {
-                          type: "box", layout: "vertical", margin: "md",
-                          contents: [
-                            { type: "text", text: `บ้านเลขที่ ${houseNo}`, weight: "bold", size: "xl", color: "#111827" },
-                            { type: "text", text: "ไม่มียอดค้างชำระ", weight: "bold", color: "#16A34A", size: "sm", margin: "xs" }
-                          ]
-                        }
-                      ]
-                    },
-                    { type: "separator", margin: "xl", color: "#E5E7EB" },
-                    {
-                      type: "box", layout: "horizontal", margin: "lg", alignItems: "center",
-                      contents: [
-                        { type: "text", text: "ยอดที่ต้องชำระ", size: "sm", weight: "bold", color: "#111827", flex: 1 },
-                        { type: "text", text: "0 บาท", size: "xl", weight: "bold", color: "#111827", align: "end", flex: 0 }
-                      ]
-                    },
-                    { type: "separator", margin: "xl", color: "#E5E7EB" },
-                    { type: "text", text: "คุณชำระค่าส่วนกลางครบถ้วนแล้ว ขอบคุณที่ให้ความร่วมมือครับ", size: "xs", color: "#4B5563", margin: "lg", wrap: true }
-                  ]
-                }
-              }
+              type: "flex", altText: `ตรวจสอบค่าส่วนกลาง`,
+              contents: { type: "bubble", body: { type: "box", layout: "vertical", paddingAll: "xl", contents: [ { type: "text", text: `บ้านเลขที่ ${houseNo}`, weight: "bold", size: "xl" }, { type: "text", text: "ไม่มียอดค้างชำระ", color: "#16A34A", margin: "md" } ] } }
             };
           }
 
-          try {
-            await client.replyMessage({ 
-              replyToken: event.replyToken, 
-              messages: [flexMessage as any] 
-            });
-          } catch (lineError: any) {
-            console.error("❌ LINE Flex Validation Error:", JSON.stringify(lineError.response?.data || lineError.message, null, 2));
-            await client.replyMessage({
-              replyToken: event.replyToken,
-              messages: [{ type: "text", text: `⚠️ ระบบสามารถคำนวณยอดให้ได้แล้ว แต่มียอดชำระซับซ้อนเกินไป กรุณากดปุ่มดูประวัติบิลผ่านเว็บแทนครับ` }]
-            }).catch(e => console.error("Fallback LINE error:", e));
-          }
+          try { await client.replyMessage({ replyToken: event.replyToken, messages: [flexMessage] }); } 
+          catch (e) { await client.replyMessage({ replyToken: event.replyToken, messages: [{ type: "text", text: `ระบบขัดข้อง กรุณาดูผ่านเว็บครับ` }] }); }
         }
       }
     }
     return NextResponse.json({ status: 'ok' });
-
-  } catch (error: any) {
-    console.error("❌ [Webhook Fatal Error]:", error);
-    return NextResponse.json({ status: 'error', message: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ status: 'error' }, { status: 500 });
   }
 }
