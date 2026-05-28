@@ -283,7 +283,8 @@ export default function FinancialDashboard() {
         <div className="flex items-center space-x-4 w-full md:w-auto">
           <select value={selectedMonth} onChange={(e) => setSelectedMonth(Number(e.target.value))} className="bg-white border border-gray-200 text-gray-700 text-sm rounded-lg focus:ring-[#1A534B] outline-none block p-2.5 font-bold shadow-sm cursor-pointer">
             {[...Array(12)].map((_, i) => (
-              <option key={i+1} value={i+1}>รอบบิล {fullThaiMonths[i+1]} {selectedYear}</option>
+              // 🌟 แก้ตรงนี้: ปี พ.ศ. มาแล้วครับ
+              <option key={i+1} value={i+1}>รอบบิล {fullThaiMonths[i+1]} {selectedYear + 543}</option>
             ))}
           </select>
           <button onClick={() => setIsModalOpen(true)} className="bg-[#1A534B] hover:bg-[#14423b] text-white font-bold py-2.5 px-5 rounded-lg flex items-center space-x-2 shadow-md transition-colors whitespace-nowrap">
