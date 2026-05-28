@@ -13,14 +13,11 @@ const COLORS = [
   "#EF4444", "#3B82F6", "#F59E0B", "#10B981", "#8B5CF6", "#06B6D4", "#EC4899"
 ];
 const fullThaiMonths = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
-// 🌟 เพิ่มชื่อเดือนแบบย่อ เพื่อให้กราฟจับคู่ได้แม่นยำและแสดงผลบนมือถือสวยขึ้น
 const shortThaiMonths = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 
 export default function ResidentExpenseDashboard() {
-  const [data, setData] = useState<any[]>([]);
+  const [allYearExpenses, setAllYearExpenses] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
-  const [yearlyChartData, setYearlyChartData] = useState<any[]>([]);
-  
   const [isLoading, setIsLoading] = useState(true);
   
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
@@ -34,44 +31,16 @@ export default function ResidentExpenseDashboard() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const resTx = await fetch(`/api/financial/transactions?month=${selectedMonth}&year=${selectedYear}`, { cache: 'no-store' });
+      const resTx = await fetch(`/api/financial/transactions?year=${selectedYear}`, { cache: 'no-store' });
       const resultTx = await resTx.json();
       if (resultTx.success) {
         const expensesOnly = (resultTx.data || []).filter((tx: any) => tx.type === 'EXPENSE');
-        setData(expensesOnly);
+        setAllYearExpenses(expensesOnly);
       }
 
       const resCat = await fetch("/api/financial/categories", { cache: 'no-store' });
       const resultCat = await resCat.json();
       if (resultCat.success) setCategories(resultCat.data || []);
-
-      const resSummary = await fetch(`/api/financial/summary?year=${selectedYear}`, { cache: 'no-store' });
-      const resultSummary = await resSummary.json();
-      
-      // 🌟 ระบบจับคู่เดือนแบบครอบจักรวาล (Bulletproof Matching)
-      let defaultYearData = shortThaiMonths.map((shortName, index) => ({ 
-        monthId: index + 1, 
-        name: shortName, 
-        expense: 0 
-      }));
-      
-      if (resultSummary.success && Array.isArray(resultSummary.data)) {
-        defaultYearData = defaultYearData.map((item) => {
-          // ค้นหาว่า API ส่งข้อมูลของเดือนนี้มาในรูปแบบไหน (หาจาก ID, ชื่อย่อ หรือ ชื่อเต็ม)
-          const apiData = resultSummary.data.find((d: any) => 
-            d.month === item.monthId || 
-            d.name === item.name || 
-            d.name === fullThaiMonths[item.monthId]
-          );
-          
-          return {
-            ...item,
-            // ดึงค่าใช้จ่ายมา ถ้าไม่มีก็ใส่ 0
-            expense: apiData ? (Number(apiData.expense) || Number(apiData.รายจ่าย) || 0) : 0
-          };
-        });
-      }
-      setYearlyChartData(defaultYearData);
       
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -82,25 +51,44 @@ export default function ResidentExpenseDashboard() {
 
   useEffect(() => { 
     fetchData(); 
-  }, [selectedMonth, selectedYear]);
+  }, [selectedYear]);
+
+  const currentMonthData = useMemo(() => {
+    return allYearExpenses.filter(tx => {
+      const txMonth = new Date(tx.date).getMonth() + 1;
+      return txMonth === selectedMonth;
+    });
+  }, [allYearExpenses, selectedMonth]);
 
   const totalExpense = useMemo(() => {
-    return data.reduce((sum, tx) => sum + tx.amount, 0);
-  }, [data]);
+    return currentMonthData.reduce((sum, tx) => sum + tx.amount, 0);
+  }, [currentMonthData]);
 
   const pieData = useMemo(() => {
     return categories
       .filter(c => c.type === 'EXPENSE')
       .map(cat => {
-        const total = data
+        const total = currentMonthData
           .filter(tx => tx.category?.name === cat.name)
           .reduce((sum, tx) => sum + tx.amount, 0);
         return { name: cat.name, value: total };
       })
       .filter(item => item.value > 0);
-  }, [categories, data]);
+  }, [categories, currentMonthData]);
 
-  if (isLoading && data.length === 0) {
+  const yearlyChartData = useMemo(() => {
+    const totals = Array(12).fill(0);
+    allYearExpenses.forEach(tx => {
+      const m = new Date(tx.date).getMonth();
+      totals[m] += tx.amount;
+    });
+    return shortThaiMonths.map((name, index) => ({
+      name: name,
+      expense: totals[index]
+    }));
+  }, [allYearExpenses]);
+
+  if (isLoading && allYearExpenses.length === 0) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#F8FAFC]">
         <Loader2 className="text-[#1A534B] animate-spin mb-4" size={40} />
@@ -112,7 +100,6 @@ export default function ResidentExpenseDashboard() {
   return (
     <div className="w-full max-w-6xl mx-auto bg-[#F8FAFC] min-h-screen font-sans pb-10">
       
-      {/* Header Section */}
       <div className="bg-[#1A534B] px-5 pt-8 pb-16 md:pb-24 md:rounded-b-[60px] rounded-b-[40px] shadow-md relative z-0">
         <h1 className="text-white text-xl md:text-3xl font-bold text-center mb-1 md:mb-2">รายงานความโปร่งใส</h1>
         <p className="text-white/80 text-xs md:text-sm text-center">ตรวจสอบรายจ่ายส่วนกลางของหมู่บ้าน</p>
@@ -140,10 +127,8 @@ export default function ResidentExpenseDashboard() {
         </div>
       </div>
 
-      {/* Content Wrapper */}
       <div className="px-4 md:px-8 -mt-10 md:-mt-16 relative z-10 flex flex-col gap-4 md:gap-6">
         
-        {/* Top Row: Hero Metric + Pie Chart */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
           
           <div className="bg-gradient-to-br from-red-50 to-white p-6 md:p-10 rounded-2xl shadow-sm border border-red-100 flex flex-col items-center justify-center relative overflow-hidden min-h-[160px] lg:min-h-[300px]">
@@ -157,11 +142,12 @@ export default function ResidentExpenseDashboard() {
             <p className="text-xs md:text-sm text-red-400 mt-2 font-medium relative z-10">บาท</p>
           </div>
 
-          <div className="bg-white p-5 md:p-8 rounded-2xl shadow-sm border border-gray-100">
+          <div className="bg-white p-5 md:p-8 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
             <h3 className="font-bold text-gray-800 text-sm md:text-base mb-4 flex items-center justify-center">
               <PieChartIcon className="w-4 h-4 mr-2 text-[#1A534B]" /> สัดส่วนรายจ่ายรอบบิลนี้
             </h3>
-            <div className="h-56 md:h-72 w-full flex items-center justify-center relative">
+            {/* 🌟 ล็อกความสูงกราฟวงกลม ห้ามยุบเด็ดขาด */}
+            <div className="h-[220px] md:h-[280px] w-full flex items-center justify-center relative mt-auto">
               {pieData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -184,7 +170,6 @@ export default function ResidentExpenseDashboard() {
           </div>
         </div>
 
-        {/* Bottom Row: Transaction List + Bar Chart */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
           
           <div className="bg-white p-5 md:p-8 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
@@ -192,12 +177,12 @@ export default function ResidentExpenseDashboard() {
               <h3 className="font-bold text-gray-800 text-sm md:text-base flex items-center">
                 <FileText className="w-4 h-4 mr-2 text-[#1A534B]" /> รายการใช้จ่าย
               </h3>
-              <span className="text-[10px] md:text-xs font-bold bg-gray-100 text-gray-500 px-3 py-1 rounded-full">{data.length} รายการ</span>
+              <span className="text-[10px] md:text-xs font-bold bg-gray-100 text-gray-500 px-3 py-1 rounded-full">{currentMonthData.length} รายการ</span>
             </div>
 
-            <div className="space-y-3 max-h-[300px] md:max-h-[350px] overflow-y-auto custom-scrollbar pr-2 flex-1">
-              {data.length > 0 ? (
-                data.map((tx, idx) => (
+            <div className="space-y-3 max-h-[250px] md:max-h-[350px] overflow-y-auto custom-scrollbar pr-2">
+              {currentMonthData.length > 0 ? (
+                currentMonthData.map((tx, idx) => (
                   <div key={idx} className="flex justify-between items-center p-3 md:p-4 bg-gray-50 rounded-xl border border-gray-100 hover:bg-gray-100 transition-colors">
                     <div className="flex-1 pr-3 overflow-hidden">
                       <p className="font-bold text-gray-800 text-sm md:text-base line-clamp-1">{tx.title}</p>
@@ -230,12 +215,24 @@ export default function ResidentExpenseDashboard() {
             <h3 className="font-bold text-gray-800 text-sm md:text-base mb-4 flex items-center justify-center text-center">
                <TrendingDown className="w-4 h-4 mr-2 text-[#1A534B]" /> เทรนด์รายจ่าย ปี พ.ศ. {selectedYear + 543}
             </h3>
-            <div className="h-56 md:h-72 w-full flex-1">
+            {/* 🌟 ล็อกความสูงกราฟแท่งแบบตายตัวที่ 250px ห้ามหดหดหายเด็ดขาด */}
+            <div className="h-[250px] md:h-[300px] w-full mt-2">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={yearlyChartData} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
+                <BarChart data={yearlyChartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 10, fontWeight: 'bold' }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 10 }} tickFormatter={(val) => val >= 1000 ? `${val/1000}k` : val} />
+                  <XAxis 
+                    dataKey="name" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: '#9CA3AF', fontSize: 10, fontWeight: 'bold' }} 
+                    interval="preserveStartEnd" 
+                  />
+                  <YAxis 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: '#9CA3AF', fontSize: 10 }} 
+                    tickFormatter={(val) => val >= 1000 ? `${val/1000}k` : val} 
+                  />
                   <RechartsTooltip 
                     cursor={{fill: '#F9FAFB'}} 
                     formatter={(value: any, name: any) => {
