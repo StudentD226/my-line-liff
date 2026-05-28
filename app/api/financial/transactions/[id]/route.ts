@@ -7,15 +7,20 @@ const prisma = new PrismaClient();
 // ==========================================
 // 1. แก้ไขรายการ (PUT)
 // ==========================================
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
+export async function PUT(
+  request: Request, 
+  { params }: { params: Promise<{ id: string }> } // 🌟 แก้ 1: เปลี่ยนเป็น Promise
+) {
   try {
+    const { id } = await params; // 🌟 แก้ 2: สั่ง await ดึงค่า id ออกมาก่อน
+
     const body = await request.json();
     const { type, categoryId, title, amount, date, description, receiptUrl } = body;
 
     const finalDescription = title ? (description ? `${title} - ${description}` : title) : description;
 
     const updatedTx = await prisma.financialTransaction.update({
-      where: { id: params.id },
+      where: { id: id }, // 🌟 แก้ 3: ใช้ id ที่ได้มา
       data: {
         type: type as TransactionType,
         categoryId,
@@ -36,10 +41,15 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 // ==========================================
 // 2. ลบรายการ (DELETE)
 // ==========================================
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(
+  request: Request, 
+  { params }: { params: Promise<{ id: string }> } // 🌟 แก้ 1: เปลี่ยนเป็น Promise
+) {
   try {
+    const { id } = await params; // 🌟 แก้ 2: สั่ง await ดึงค่า id ออกมาก่อน
+
     await prisma.financialTransaction.delete({
-      where: { id: params.id }
+      where: { id: id } // 🌟 แก้ 3: ใช้ id ที่ได้มา
     });
     return NextResponse.json({ success: true });
   } catch (error) {
