@@ -49,9 +49,8 @@ export default function FinancialDashboard() {
 
   const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<{ id: string, name: string } | null>(null);
+  
   const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null);
-
-  // 🌟 เพิ่ม State สำหรับหมุน Loading ตอนอัปโหลดรูป
   const [isUploading, setIsUploading] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -144,19 +143,18 @@ export default function FinancialDashboard() {
     setIsModalOpen(true);
   };
 
-  // 🌟 ฟังก์ชัน อัปโหลดรูปภาพ
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    // เช็คขนาดไฟล์ไม่ให้เกิน 5MB
-    if (file.size > 5 * 1024 * 1024) {
-      return showAlert("ขนาดไฟล์ต้องไม่เกิน 5MB", "warning");
+    if (file.size > 10 * 1024 * 1024) {
+      return showAlert("ขนาดไฟล์ต้องไม่เกิน 10MB", "warning");
     }
 
     setIsUploading(true);
     const uploadData = new FormData();
     uploadData.append('file', file);
+    uploadData.append('type', formData.type); 
+    uploadData.append('date', formData.date); 
 
     try {
       const res = await fetch('/api/upload', {
@@ -166,7 +164,7 @@ export default function FinancialDashboard() {
       const data = await res.json();
       
       if (data.success) {
-        setFormData({ ...formData, receiptUrl: data.url }); // 🌟 เซฟ URL ของรูปลงฟอร์ม
+        setFormData({ ...formData, receiptUrl: data.url }); 
         showAlert("อัปโหลดรูปภาพสำเร็จ!", "success");
       } else {
         showAlert(data.error || "อัปโหลดล้มเหลว", "error");
@@ -176,14 +174,13 @@ export default function FinancialDashboard() {
       showAlert("ระบบขัดข้องในการอัปโหลด", "error");
     } finally {
       setIsUploading(false);
-      // เคลียร์ค่า input เผื่อผู้ใช้อยากอัปโหลดไฟล์เดิมซ้ำ
       e.target.value = '';
     }
   };
 
   const handleSubmitTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSubmitting || isUploading) return; // 🌟 ป้องกันการกดบันทึกตอนรูปยังอัปไม่เสร็จ
+    if (isSubmitting || isUploading) return;
 
     if (!formData.title || !formData.amount || (!formData.categoryId && !formData.newCategoryName)) {
       return showAlert("กรุณากรอกข้อมูลให้ครบถ้วน", "warning");
@@ -483,7 +480,6 @@ export default function FinancialDashboard() {
                   <textarea rows={2} value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1A534B] outline-none transition-all text-sm resize-none" placeholder="รายละเอียดอื่นๆ (ถ้ามี)"></textarea>
                 </div>
 
-                {/* 🌟 อัปเดต UI ส่วนของการอัปโหลดหลักฐาน */}
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1">หลักฐาน (บิล/สลิป)</label>
                   {formData.receiptUrl ? (
@@ -507,7 +503,7 @@ export default function FinancialDashboard() {
                           <Upload className="text-gray-400" size={20} />
                         )}
                         <span className="text-xs text-gray-500 font-medium">
-                          {isUploading ? 'กำลังอัปโหลด...' : 'คลิกเพื่ออัปโหลดรูปภาพ (ไม่เกิน 5MB)'}
+                          {isUploading ? 'กำลังอัปโหลด...' : 'คลิกเพื่ออัปโหลดรูปภาพ (ไม่เกิน 4MB)'}
                         </span>
                       </div>
                       <input type="file" accept="image/*" className="hidden" onChange={handleFileUpload} disabled={isUploading} />
@@ -656,7 +652,6 @@ export default function FinancialDashboard() {
                     <td className="px-6 py-4">
                       <div className="flex items-center space-x-2">
                         <p className="font-bold text-gray-800">{tx.title}</p>
-                        {/* 🌟 แสดงไอคอนรูปภาพเล็กๆ ถ้ามีบิลแนบมา */}
                         {tx.receiptUrl && (
                           <a href={tx.receiptUrl} target="_blank" rel="noreferrer" title="ดูหลักฐานบิล/สลิป" className="text-blue-500 hover:text-blue-700 bg-blue-50 p-1 rounded transition-colors">
                             <FileText size={14} />
