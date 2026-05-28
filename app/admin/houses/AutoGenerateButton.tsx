@@ -18,7 +18,6 @@ export default function AutoGenerateButton({ autoGenerateAction }: { autoGenerat
     }
 
     Swal.fire({
-      // 🌟 ใช้ HTML จัด Layout เต็มรูปแบบ และดึง Icon จากภายนอกมาใช้แทน Emoji
       html: `
         <div class="flex flex-col items-center mt-2 mb-4">
           <img src="https://img.icons8.com/fluency-systems-filled/48/f59e0b/magic-wand.png" style="width: 48px; height: 48px; margin-bottom: 12px;" />
@@ -82,7 +81,6 @@ export default function AutoGenerateButton({ autoGenerateAction }: { autoGenerat
       }
     }).then(async (result) => {
       if (result.isConfirmed && result.value) {
-        // 🌟 อัปเกรดหน้าต่าง Loading ให้นุ่มนวลขึ้น
         Swal.fire({ 
           title: 'กำลังสร้างข้อมูล...', 
           html: 'กรุณารอสักครู่ ระบบกำลังรันเลขที่บ้านให้คุณ',
@@ -101,12 +99,11 @@ export default function AutoGenerateButton({ autoGenerateAction }: { autoGenerat
           
           await autoGenerateAction(formData);
           
-          // 🌟 Alert สำเร็จ!
           Swal.fire({
             icon: 'success', 
             title: 'เสร็จสิ้น!', 
             text: 'สร้างข้อมูลบ้านอัตโนมัติเรียบร้อยแล้ว',
-            confirmButtonColor: '#3b82f6', // สีน้ำเงินให้เข้ากับหน้าหลัก
+            confirmButtonColor: '#3b82f6',
             customClass: { popup: 'rounded-[2rem]' },
             timer: 3000,
             timerProgressBar: true
@@ -130,10 +127,10 @@ export default function AutoGenerateButton({ autoGenerateAction }: { autoGenerat
     <button 
       type="button" 
       onClick={handleAutoGenerate}
-      className="w-full mt-3 flex items-center justify-center gap-2 bg-amber-50 hover:bg-amber-100 text-amber-600 font-bold py-3.5 px-4 rounded-2xl transition-all active:scale-[0.98] border border-amber-100 shadow-sm">
-      {/* 🌟 ใช้ Lucide Icon สวยงามแทน Emoji */}
-      <Wand2 size={20} strokeWidth={2.5} />
-      รันเลขที่อัตโนมัติ (เช่น 1-100)
+      // 🌟 ย่อขนาดปุ่มให้พอดีกับแถบด้านบน
+      className="flex items-center justify-center gap-2 px-5 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-600 font-bold rounded-xl transition-all border border-amber-200 shadow-sm text-sm active:scale-[0.98]">
+      <Wand2 size={18} strokeWidth={2.5} />
+      <span>รันเลขที่อัตโนมัติ</span>
     </button>
   );
 }

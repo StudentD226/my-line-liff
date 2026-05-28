@@ -105,13 +105,16 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
             <p className="text-sm text-slate-500 mt-2">เพิ่ม แก้ไข ลบข้อมูล และจัดการสมาชิกลูกบ้านทั้งหมดในโครงการ</p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto mt-4 md:mt-0">
+            {/* 🌟 1. ย้ายปุ่มเพิ่มบ้านมาด้านซ้าย */}
             <Link 
               href="/admin/houses?add=true" 
               className="flex items-center justify-center px-6 py-2.5 bg-[#376B64] hover:bg-[#2A524C] text-white rounded-xl font-bold text-sm shadow-md transition-all active:scale-[0.98]"
             >
               <Plus size={18} className="mr-1" /> เพิ่ม{unitLabel}ใหม่
             </Link>
+            {/* 🌟 2. วางปุ่ม AutoGenerate ไว้ด้านขวา */}
+            <AutoGenerateButton autoGenerateAction={autoGenerateHouses} />
           </div>
         </div>
 
@@ -138,9 +141,6 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
         {/* 🌟 Table Card */}
         <form action={deleteMultipleHouses} className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden relative">
           
-          {/* =======================================================
-              🌟 Bulk Actions Bar (ถอดแบบฟังก์ชันเลือกทำรายการมาจากหน้าบิลเป๊ะๆ)
-              ======================================================= */}
           <div id="bulkActionBar" className="hidden bg-slate-900 text-white px-6 py-4 flex-col sm:flex-row justify-between items-center gap-4 animate-in slide-in-from-top duration-300 z-10 relative">
             <span className="text-sm font-bold flex items-center gap-2">
               <span id="selectedCount" className="flex items-center justify-center bg-[#376B64] text-white w-6 h-6 rounded-full text-xs shadow-sm font-black">0</span> รายการที่เลือกอยู่ขณะนี้
@@ -149,13 +149,12 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
               <button type="button" className="delete-btn flex items-center px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition shadow-sm active:scale-[0.98]">
                 <Trash2 size={14} className="mr-1.5" /> ลบยูนิตที่เลือกทั้งหมด
               </button>
-              {/* ปุ่มซ่อนเพื่อควบคุมการ Submit ผ่าน SweetAlert2 */}
               <button type="submit" className="hidden hidden-submit" />
             </div>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[900px]">
+            <table className="w-full border-collapse min-w-[900px]">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-100 text-slate-500">
                   <th className="p-4 w-12 text-center">
@@ -165,11 +164,12 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
                       className="rounded border-slate-300 text-[#376B64] focus:ring-[#376B64] w-5 h-5 cursor-pointer"
                     />
                   </th>
-                  <th className="py-4 px-2 text-sm font-bold tracking-wide">{unitLabel}</th>
-                  <th className="py-4 px-2 text-sm font-bold tracking-wide">ขนาดพื้นที่</th>
-                  <th className="py-4 px-2 text-sm font-bold tracking-wide">รูปแบบการคิดเงิน</th>
-                  <th className="py-4 px-2 text-sm font-bold tracking-wide">อัตราเรทราคา</th>
-                  <th className="py-4 px-2 text-sm font-bold tracking-wide border-l border-slate-100">ข้อมูลติดต่อ</th>
+                  {/* 🌟 เพิ่ม text-center ให้หัวตารางทั้งหมด */}
+                  <th className="py-4 px-2 text-sm font-bold tracking-wide text-center">{unitLabel}</th>
+                  <th className="py-4 px-2 text-sm font-bold tracking-wide text-center">ขนาดพื้นที่</th>
+                  <th className="py-4 px-2 text-sm font-bold tracking-wide text-center">รูปแบบการคิดเงิน</th>
+                  <th className="py-4 px-2 text-sm font-bold tracking-wide text-center">อัตราเรทราคา</th>
+                  <th className="py-4 px-4 text-sm font-bold tracking-wide text-center border-l border-slate-100">ข้อมูลติดต่อ</th>
                   <th className="py-4 px-4 text-sm font-bold tracking-wide text-center border-l border-slate-100">จัดการ</th>
                 </tr>
               </thead>
@@ -193,27 +193,27 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
                           className="house-checkbox rounded border-slate-300 text-[#376B64] focus:ring-[#376B64] w-5 h-5 cursor-pointer"
                         />
                       </td>
-                      <td className="py-4 px-2">
+                      <td className="py-4 px-2 text-center">
                         <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl font-black text-sm border bg-slate-100 text-slate-700 border-slate-200">
                           {house.houseNo}
                         </div>
                       </td>
-                      <td className="py-4 px-2 text-slate-700 font-bold text-sm">{house.houseSize} <span className="text-slate-400 font-normal">{sizeLabel}</span></td>
-                      <td className="py-4 px-2">
+                      <td className="py-4 px-2 text-slate-700 font-bold text-sm text-center">
+                        {house.houseSize} <span className="text-slate-400 font-normal">{sizeLabel}</span>
+                      </td>
+                      <td className="py-4 px-2 text-center">
                         <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider ${house.feeType === 'FIXED' ? 'bg-[#376B64]/10 text-[#376B64]' : 'bg-slate-100 text-slate-600'}`}>
                           {house.feeType === 'FIXED' ? 'เหมาจ่ายรายเดือน' : 'ตามพื้นที่'}
                         </span>
                       </td>
-                      <td className="py-4 px-2">
-                        <div className="flex flex-col font-bold">
-                          <span className="text-slate-900 text-base">{Number(house.feeRate).toLocaleString('th-TH')} ฿</span>
-                        </div>
+                      <td className="py-4 px-2 text-center">
+                        <span className="text-slate-900 font-bold text-base">{Number(house.feeRate).toLocaleString('th-TH')} ฿</span>
                       </td>
                       
-                      <td className="py-4 px-2 border-l border-slate-50">
+                      <td className="py-4 px-4 border-l border-slate-50">
                         {house.residents && house.residents.length > 0 ? (
-                          <div className="flex flex-col">
-                            <div className="flex items-center gap-1.5">
+                          <div className="flex flex-col items-center">
+                            <div className="flex items-center justify-center gap-1.5">
                               <span className="text-sm font-bold text-slate-800 truncate max-w-[140px]">
                                 {house.residents[0].name || 'ไม่ได้ระบุชื่อ'}
                               </span>
@@ -223,7 +223,7 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
                                 </span>
                               )}
                             </div>
-                            <div className="flex items-center gap-1 mt-0.5 text-slate-500">
+                            <div className="flex items-center justify-center gap-1 mt-0.5 text-slate-500">
                               <Phone size={11} />
                               <span className="text-xs font-medium">
                                 {(house.residents[0] as any).phone || 'ไม่มีเบอร์โทร'}
@@ -231,9 +231,11 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
                             </div>
                           </div>
                         ) : (
-                          <span className="inline-flex items-center px-2 py-1 rounded-md text-[11px] font-medium bg-slate-100 text-slate-400">
-                            ว่างเปล่า
-                          </span>
+                          <div className="text-center">
+                            <span className="inline-flex items-center px-2 py-1 rounded-md text-[11px] font-medium bg-slate-100 text-slate-400">
+                              ว่างเปล่า
+                            </span>
+                          </div>
                         )}
                       </td>
 
@@ -259,7 +261,6 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
             </table>
           </div>
         </form>
-
       </div>
 
       {/* =======================================================
@@ -341,12 +342,6 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
               </button>
             </form>
 
-            {!editHouse && (
-              <div className="mt-4">
-                <AutoGenerateButton autoGenerateAction={autoGenerateHouses} />
-              </div>
-            )}
-
             {editHouse && (
               <div className="mt-6 pt-6 border-t border-slate-100">
                 <h3 className="text-[14px] font-bold text-slate-800 mb-4 flex items-center justify-between">
@@ -387,7 +382,7 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
       )}
 
       {/* =======================================================
-          🌟 ระบบควบคุมและเลียนแบบพฤติกรรมมาจากหน้าบิล (JS)
+          🌟 ระบบควบคุม (JS)
           ======================================================= */}
       <script dangerouslySetInnerHTML={{ __html: `
         const urlParams = new URLSearchParams(window.location.search);
@@ -417,7 +412,6 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
         if (!window.adminHouseEventsBound) {
           window.adminHouseEventsBound = true;
 
-          // 🌟 ฟังก์ชันคำนวณและแสดงแถบเมนู Bulk บาร์สีดำแบบหน้าจัดการบิล
           function updateSelection() {
             const checkboxes = document.querySelectorAll('.house-checkbox');
             const bulkBar = document.getElementById('bulkActionBar');
@@ -428,7 +422,6 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
             const allChecked = checkboxes.length > 0 && checkedBoxes.length === checkboxes.length;
             
             if (bulkBar) {
-              // เปลี่ยนเป็นเฟดเข้า flex แบบสมูทๆ
               if (checkedBoxes.length > 0) {
                 bulkBar.style.display = 'flex';
               } else {
@@ -442,7 +435,6 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
               selectAllBtn.checked = allChecked;
             }
 
-            // 🌟 ไฮไลต์สีแถวเมื่อโดนเลือก ให้ฟีลลิ่งระดับพรีเมียม
             checkboxes.forEach(cb => {
               const row = cb.closest('tr');
               if (row) {
