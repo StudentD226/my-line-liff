@@ -8,7 +8,7 @@ import {
 import { 
   TrendingUp, TrendingDown, Wallet, Plus, Info, Upload, 
   ArrowUpDown, X, CheckCircle, AlertCircle, FileText, Calendar, Tag,
-  Edit, Trash2, AlertTriangle
+  Edit, Trash2, AlertTriangle, Settings, Save // 🌟 เพิ่ม Settings, Save
 } from "lucide-react";
 
 // 🌟 1. อัปเกรดชุดสี: เพิ่มจาก 6 สี เป็น 12 สี ไม่ซ้ำกันแน่นอน
@@ -47,6 +47,10 @@ export default function FinancialDashboard() {
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // 🌟 เพิ่ม State สำหรับระบบจัดการหมวดหมู่
+  const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<{ id: string, name: string } | null>(null);
 
   const [formData, setFormData] = useState({
     type: "EXPENSE", title: "", categoryId: "", newCategoryName: "", amount: "",
@@ -216,6 +220,44 @@ export default function FinancialDashboard() {
     }
   };
 
+  // 🌟 ฟังก์ชัน ลบหมวดหมู่
+  const handleDeleteCategory = async (id: string) => {
+    try {
+      const res = await fetch(`/api/financial/categories/${id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (data.success) {
+        showAlert("ลบหมวดหมู่เรียบร้อยแล้ว", "success");
+        fetchData(); // โหลดข้อมูลใหม่
+      } else {
+        showAlert(data.error || "ลบหมวดหมู่ล้มเหลว", "error");
+      }
+    } catch (error) {
+      showAlert("ระบบขัดข้อง", "error");
+    }
+  };
+
+  // 🌟 ฟังก์ชัน บันทึกการแก้ไขชื่อหมวดหมู่
+  const handleSaveCategoryEdit = async () => {
+    if (!editingCategory) return;
+    try {
+      const res = await fetch(`/api/financial/categories/${editingCategory.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: editingCategory.name })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showAlert("เปลี่ยนชื่อหมวดหมู่เรียบร้อยแล้ว", "success");
+        setEditingCategory(null);
+        fetchData();
+      } else {
+        showAlert("แก้ไขหมวดหมู่ล้มเหลว", "error");
+      }
+    } catch (error) {
+      showAlert("ระบบขัดข้อง", "error");
+    }
+  };
+
   const pieData = categories.filter(c => c.type === 'EXPENSE').map(cat => {
     const total = data.filter(tx => tx.type === 'EXPENSE' && tx.category?.name === cat.name).reduce((sum, tx) => sum + tx.amount, 0);
     return { name: cat.name, value: total };
@@ -252,6 +294,55 @@ export default function FinancialDashboard() {
               <button onClick={confirmDelete} disabled={isSubmitting} className="flex-1 px-4 py-2.5 bg-red-500 text-white font-bold rounded-lg hover:bg-red-600 transition-colors shadow-md">
                 {isSubmitting ? 'กำลังลบ...' : 'ลบทิ้ง'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🌟 Modal จัดการหมวดหมู่ (เด้งขึ้นมาให้ลบ/แก้ไข) */}
+      {isCategoryManagerOpen && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-fade-in-down">
+            <div className="flex justify-between items-center p-6 border-b border-gray-100">
+              <h2 className="font-bold text-xl text-gray-800">จัดการหมวดหมู่ ({formData.type === 'INCOME' ? 'รายรับ' : 'รายจ่าย'})</h2>
+              <button onClick={() => setIsCategoryManagerOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors"><X size={24} /></button>
+            </div>
+            
+            <div className="p-6 max-h-[60vh] overflow-y-auto custom-scrollbar">
+              <div className="space-y-3">
+                {categories.filter(c => c.type === formData.type).map(cat => (
+                  <div key={cat.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                    {editingCategory?.id === cat.id ? (
+                      <div className="flex-1 flex items-center space-x-2 mr-2">
+                        <input 
+                          type="text" 
+                          value={editingCategory.name} 
+                          onChange={(e) => setEditingCategory({...editingCategory, name: e.target.value})}
+                          className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:border-[#1A534B]"
+                          autoFocus
+                        />
+                        <button onClick={handleSaveCategoryEdit} className="p-1.5 bg-emerald-100 text-emerald-600 rounded hover:bg-emerald-200" title="บันทึก"><Save size={16} /></button>
+                        <button onClick={() => setEditingCategory(null)} className="p-1.5 bg-gray-200 text-gray-600 rounded hover:bg-gray-300" title="ยกเลิก"><X size={16} /></button>
+                      </div>
+                    ) : (
+                      <>
+                        <span className="font-medium text-gray-700">{cat.name}</span>
+                        <div className="flex items-center space-x-1">
+                          <button onClick={() => setEditingCategory({ id: cat.id, name: cat.name })} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded transition-colors" title="แก้ไข">
+                            <Edit size={16} />
+                          </button>
+                          <button onClick={() => handleDeleteCategory(cat.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors" title="ลบ">
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))}
+                {categories.filter(c => c.type === formData.type).length === 0 && (
+                  <p className="text-center text-gray-400 font-bold py-4">ไม่มีหมวดหมู่</p>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -299,7 +390,13 @@ export default function FinancialDashboard() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">หมวดหมู่ <span className="text-red-500">*</span></label>
+                  {/* 🌟 ปุ่ม "จัดการ" เอาไว้เรียก Modal ลบ/แก้หมวดหมู่ */}
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-sm font-bold text-gray-700">หมวดหมู่ <span className="text-red-500">*</span></label>
+                    <button type="button" onClick={() => setIsCategoryManagerOpen(true)} className="text-xs font-bold text-[#1A534B] flex items-center hover:underline">
+                      <Settings size={12} className="mr-1" /> จัดการ
+                    </button>
+                  </div>
                   <div className="relative mb-2">
                     <Tag className="absolute left-3 top-3 text-gray-400" size={18} />
                     <select required value={formData.categoryId} onChange={(e) => setFormData({...formData, categoryId: e.target.value})} className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1A534B] outline-none transition-all text-sm appearance-none bg-white">
@@ -419,7 +516,6 @@ export default function FinancialDashboard() {
                   <Pie data={pieData} innerRadius={60} outerRadius={80} paddingAngle={2} dataKey="value">
                     {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                   </Pie>
-                  {/* 🌟 3. ปรับปรุง Tooltip ให้โชว์ทั้งจำนวนเงิน และ เปอร์เซ็นต์ */}
                   <RechartsTooltip 
                     formatter={(value: any) => {
                       const percent = ((Number(value) / totalExpenseForPie) * 100).toFixed(1);
