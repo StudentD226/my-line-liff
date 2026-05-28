@@ -9,9 +9,9 @@ import {
   Calendar, FileText, Loader2, Receipt, Wallet, PieChart as PieChartIcon, TrendingDown
 } from "lucide-react";
 
+// 🌟 ปรับสีใหม่ให้ตัดกันชัดเจนขึ้น (แดง, น้ำเงิน, ส้ม, เขียว, ม่วง, ฟ้า, ชมพู)
 const COLORS = [
-  "#EF4444", "#F97316", "#F59E0B", "#84CC16", "#10B981", "#06B6D4", 
-  "#3B82F6", "#6366F1", "#8B5CF6", "#D946EF", "#EC4899", "#F43F5E"
+  "#EF4444", "#3B82F6", "#F59E0B", "#10B981", "#8B5CF6", "#06B6D4", "#EC4899"
 ];
 const fullThaiMonths = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
 
@@ -40,13 +40,30 @@ export default function ResidentExpenseDashboard() {
         setData(expensesOnly);
       }
 
-      const resSummary = await fetch(`/api/financial/summary?year=${selectedYear}`, { cache: 'no-store' });
-      const resultSummary = await resSummary.json();
-      if (resultSummary.success) setYearlyChartData(resultSummary.data || []);
-
       const resCat = await fetch("/api/financial/categories", { cache: 'no-store' });
       const resultCat = await resCat.json();
       if (resultCat.success) setCategories(resultCat.data || []);
+
+      // 🌟 แก้ปัญหากราฟหาย: ดึงข้อมูลสรุปรายปี
+      const resSummary = await fetch(`/api/financial/summary?year=${selectedYear}`, { cache: 'no-store' });
+      const resultSummary = await resSummary.json();
+      
+      // สร้างโครงสร้าง 12 เดือนรอไว้เลย กราฟจะได้วาดแกน X เสมอ
+      let defaultYearData = fullThaiMonths.slice(1).map(month => ({ name: month, expense: 0 }));
+      
+      if (resultSummary.success && Array.isArray(resultSummary.data)) {
+        defaultYearData = defaultYearData.map((item, index) => {
+          const monthNum = index + 1;
+          // หาข้อมูลจาก API ว่าตรงกับเดือนนี้ไหม
+          const apiData = resultSummary.data.find((d: any) => d.month === monthNum || d.name === item.name);
+          return {
+            ...item,
+            // เผื่อ API ส่งคีย์มาเป็น expense หรือ รายจ่าย ก็รับได้หมด
+            expense: apiData ? (apiData.expense || apiData.รายจ่าย || 0) : 0
+          };
+        });
+      }
+      setYearlyChartData(defaultYearData);
       
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -139,8 +156,9 @@ export default function ResidentExpenseDashboard() {
             <div className="h-56 md:h-72 w-full flex items-center justify-center relative">
               {pieData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
+                  {/* 🌟 ใช้ % แทนเพื่อไม่ให้ Error บน Next.js */}
                   <PieChart>
-                    <Pie data={pieData} innerRadius={window.innerWidth >= 768 ? 70 : 50} outerRadius={window.innerWidth >= 768 ? 110 : 80} paddingAngle={2} dataKey="value">
+                    <Pie data={pieData} innerRadius="50%" outerRadius="80%" paddingAngle={2} dataKey="value">
                       {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                     </Pie>
                     <RechartsTooltip 
@@ -149,7 +167,7 @@ export default function ResidentExpenseDashboard() {
                         return [`${Number(value || 0).toLocaleString()} บาท (${percent}%)`, 'ยอดเงิน'];
                       }} 
                     />
-                    <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: window.innerWidth >= 768 ? '13px' : '11px', fontWeight: 'bold' }} />
+                    <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '11px', fontWeight: 'bold' }} />
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
@@ -174,14 +192,18 @@ export default function ResidentExpenseDashboard() {
               {data.length > 0 ? (
                 data.map((tx, idx) => (
                   <div key={idx} className="flex justify-between items-center p-3 md:p-4 bg-gray-50 rounded-xl border border-gray-100 hover:bg-gray-100 transition-colors">
-                    <div className="flex-1 pr-3">
+                    <div className="flex-1 pr-3 overflow-hidden">
                       <p className="font-bold text-gray-800 text-sm md:text-base line-clamp-1">{tx.title}</p>
                       <div className="flex items-center text-[11px] md:text-xs text-gray-500 mt-1 md:mt-1.5 space-x-2">
-                        <span className="flex items-center"><Calendar className="w-3 h-3 mr-1" /> {new Date(tx.date).toLocaleDateString('th-TH', { day: '2-digit', month: 'short' })}</span>
-                        <span className="bg-gray-200 px-2 py-0.5 rounded text-gray-600 font-medium">{tx.category?.name}</span>
+                        <span className="flex items-center whitespace-nowrap"><Calendar className="w-3 h-3 mr-1" /> {new Date(tx.date).toLocaleDateString('th-TH', { day: '2-digit', month: 'short' })}</span>
+                        
+                        {/* 🌟 แก้ปัญหาป้ายหมวดหมู่ตกบรรทัด โดยบังคับให้ตัดคำถ้าชื่อยาวไป */}
+                        <span className="bg-gray-200 px-2 py-0.5 rounded text-gray-600 font-medium inline-block max-w-[100px] sm:max-w-[150px] truncate align-middle">
+                          {tx.category?.name}
+                        </span>
                       </div>
                     </div>
-                    <div className="text-right whitespace-nowrap">
+                    <div className="text-right whitespace-nowrap pl-2">
                       <p className="font-bold text-red-500 text-sm md:text-base">-฿{tx.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                       {tx.receiptUrl && (
                         <a href={tx.receiptUrl} target="_blank" rel="noreferrer" className="inline-block mt-1 text-[10px] md:text-xs font-bold text-blue-500 hover:underline">
@@ -207,16 +229,18 @@ export default function ResidentExpenseDashboard() {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={yearlyChartData} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: window.innerWidth >= 768 ? 12 : 10, fontWeight: 'bold' }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: window.innerWidth >= 768 ? 12 : 10 }} tickFormatter={(val) => val >= 1000 ? `${val/1000}k` : val} />
+                  {/* 🌟 ใช้ dataKey="name" จากข้อมูลใหม่ที่เราจัดโครงสร้างไว้ */}
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 10, fontWeight: 'bold' }} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 10 }} tickFormatter={(val) => val >= 1000 ? `${val/1000}k` : val} />
                   <RechartsTooltip 
                     cursor={{fill: '#F9FAFB'}} 
                     formatter={(value: any, name: any) => {
-                      if(name === 'รายจ่าย') return [`${Number(value || 0).toLocaleString()} บาท`, 'รายจ่าย'];
+                      if(name === 'expense' || name === 'รายจ่าย') return [`${Number(value || 0).toLocaleString()} บาท`, 'รายจ่าย'];
                       return [];
                     }} 
                   />
-                  <Bar dataKey="รายจ่าย" fill="#EF4444" radius={[4, 4, 0, 0]} maxBarSize={window.innerWidth >= 768 ? 40 : 25} />
+                  {/* 🌟 ใช้ dataKey="expense" ตามข้อมูลใหม่ */}
+                  <Bar dataKey="expense" fill="#EF4444" radius={[4, 4, 0, 0]} maxBarSize={35} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
