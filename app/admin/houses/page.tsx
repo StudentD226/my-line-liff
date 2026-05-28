@@ -106,14 +106,12 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
           </div>
 
           <div className="flex flex-wrap items-center gap-3 w-full md:w-auto mt-4 md:mt-0">
-            {/* 🌟 1. ย้ายปุ่มเพิ่มบ้านมาด้านซ้าย */}
             <Link 
               href="/admin/houses?add=true" 
               className="flex items-center justify-center px-6 py-2.5 bg-[#376B64] hover:bg-[#2A524C] text-white rounded-xl font-bold text-sm shadow-md transition-all active:scale-[0.98]"
             >
               <Plus size={18} className="mr-1" /> เพิ่ม{unitLabel}ใหม่
             </Link>
-            {/* 🌟 2. วางปุ่ม AutoGenerate ไว้ด้านขวา */}
             <AutoGenerateButton autoGenerateAction={autoGenerateHouses} />
           </div>
         </div>
@@ -164,7 +162,6 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
                       className="rounded border-slate-300 text-[#376B64] focus:ring-[#376B64] w-5 h-5 cursor-pointer"
                     />
                   </th>
-                  {/* 🌟 เพิ่ม text-center ให้หัวตารางทั้งหมด */}
                   <th className="py-4 px-2 text-sm font-bold tracking-wide text-center">{unitLabel}</th>
                   <th className="py-4 px-2 text-sm font-bold tracking-wide text-center">ขนาดพื้นที่</th>
                   <th className="py-4 px-2 text-sm font-bold tracking-wide text-center">รูปแบบการคิดเงิน</th>
@@ -210,20 +207,21 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
                         <span className="text-slate-900 font-bold text-base">{Number(house.feeRate).toLocaleString('th-TH')} ฿</span>
                       </td>
                       
+                      {/* 🌟 ข้อมูลติดต่อ: แก้ไขให้รับข้อความยาวๆ แล้วปัดบรรทัด */}
                       <td className="py-4 px-4 border-l border-slate-50">
                         {house.residents && house.residents.length > 0 ? (
                           <div className="flex flex-col items-center">
-                            <div className="flex items-center justify-center gap-1.5">
-                              <span className="text-sm font-bold text-slate-800 truncate max-w-[140px]">
+                            <div className="flex flex-wrap items-center justify-center gap-1.5 max-w-[220px]">
+                              <span className="text-sm font-bold text-slate-800 text-center leading-tight">
                                 {house.residents[0].name || 'ไม่ได้ระบุชื่อ'}
                               </span>
                               {house.residents.length > 1 && (
-                                <span className="text-[10px] font-bold text-[#376B64] bg-[#376B64]/10 px-1.5 py-0.5 rounded-md whitespace-nowrap">
+                                <span className="text-[10px] font-bold text-[#376B64] bg-[#376B64]/10 px-1.5 py-0.5 rounded-md whitespace-nowrap shrink-0">
                                   +{house.residents.length - 1} คน
                                 </span>
                               )}
                             </div>
-                            <div className="flex items-center justify-center gap-1 mt-0.5 text-slate-500">
+                            <div className="flex items-center justify-center gap-1 mt-1 text-slate-500">
                               <Phone size={11} />
                               <span className="text-xs font-medium">
                                 {(house.residents[0] as any).phone || 'ไม่มีเบอร์โทร'}
@@ -342,6 +340,7 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
               </button>
             </form>
 
+            {/* ส่วนของสมาชิกจะโชว์เฉพาะตอนเปิด Popup แก้ไข */}
             {editHouse && (
               <div className="mt-6 pt-6 border-t border-slate-100">
                 <h3 className="text-[14px] font-bold text-slate-800 mb-4 flex items-center justify-between">
@@ -356,8 +355,9 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
                   <ul className="space-y-2.5 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
                     {editHouse.residents.map((user) => (
                       <li key={user.id} className="flex justify-between items-center bg-white border border-slate-100 p-3 rounded-2xl shadow-sm">
-                        <div className="flex flex-col truncate pr-2">
-                          <span className="text-sm font-bold text-slate-700 truncate">{user.name || 'ไม่ได้ตั้งชื่อ'}</span>
+                        <div className="flex flex-col pr-2">
+                          {/* 🌟 ใน Modal ก็ปลดล็อกให้ชื่อยาวตัดบรรทัดได้เหมือนกัน */}
+                          <span className="text-sm font-bold text-slate-700 whitespace-normal break-words leading-tight">{user.name || 'ไม่ได้ตั้งชื่อ'}</span>
                           <span className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
                             <Phone size={10} /> {(user as any).phone || 'ไม่มีเบอร์โทร'}
                           </span>
