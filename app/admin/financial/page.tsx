@@ -7,7 +7,8 @@ import {
 } from "recharts";
 import { 
   TrendingUp, TrendingDown, Wallet, Plus, Info, Upload, 
-  ArrowUpDown, X, CheckCircle, AlertCircle, FileText, Calendar, Tag
+  ArrowUpDown, X, CheckCircle, AlertCircle, FileText, Calendar, Tag,
+  Edit, Trash2, AlertTriangle // 🌟 นำเข้าไอคอนแก้ไขและลบ
 } from "lucide-react";
 
 const COLORS = ["#10B981", "#3B82F6", "#F59E0B", "#8B5CF6", "#EC4899", "#14B8A6"];
@@ -26,7 +27,7 @@ const InfoTooltip = ({ text }: { text: string }) => (
 export default function FinancialDashboard() {
   const [data, setData] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
-  const [yearlyChartData, setYearlyChartData] = useState<any[]>([]); // 🌟 State สำหรับกราฟ 12 เดือน
+  const [yearlyChartData, setYearlyChartData] = useState<any[]>([]);
   const [summary, setSummary] = useState({ totalIncome: 0, totalExpense: 0, remaining: 0, totalTransactions: 0 });
   
   const [isLoading, setIsLoading] = useState(true);
@@ -36,8 +37,15 @@ export default function FinancialDashboard() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
   const [alert, setAlert] = useState<{ show: boolean; message: string; type: "success" | "error" | "warning" }>({ show: false, message: "", type: "success" });
-  const [isModalOpen, setIsModalOpen] = useState(false);
   
+  // 🌟 State จัดการ Modal ฟอร์ม
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null); // เช็คว่ากำลัง "แก้ไข" หรือ "สร้างใหม่"
+
+  // 🌟 State จัดการ Modal ยืนยันการลบ
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
   const [formData, setFormData] = useState({
     type: "EXPENSE", title: "", categoryId: "", newCategoryName: "", amount: "",
     date: new Date().toISOString().split('T')[0], description: "", receiptUrl: "" 
@@ -53,7 +61,6 @@ export default function FinancialDashboard() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      // ดึงข้อมูลตารางและสรุปยอด (ตามเดือนที่เลือก)
       const resTx = await fetch(`/api/financial/transactions?month=${selectedMonth}&year=${selectedYear}`, { cache: 'no-store' });
       const resultTx = await resTx.json();
       if (resultTx.success) {
@@ -66,12 +73,10 @@ export default function FinancialDashboard() {
         setData(resultTx.data || []);
       }
 
-      // ดึงข้อมูลกราฟ 12 เดือน (ตามปีที่เลือก)
       const resSummary = await fetch(`/api/financial/summary?year=${selectedYear}`, { cache: 'no-store' });
       const resultSummary = await resSummary.json();
       if (resultSummary.success) setYearlyChartData(resultSummary.data || []);
 
-      // ดึงหมวดหมู่
       const resCat = await fetch("/api/financial/categories", { cache: 'no-store' });
       const resultCat = await resCat.json();
       if (resultCat.success) setCategories(resultCat.data || []);
@@ -109,6 +114,31 @@ export default function FinancialDashboard() {
     setSortConfig({ key, direction });
   };
 
+  // 🌟 ฟังก์ชัน ปิด-เคลียร์ฟอร์ม
+  const resetAndCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingId(null);
+    setFormData({ type: "EXPENSE", title: "", categoryId: "", newCategoryName: "", amount: "", date: new Date().toISOString().split('T')[0], description: "", receiptUrl: "" });
+  };
+
+  // 🌟 ฟังก์ชัน ดึงข้อมูลใส่ฟอร์มเตรียมแก้ไข
+  const handleEditClick = (tx: any) => {
+    let titleParts = tx.title.split(' - '); // แยก title ออกจาก description (ถ้ามี)
+    setEditingId(tx.id);
+    setFormData({
+      type: tx.type,
+      title: titleParts[0],
+      categoryId: tx.categoryId,
+      newCategoryName: "",
+      amount: tx.amount.toString(),
+      date: new Date(tx.date).toISOString().split('T')[0],
+      description: titleParts[1] || "",
+      receiptUrl: tx.receiptUrl || ""
+    });
+    setIsModalOpen(true);
+  };
+
+  // 🌟 ฟังก์ชัน บันทึก หรือ แก้ไข
   const handleSubmitTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
@@ -131,27 +161,60 @@ export default function FinancialDashboard() {
         else throw new Error("สร้างหมวดหมู่ไม่สำเร็จ");
       }
 
-      const txRes = await fetch("/api/financial/transactions", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: formData.type, categoryId: finalCategoryId, title: formData.title,
-          amount: parseFloat(formData.amount), date: formData.date,
-          description: formData.description, receiptUrl: formData.receiptUrl
-        })
-      });
+      const payload = {
+        type: formData.type, categoryId: finalCategoryId, title: formData.title,
+        amount: parseFloat(formData.amount), date: formData.date,
+        description: formData.description, receiptUrl: formData.receiptUrl
+      };
+
+      let txRes;
+      if (editingId) {
+        // อัปเดตรายการเดิม (PUT)
+        txRes = await fetch(`/api/financial/transactions/${editingId}`, {
+          method: "PUT", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+      } else {
+        // สร้างรายการใหม่ (POST)
+        txRes = await fetch("/api/financial/transactions", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+      }
 
       const txData = await txRes.json();
       if (txData.success) {
-        showAlert("บันทึกข้อมูลเรียบร้อยแล้ว!", "success");
-        setIsModalOpen(false);
-        setFormData({ type: "EXPENSE", title: "", categoryId: "", newCategoryName: "", amount: "", date: new Date().toISOString().split('T')[0], description: "", receiptUrl: "" });
-        fetchData();
+        showAlert(editingId ? "อัปเดตข้อมูลสำเร็จ!" : "บันทึกข้อมูลเรียบร้อยแล้ว!", "success");
+        resetAndCloseModal();
+        fetchData(); // ดึงข้อมูลใหม่ ยอดเงินจะรีเฟรชออโต้!
       } else {
         showAlert("เกิดข้อผิดพลาดในการบันทึก", "error");
       }
     } catch (error) {
       console.error(error);
       showAlert("ระบบขัดข้อง กรุณาลองใหม่", "error");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // 🌟 ฟังก์ชัน สั่งลบข้อมูล
+  const confirmDelete = async () => {
+    if (!deletingId) return;
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`/api/financial/transactions/${deletingId}`, { method: "DELETE" });
+      const data = await res.json();
+      if (data.success) {
+        showAlert("ลบรายการเรียบร้อยแล้ว!", "success");
+        setIsDeleteModalOpen(false);
+        setDeletingId(null);
+        fetchData(); // ดึงข้อมูลใหม่ ยอดเงินจะรีเฟรชออโต้!
+      } else {
+        showAlert("ลบรายการล้มเหลว", "error");
+      }
+    } catch (error) {
+      showAlert("ระบบขัดข้อง", "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -168,6 +231,7 @@ export default function FinancialDashboard() {
   return (
     <div className="p-6 lg:p-10 max-w-7xl mx-auto bg-[#F8FAFC] min-h-screen font-sans">
       
+      {/* 🌟 Alert อัตโนมัติ */}
       <div className={`fixed top-6 right-6 z-[60] transition-all duration-300 transform ${alert.show ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}`}>
         <div className={`flex items-center space-x-3 p-4 rounded-xl shadow-lg border-l-4 ${alert.type === 'success' ? 'bg-white border-emerald-500 text-gray-800' : alert.type === 'error' ? 'bg-white border-red-500 text-gray-800' : 'bg-white border-orange-500 text-gray-800'}`}>
           {alert.type === 'success' && <CheckCircle className="text-emerald-500" size={24} />}
@@ -177,12 +241,32 @@ export default function FinancialDashboard() {
         </div>
       </div>
 
+      {/* 🌟 Modal ยืนยันการลบ */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-fade-in-down p-6 text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertTriangle className="text-red-500" size={32} />
+            </div>
+            <h2 className="font-bold text-xl text-gray-800 mb-2">ยืนยันการลบรายการ?</h2>
+            <p className="text-gray-500 text-sm mb-6">คุณกำลังจะลบรายการบัญชีนี้ ข้อมูลยอดเงินจะถูกคำนวณใหม่ และไม่สามารถกู้คืนได้</p>
+            <div className="flex space-x-3">
+              <button onClick={() => setIsDeleteModalOpen(false)} disabled={isSubmitting} className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 font-bold rounded-lg hover:bg-gray-200 transition-colors">ยกเลิก</button>
+              <button onClick={confirmDelete} disabled={isSubmitting} className="flex-1 px-4 py-2.5 bg-red-500 text-white font-bold rounded-lg hover:bg-red-600 transition-colors shadow-md">
+                {isSubmitting ? 'กำลังลบ...' : 'ลบทิ้ง'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🌟 Modal เพิ่ม/แก้ไข รายการ */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-fade-in-down">
             <div className="flex justify-between items-center p-6 border-b border-gray-100">
-              <h2 className="font-bold text-xl text-gray-800">เพิ่มรายการบัญชี</h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors"><X size={24} /></button>
+              <h2 className="font-bold text-xl text-gray-800">{editingId ? 'แก้ไขรายการบัญชี' : 'เพิ่มรายการบัญชี'}</h2>
+              <button onClick={resetAndCloseModal} className="text-gray-400 hover:text-gray-600 transition-colors"><X size={24} /></button>
             </div>
             
             <form onSubmit={handleSubmitTransaction} className="p-6 space-y-5">
@@ -200,7 +284,7 @@ export default function FinancialDashboard() {
                   <label className="block text-sm font-bold text-gray-700 mb-1">ชื่อรายการ <span className="text-red-500">*</span></label>
                   <div className="relative">
                     <FileText className="absolute left-3 top-3 text-gray-400" size={18} />
-                    <input type="text" required value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} placeholder="เช่น ซ่อมไฟถนน" className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1A534B] focus:border-transparent outline-none transition-all" />
+                    <input type="text" required value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} placeholder="เช่น ซ่อมไฟถนน" className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1A534B] outline-none transition-all" />
                   </div>
                 </div>
 
@@ -252,9 +336,9 @@ export default function FinancialDashboard() {
               </div>
 
               <div className="pt-4 flex space-x-3">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 font-bold rounded-lg hover:bg-gray-200 transition-colors">ยกเลิก</button>
+                <button type="button" onClick={resetAndCloseModal} className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 font-bold rounded-lg hover:bg-gray-200 transition-colors">ยกเลิก</button>
                 <button type="submit" disabled={isSubmitting} className={`flex-1 px-4 py-2 text-white font-bold rounded-lg transition-colors shadow-md ${isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#1A534B] hover:bg-[#14423b]'}`}>
-                  {isSubmitting ? 'กำลังบันทึก...' : 'บันทึกข้อมูล'}
+                  {isSubmitting ? 'กำลังบันทึก...' : (editingId ? 'บันทึกการแก้ไข' : 'บันทึกข้อมูล')}
                 </button>
               </div>
             </form>
@@ -262,6 +346,7 @@ export default function FinancialDashboard() {
         </div>
       )}
 
+      {/* Header & Filter เดือน */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 space-y-4 md:space-y-0">
         <div>
           <div className="flex items-center">
@@ -312,7 +397,6 @@ export default function FinancialDashboard() {
         </div>
       </div>
 
-      {/* 🌟 กราฟแท่ง & กราฟวงกลม อัปเดตใหม่เป็น 12 เดือน */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <h3 className="font-bold text-gray-800 mb-6 flex items-center">สถิติรายรับ - รายจ่าย รายปี <InfoTooltip text={`ข้อมูลสรุปรวมตั้งแต่ ม.ค. - ธ.ค. ปี ${selectedYear + 543}`} /></h3>
@@ -351,6 +435,7 @@ export default function FinancialDashboard() {
         </div>
       </div>
 
+      {/* 🌟 ตารางพร้อมปุ่มแก้ไข/ลบ */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="p-6 border-b border-gray-100 flex justify-between items-center">
           <h3 className="font-bold text-gray-800 flex items-center">รายการบัญชีรอบบิลนี้ <InfoTooltip text="กดที่หัวตารางเพื่อจัดเรียงลำดับข้อมูล" /></h3>
@@ -376,12 +461,13 @@ export default function FinancialDashboard() {
                 <th className="px-6 py-4 font-bold cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap text-right" onClick={() => requestSort('amount')}>
                   <div className="flex items-center justify-end space-x-1"><span>จำนวนเงิน</span><ArrowUpDown size={14} /></div>
                 </th>
+                <th className="px-6 py-4 font-bold text-center whitespace-nowrap">จัดการ</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {sortedData.length > 0 ? (
                 sortedData.map((tx, idx) => (
-                  <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                  <tr key={idx} className="hover:bg-gray-50 transition-colors group">
                     <td className="px-6 py-4 text-gray-600 font-medium">{new Date(tx.date).toLocaleDateString('th-TH')}</td>
                     <td className="px-6 py-4">
                       <p className="font-bold text-gray-800">{tx.title}</p>
@@ -396,10 +482,25 @@ export default function FinancialDashboard() {
                     <td className={`px-6 py-4 text-right font-bold ${tx.type === 'INCOME' ? 'text-emerald-500' : 'text-red-500'}`}>
                       {tx.type === 'INCOME' ? '+' : '-'}{tx.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </td>
+                    <td className="px-6 py-4 text-center">
+                      {/* 🌟 แสดงปุ่มแก้ไข/ลบ เฉพาะรายการที่แอดมินสร้างมือ */}
+                      {!tx.isAuto ? (
+                        <div className="flex items-center justify-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => handleEditClick(tx)} className="p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-md transition-colors" title="แก้ไขรายการ">
+                            <Edit size={16} />
+                          </button>
+                          <button onClick={() => { setDeletingId(tx.id); setIsDeleteModalOpen(true); }} className="p-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-md transition-colors" title="ลบรายการ">
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400 font-medium opacity-50 block">-</span>
+                      )}
+                    </td>
                   </tr>
                 ))
               ) : (
-                <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-400 font-bold bg-white">ไม่มีรายการบัญชีในรอบบิลนี้</td></tr>
+                <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-400 font-bold bg-white">ไม่มีรายการบัญชีในรอบบิลนี้</td></tr>
               )}
             </tbody>
           </table>
