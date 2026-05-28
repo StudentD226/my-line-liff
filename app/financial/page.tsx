@@ -9,11 +9,12 @@ import {
   Calendar, FileText, Loader2, Receipt, Wallet, PieChart as PieChartIcon, TrendingDown
 } from "lucide-react";
 
-// 🌟 ปรับสีใหม่ให้ตัดกันชัดเจนขึ้น (แดง, น้ำเงิน, ส้ม, เขียว, ม่วง, ฟ้า, ชมพู)
 const COLORS = [
   "#EF4444", "#3B82F6", "#F59E0B", "#10B981", "#8B5CF6", "#06B6D4", "#EC4899"
 ];
 const fullThaiMonths = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+// 🌟 เพิ่มชื่อเดือนแบบย่อ เพื่อให้กราฟจับคู่ได้แม่นยำและแสดงผลบนมือถือสวยขึ้น
+const shortThaiMonths = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 
 export default function ResidentExpenseDashboard() {
   const [data, setData] = useState<any[]>([]);
@@ -44,22 +45,29 @@ export default function ResidentExpenseDashboard() {
       const resultCat = await resCat.json();
       if (resultCat.success) setCategories(resultCat.data || []);
 
-      // 🌟 แก้ปัญหากราฟหาย: ดึงข้อมูลสรุปรายปี
       const resSummary = await fetch(`/api/financial/summary?year=${selectedYear}`, { cache: 'no-store' });
       const resultSummary = await resSummary.json();
       
-      // สร้างโครงสร้าง 12 เดือนรอไว้เลย กราฟจะได้วาดแกน X เสมอ
-      let defaultYearData = fullThaiMonths.slice(1).map(month => ({ name: month, expense: 0 }));
+      // 🌟 ระบบจับคู่เดือนแบบครอบจักรวาล (Bulletproof Matching)
+      let defaultYearData = shortThaiMonths.map((shortName, index) => ({ 
+        monthId: index + 1, 
+        name: shortName, 
+        expense: 0 
+      }));
       
       if (resultSummary.success && Array.isArray(resultSummary.data)) {
-        defaultYearData = defaultYearData.map((item, index) => {
-          const monthNum = index + 1;
-          // หาข้อมูลจาก API ว่าตรงกับเดือนนี้ไหม
-          const apiData = resultSummary.data.find((d: any) => d.month === monthNum || d.name === item.name);
+        defaultYearData = defaultYearData.map((item) => {
+          // ค้นหาว่า API ส่งข้อมูลของเดือนนี้มาในรูปแบบไหน (หาจาก ID, ชื่อย่อ หรือ ชื่อเต็ม)
+          const apiData = resultSummary.data.find((d: any) => 
+            d.month === item.monthId || 
+            d.name === item.name || 
+            d.name === fullThaiMonths[item.monthId]
+          );
+          
           return {
             ...item,
-            // เผื่อ API ส่งคีย์มาเป็น expense หรือ รายจ่าย ก็รับได้หมด
-            expense: apiData ? (apiData.expense || apiData.รายจ่าย || 0) : 0
+            // ดึงค่าใช้จ่ายมา ถ้าไม่มีก็ใส่ 0
+            expense: apiData ? (Number(apiData.expense) || Number(apiData.รายจ่าย) || 0) : 0
           };
         });
       }
@@ -156,7 +164,6 @@ export default function ResidentExpenseDashboard() {
             <div className="h-56 md:h-72 w-full flex items-center justify-center relative">
               {pieData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
-                  {/* 🌟 ใช้ % แทนเพื่อไม่ให้ Error บน Next.js */}
                   <PieChart>
                     <Pie data={pieData} innerRadius="50%" outerRadius="80%" paddingAngle={2} dataKey="value">
                       {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
@@ -196,8 +203,6 @@ export default function ResidentExpenseDashboard() {
                       <p className="font-bold text-gray-800 text-sm md:text-base line-clamp-1">{tx.title}</p>
                       <div className="flex items-center text-[11px] md:text-xs text-gray-500 mt-1 md:mt-1.5 space-x-2">
                         <span className="flex items-center whitespace-nowrap"><Calendar className="w-3 h-3 mr-1" /> {new Date(tx.date).toLocaleDateString('th-TH', { day: '2-digit', month: 'short' })}</span>
-                        
-                        {/* 🌟 แก้ปัญหาป้ายหมวดหมู่ตกบรรทัด โดยบังคับให้ตัดคำถ้าชื่อยาวไป */}
                         <span className="bg-gray-200 px-2 py-0.5 rounded text-gray-600 font-medium inline-block max-w-[100px] sm:max-w-[150px] truncate align-middle">
                           {tx.category?.name}
                         </span>
@@ -229,7 +234,6 @@ export default function ResidentExpenseDashboard() {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={yearlyChartData} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
-                  {/* 🌟 ใช้ dataKey="name" จากข้อมูลใหม่ที่เราจัดโครงสร้างไว้ */}
                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 10, fontWeight: 'bold' }} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 10 }} tickFormatter={(val) => val >= 1000 ? `${val/1000}k` : val} />
                   <RechartsTooltip 
@@ -239,7 +243,6 @@ export default function ResidentExpenseDashboard() {
                       return [];
                     }} 
                   />
-                  {/* 🌟 ใช้ dataKey="expense" ตามข้อมูลใหม่ */}
                   <Bar dataKey="expense" fill="#EF4444" radius={[4, 4, 0, 0]} maxBarSize={35} />
                 </BarChart>
               </ResponsiveContainer>
