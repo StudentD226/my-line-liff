@@ -1,7 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { 
   Plus, MapPin, Home, Maximize2, Pencil, Trash2, 
-  X, UserMinus, Calculator, Coins, Search, ListChecks 
+  X, UserMinus, Calculator, Coins, Search, ListChecks, Phone 
 } from 'lucide-react';
 import Link from "next/link";
 import { addHouse, updateHouse, autoGenerateHouses } from './actions';
@@ -40,7 +40,7 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
   }
 
   const editHouse = editId ? allHouses.find((h) => h.id === editId) : null;
-  const showModal = isAdding || !!editHouse; // 🌟 ตัวควบคุมการเปิด Popup
+  const showModal = isAdding || !!editHouse;
 
   const handleAddHouse = async (formData: FormData) => {
     'use server';
@@ -106,7 +106,6 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
           </div>
 
           <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-            {/* 🌟 ปุ่มเปิด Popup เพิ่มยูนิต */}
             <Link 
               href="/admin/houses?add=true" 
               className="flex items-center justify-center px-6 py-2.5 bg-[#376B64] hover:bg-[#2A524C] text-white rounded-xl font-bold text-sm shadow-md transition-all active:scale-[0.98]"
@@ -139,22 +138,19 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
         {/* 🌟 Table Card */}
         <form action={deleteMultipleHouses} className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden relative">
           
-          {/* Bulk Actions Bar (Hidden by default, shown via JS) */}
-          <div id="bulkActionBar" className="hidden bg-gradient-to-r from-teal-50 to-emerald-50 px-6 py-4 border-b border-teal-100 flex-col md:flex-row justify-between items-center gap-4 animate-in fade-in z-10 relative shadow-sm">
-            <span className="text-sm font-bold text-teal-800 flex items-center gap-2">
-              <span id="selectedCount" className="flex items-center justify-center bg-[#376B64] text-white w-7 h-7 rounded-full text-xs shadow-sm">0</span> รายการที่เลือก
+          {/* =======================================================
+              🌟 Bulk Actions Bar (ถอดแบบฟังก์ชันเลือกทำรายการมาจากหน้าบิลเป๊ะๆ)
+              ======================================================= */}
+          <div id="bulkActionBar" className="hidden bg-slate-900 text-white px-6 py-4 flex-col sm:flex-row justify-between items-center gap-4 animate-in slide-in-from-top duration-300 z-10 relative">
+            <span className="text-sm font-bold flex items-center gap-2">
+              <span id="selectedCount" className="flex items-center justify-center bg-[#376B64] text-white w-6 h-6 rounded-full text-xs shadow-sm font-black">0</span> รายการที่เลือกอยู่ขณะนี้
             </span>
-            <div className="flex flex-1 items-center w-full">
-              <div className="flex-1" />
-              <div className="flex flex-wrap items-center justify-center gap-2 border-l border-teal-200 pl-4">
-                <div className="relative">
-                  {/* 🌟 ปุ่มลบ (จะเรียก SweetAlert2 ก่อน) */}
-                  <button type="button" className="delete-btn flex items-center px-4 py-2 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 text-xs font-bold rounded-xl transition shadow-sm hover:shadow active:scale-[0.98]">
-                    <ListChecks size={14} className="mr-1.5" /> ลบรายการที่เลือก
-                  </button>
-                  <button type="submit" className="hidden hidden-submit" />
-                </div>
-              </div>
+            <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+              <button type="button" className="delete-btn flex items-center px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition shadow-sm active:scale-[0.98]">
+                <Trash2 size={14} className="mr-1.5" /> ลบยูนิตที่เลือกทั้งหมด
+              </button>
+              {/* ปุ่มซ่อนเพื่อควบคุมการ Submit ผ่าน SweetAlert2 */}
+              <button type="submit" className="hidden hidden-submit" />
             </div>
           </div>
 
@@ -173,7 +169,7 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
                   <th className="py-4 px-2 text-sm font-bold tracking-wide">ขนาดพื้นที่</th>
                   <th className="py-4 px-2 text-sm font-bold tracking-wide">รูปแบบการคิดเงิน</th>
                   <th className="py-4 px-2 text-sm font-bold tracking-wide">อัตราเรทราคา</th>
-                  <th className="py-4 px-2 text-sm font-bold tracking-wide text-center border-l border-slate-100">สมาชิก</th>
+                  <th className="py-4 px-2 text-sm font-bold tracking-wide border-l border-slate-100">ข้อมูลติดต่อ</th>
                   <th className="py-4 px-4 text-sm font-bold tracking-wide text-center border-l border-slate-100">จัดการ</th>
                 </tr>
               </thead>
@@ -188,7 +184,7 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
                   </tr>
                 ) : (
                   houses.map((house) => (
-                    <tr key={house.id} className="house-row transition-colors hover:bg-slate-50/50">
+                    <tr key={house.id} className="house-row transition-all duration-200 hover:bg-slate-50/50">
                       <td className="p-4 text-center">
                         <input 
                           type="checkbox" 
@@ -213,20 +209,41 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
                           <span className="text-slate-900 text-base">{Number(house.feeRate).toLocaleString('th-TH')} ฿</span>
                         </div>
                       </td>
-                      <td className="py-4 px-2 text-center border-l border-slate-50">
-                        <span className="inline-flex items-center justify-center bg-slate-100 text-slate-700 w-8 h-8 rounded-full text-xs font-bold border border-slate-200">
-                          {house._count.residents}
-                        </span>
+                      
+                      <td className="py-4 px-2 border-l border-slate-50">
+                        {house.residents && house.residents.length > 0 ? (
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-sm font-bold text-slate-800 truncate max-w-[140px]">
+                                {house.residents[0].name || 'ไม่ได้ระบุชื่อ'}
+                              </span>
+                              {house.residents.length > 1 && (
+                                <span className="text-[10px] font-bold text-[#376B64] bg-[#376B64]/10 px-1.5 py-0.5 rounded-md whitespace-nowrap">
+                                  +{house.residents.length - 1} คน
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1 mt-0.5 text-slate-500">
+                              <Phone size={11} />
+                              <span className="text-xs font-medium">
+                                {(house.residents[0] as any).phone || 'ไม่มีเบอร์โทร'}
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-1 rounded-md text-[11px] font-medium bg-slate-100 text-slate-400">
+                            ว่างเปล่า
+                          </span>
+                        )}
                       </td>
+
                       <td className="py-4 px-4 border-l border-slate-50">
                         <div className="flex items-center justify-center gap-1.5">
                           <div className="flex bg-slate-50 p-1.5 rounded-xl gap-1.5 border border-slate-200/60 shadow-sm">
-                            {/* 🌟 ปุ่มเปิด Popup แก้ไข */}
                             <Link href={`/admin/houses?edit=${house.id}${searchQuery ? `&q=${searchQuery}` : ''}`} className="p-2 text-slate-500 hover:text-[#376B64] hover:bg-[#376B64]/10 rounded-lg transition-all shadow-sm hover:shadow">
                               <Pencil size={16} />
                             </Link>
                             <div className="relative">
-                              {/* 🌟 ปุ่มลบ (เรียก SweetAlert2 ก่อนลบจริง) */}
                               <button type="button" className="delete-btn p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all shadow-sm hover:shadow">
                                 <Trash2 size={16} />
                               </button>
@@ -246,7 +263,7 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
       </div>
 
       {/* =======================================================
-          🌟 ระบบ POPUP (MODAL) แบบในรูปเป๊ะๆ 
+          🌟 ระบบ POPUP (MODAL)
           ======================================================= */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
@@ -319,7 +336,7 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
                 </div>
               </div>
               
-              <button suppressHydrationWarning type="submit" className={`w-full text-white font-bold py-3.5 rounded-2xl transition-all shadow-md active:scale-[0.98] ${editHouse ? 'bg-[#376B64] hover:bg-[#2A524C]' : 'bg-[#376B64] hover:bg-[#2A524C]'}`}>
+              <button suppressHydrationWarning type="submit" className={`w-full text-white font-bold py-3.5 rounded-2xl transition-all shadow-md active:scale-[0.98] bg-[#376B64] hover:bg-[#2A524C]`}>
                 {editHouse ? 'บันทึกการแก้ไข' : 'บันทึกข้อมูลยูนิต'}
               </button>
             </form>
@@ -330,7 +347,6 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
               </div>
             )}
 
-            {/* ส่วนของสมาชิกจะโชว์เฉพาะตอนเปิด Popup แก้ไข */}
             {editHouse && (
               <div className="mt-6 pt-6 border-t border-slate-100">
                 <h3 className="text-[14px] font-bold text-slate-800 mb-4 flex items-center justify-between">
@@ -345,8 +361,13 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
                   <ul className="space-y-2.5 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
                     {editHouse.residents.map((user) => (
                       <li key={user.id} className="flex justify-between items-center bg-white border border-slate-100 p-3 rounded-2xl shadow-sm">
-                        <span className="text-sm font-bold text-slate-700 truncate">{user.name || 'ไม่ได้ตั้งชื่อ'}</span>
-                        <form action={handleRemoveResident}>
+                        <div className="flex flex-col truncate pr-2">
+                          <span className="text-sm font-bold text-slate-700 truncate">{user.name || 'ไม่ได้ตั้งชื่อ'}</span>
+                          <span className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
+                            <Phone size={10} /> {(user as any).phone || 'ไม่มีเบอร์โทร'}
+                          </span>
+                        </div>
+                        <form action={handleRemoveResident} className="shrink-0">
                           <input type="hidden" name="userId" value={user.id} />
                           <div className="relative">
                             <button type="button" className="delete-btn p-2 text-rose-400 hover:text-white hover:bg-rose-500 rounded-xl transition-colors">
@@ -366,13 +387,12 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
       )}
 
       {/* =======================================================
-          🌟 ระบบ ALERT (SWEETALERT2) 
+          🌟 ระบบควบคุมและเลียนแบบพฤติกรรมมาจากหน้าบิล (JS)
           ======================================================= */}
       <script dangerouslySetInnerHTML={{ __html: `
         const urlParams = new URLSearchParams(window.location.search);
         const alertType = urlParams.get('alert');
         
-        // 1. Popup แจ้งเตือนเมื่อทำรายการสำเร็จ
         if (alertType) {
           let title = 'สำเร็จ!';
           let text = 'ดำเนินการเรียบร้อยแล้ว';
@@ -389,16 +409,15 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
             customClass: { popup: 'rounded-[2rem]' }
           });
 
-          // เคลียร์ URL ไม่ให้ Alert เด้งซ้ำตอน Refresh
           const newUrl = new URL(window.location.href);
           newUrl.searchParams.delete('alert');
           window.history.replaceState({}, '', newUrl);
         }
 
-        // 2. ควบคุม Checkbox 
         if (!window.adminHouseEventsBound) {
           window.adminHouseEventsBound = true;
 
+          // 🌟 ฟังก์ชันคำนวณและแสดงแถบเมนู Bulk บาร์สีดำแบบหน้าจัดการบิล
           function updateSelection() {
             const checkboxes = document.querySelectorAll('.house-checkbox');
             const bulkBar = document.getElementById('bulkActionBar');
@@ -409,7 +428,12 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
             const allChecked = checkboxes.length > 0 && checkedBoxes.length === checkboxes.length;
             
             if (bulkBar) {
-              bulkBar.style.display = checkedBoxes.length > 0 ? 'flex' : 'none';
+              // เปลี่ยนเป็นเฟดเข้า flex แบบสมูทๆ
+              if (checkedBoxes.length > 0) {
+                bulkBar.style.display = 'flex';
+              } else {
+                bulkBar.style.display = 'none';
+              }
             }
             if (selectedCount) {
               selectedCount.textContent = checkedBoxes.length;
@@ -418,11 +442,15 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
               selectAllBtn.checked = allChecked;
             }
 
+            // 🌟 ไฮไลต์สีแถวเมื่อโดนเลือก ให้ฟีลลิ่งระดับพรีเมียม
             checkboxes.forEach(cb => {
               const row = cb.closest('tr');
               if (row) {
-                if (cb.checked) row.classList.add('bg-teal-50/30');
-                else row.classList.remove('bg-teal-50/30');
+                if (cb.checked) {
+                  row.style.backgroundColor = 'rgba(55, 107, 100, 0.05)';
+                } else {
+                  row.style.backgroundColor = '';
+                }
               }
             });
           }
@@ -438,14 +466,13 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
             }
           });
 
-          // 3. แจ้งเตือนยืนยันการลบ (SweetAlert2) ก่อน Submit
           document.addEventListener('click', function(e) {
             const deleteBtn = e.target.closest('.delete-btn');
             if (deleteBtn) {
               e.preventDefault();
               Swal.fire({
                 title: 'ยืนยันการลบแบบถาวร?',
-                text: "ข้อมูล (เช่น ลูกบ้าน, บิล, ประวัติแจ้งซ่อม) จะถูกลบเกลี้ยง และไม่สามารถกู้คืนได้!",
+                text: "ข้อมูลยูนิตและลูกบ้านทั้งหมดจะถูกลบเกลี้ยง และไม่สามารถกู้คืนได้!",
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#ef4444',
