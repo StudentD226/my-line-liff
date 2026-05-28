@@ -18,10 +18,19 @@ export default function AdminDashboardHome() {
   const [categories, setCategories] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 🌟 State สำหรับระบบ Table (Sorter & Pagination)
+  // 🌟 State สำหรับ Dropdown เลือกปี
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+
+  // State สำหรับระบบ Table (Sorter & Pagination)
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' }>({ key: 'date', direction: 'desc' });
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10); // จำนวนรายการต่อหน้า
+
+  // 🌟 สร้างรายการตัวเลือกปี (ย้อนหลัง 5 ปี)
+  const yearOptions = useMemo(() => {
+    const current = new Date().getFullYear();
+    return Array.from({ length: 5 }, (_, i) => current - i);
+  }, []);
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -30,8 +39,8 @@ export default function AdminDashboardHome() {
       const resultCat = await resCat.json();
       if (resultCat.success) setCategories(resultCat.data || []);
 
-      const currentYear = new Date().getFullYear();
-      const resTx = await fetch(`/api/financial/transactions?year=${currentYear}`, { cache: 'no-store' });
+      // 🌟 ดึงข้อมูลตามปีที่เลือกใน Dropdown
+      const resTx = await fetch(`/api/financial/transactions?year=${selectedYear}`, { cache: 'no-store' });
       const resultTx = await resTx.json();
       if (resultTx.success) {
         setTransactions(resultTx.data || []);
@@ -45,7 +54,8 @@ export default function AdminDashboardHome() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+    setCurrentPage(1); // กลับไปหน้า 1 เสมอเวลาเปลี่ยนปี
+  }, [selectedYear]);
 
   const summary = useMemo(() => {
     let totalIncome = 0;
@@ -75,7 +85,6 @@ export default function AdminDashboardHome() {
 
   const totalExpenseForPie = pieData.reduce((sum, item) => sum + item.value, 0);
 
-  // 🌟 ระบบจัดเรียงข้อมูล (Sorter)
   const sortedTransactions = useMemo(() => {
     let sortableItems = [...transactions];
     if (sortConfig !== null) {
@@ -83,7 +92,6 @@ export default function AdminDashboardHome() {
         let aValue = a[sortConfig.key];
         let bValue = b[sortConfig.key];
         
-        // จัดการกรณีจัดเรียงตามหมวดหมู่ (ดึง name มาเทียบ)
         if (sortConfig.key === 'category') {
           aValue = a.category?.name || ''; 
           bValue = b.category?.name || '';
@@ -97,16 +105,15 @@ export default function AdminDashboardHome() {
     return sortableItems;
   }, [transactions, sortConfig]);
 
-  // ฟังก์ชันกดสลับการจัดเรียง
   const requestSort = (key: string) => {
     let direction: 'asc' | 'desc' = 'asc';
     if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc';
     setSortConfig({ key, direction });
-    setCurrentPage(1); // เวลากดเรียงใหม่ ให้กลับไปหน้า 1 เสมอ
+    setCurrentPage(1);
   };
 
-  // 🌟 ระบบแบ่งหน้า (Pagination)
-  const totalPages = Math.ceil(sortedTransactions.length / rowsPerPage);
+  // 🌟 บังคับให้จำนวนหน้าขั้นต่ำคือ 1 (กันบั๊กหน้า 1 จาก 0)
+  const totalPages = Math.max(1, Math.ceil(sortedTransactions.length / rowsPerPage));
   const paginatedTransactions = sortedTransactions.slice(
     (currentPage - 1) * rowsPerPage, 
     currentPage * rowsPerPage
@@ -124,9 +131,26 @@ export default function AdminDashboardHome() {
   return (
     <div className="p-6 lg:p-10 max-w-7xl mx-auto bg-[#F8FAFC] min-h-screen font-sans">
       
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-800">ภาพรวมระบบ (Dashboard)</h1>
-        <p className="text-sm text-gray-500 mt-1">สรุปข้อมูลการเงินทั้งหมดประจำปี {new Date().getFullYear() + 543}</p>
+      {/* 🌟 ปรับ Header เพิ่ม Dropdown เลือกปี */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 space-y-4 sm:space-y-0">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">ภาพรวมระบบ (Dashboard)</h1>
+          <p className="text-sm text-gray-500 mt-1">สรุปข้อมูลการเงินทั้งหมดประจำปี พ.ศ. {selectedYear + 543}</p>
+        </div>
+        
+        <div className="flex items-center space-x-3 bg-white p-2.5 rounded-xl shadow-sm border border-gray-100">
+          <Calendar className="text-[#1A534B]" size={20} />
+          <span className="text-sm font-bold text-gray-600">เลือกปีงบประมาณ:</span>
+          <select 
+            value={selectedYear} 
+            onChange={(e) => setSelectedYear(Number(e.target.value))}
+            className="bg-gray-50 border border-gray-200 text-[#1A534B] text-sm rounded-lg focus:ring-2 focus:ring-[#1A534B] outline-none block p-2 font-bold cursor-pointer"
+          >
+            {yearOptions.map(year => (
+              <option key={year} value={year}>พ.ศ. {year + 543}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
@@ -162,7 +186,7 @@ export default function AdminDashboardHome() {
 
         {/* ฝั่งขวา: กราฟวงกลม */}
         <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
-          <h3 className="font-bold text-gray-800 mb-2 flex items-center">สัดส่วนรายจ่ายตามหมวดหมู่</h3>
+          <h3 className="font-bold text-gray-800 mb-2 flex items-center">สัดส่วนรายจ่ายตามหมวดหมู่ (ปี พ.ศ. {selectedYear + 543})</h3>
           <div className="flex-1 min-h-[300px] flex items-center justify-center relative w-full">
             {pieData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
@@ -180,16 +204,15 @@ export default function AdminDashboardHome() {
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <p className="text-gray-400 font-bold">ยังไม่มีข้อมูลรายจ่าย</p>
+              <p className="text-gray-400 font-bold">ยังไม่มีข้อมูลรายจ่ายในปีนี้</p>
             )}
           </div>
         </div>
       </div>
 
-      {/* 📝 ด้านล่าง: ตารางรายการบัญชีพร้อม Sorter & Pagination */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
         <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-gray-50/50 space-y-3 sm:space-y-0">
-          <h3 className="font-bold text-gray-800 flex items-center"><FileText className="mr-2 text-[#1A534B]" size={20}/> ประวัติรายการบัญชีทั้งหมด</h3>
+          <h3 className="font-bold text-gray-800 flex items-center"><FileText className="mr-2 text-[#1A534B]" size={20}/> ประวัติรายการบัญชีทั้งหมดของปีนี้</h3>
           
           <div className="flex items-center space-x-3 text-sm">
             <span className="text-gray-500 font-medium">แสดง:</span>
@@ -203,7 +226,7 @@ export default function AdminDashboardHome() {
               <option value={50}>50 รายการ</option>
               <option value={100}>100 รายการ</option>
             </select>
-            <span className="text-gray-500 font-medium">รวม {transactions.length} รายการ</span>
+            <span className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full font-bold">รวม {transactions.length} รายการ</span>
           </div>
         </div>
         
@@ -256,36 +279,34 @@ export default function AdminDashboardHome() {
                   </tr>
                 ))
               ) : (
-                <tr><td colSpan={5} className="px-6 py-12 text-center text-gray-400 font-bold bg-white">ไม่มีรายการบัญชี</td></tr>
+                <tr><td colSpan={5} className="px-6 py-12 text-center text-gray-400 font-bold bg-white">ไม่มีรายการบัญชีในปีนี้</td></tr>
               )}
             </tbody>
           </table>
         </div>
 
-        {/* 🌟 ส่วนควบคุมการเปลี่ยนหน้า (Pagination Controls) */}
-        {totalPages > 1 && (
-          <div className="p-4 border-t border-gray-100 flex items-center justify-between bg-white">
-            <span className="text-sm text-gray-500 font-medium">
-              หน้า <span className="font-bold text-gray-800">{currentPage}</span> จาก <span className="font-bold text-gray-800">{totalPages}</span>
-            </span>
-            <div className="flex space-x-2">
-              <button 
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className={`p-2 rounded-lg flex items-center transition-colors ${currentPage === 1 ? 'text-gray-300 cursor-not-allowed bg-gray-50' : 'text-gray-600 hover:bg-gray-100 hover:text-[#1A534B]'}`}
-              >
-                <ChevronLeft size={20} />
-              </button>
-              <button 
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className={`p-2 rounded-lg flex items-center transition-colors ${currentPage === totalPages ? 'text-gray-300 cursor-not-allowed bg-gray-50' : 'text-gray-600 hover:bg-gray-100 hover:text-[#1A534B]'}`}
-              >
-                <ChevronRight size={20} />
-              </button>
-            </div>
+        {/* 🌟 บังคับแสดง Pagination ให้เห็นชัดๆ ตลอดเวลา */}
+        <div className="p-4 border-t border-gray-100 flex items-center justify-between bg-white rounded-b-2xl">
+          <span className="text-sm text-gray-500 font-medium">
+            หน้า <span className="font-bold text-gray-800">{currentPage}</span> จาก <span className="font-bold text-gray-800">{totalPages}</span>
+          </span>
+          <div className="flex space-x-2">
+            <button 
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className={`p-2 rounded-lg flex items-center transition-colors ${currentPage === 1 ? 'text-gray-300 cursor-not-allowed bg-gray-50' : 'text-gray-600 hover:bg-gray-100 hover:text-[#1A534B]'}`}
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <button 
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage >= totalPages}
+              className={`p-2 rounded-lg flex items-center transition-colors ${currentPage >= totalPages ? 'text-gray-300 cursor-not-allowed bg-gray-50' : 'text-gray-600 hover:bg-gray-100 hover:text-[#1A534B]'}`}
+            >
+              <ChevronRight size={20} />
+            </button>
           </div>
-        )}
+        </div>
       </div>
 
       <style jsx>{`
