@@ -5,25 +5,43 @@ import { PrismaClient, TransactionType } from '@prisma/client';
 const prisma = new PrismaClient();
 
 // ========================================================
-// 1. ดึงข้อมูลรายรับ-รายจ่าย (รวมบิลค่าส่วนกลางอัตโนมัติ)
+// 1. ดึงข้อมูลรายรับ-รายจ่าย (รองรับทั้ง รายเดือน และ รายปี)
 // ========================================================
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const month = searchParams.get('month'); // เดือนที่เลือกจากหน้าบ้าน (1-12)
-    const year = searchParams.get('year');   // ปีที่เลือก
+    const monthStr = searchParams.get('month'); // ส่งมาถ้าดูหน้า "จัดการบัญชีรายเดือน"
+    const yearStr = searchParams.get('year');   // ส่งมาทั้งสองหน้า
 
-    const targetMonth = month ? parseInt(month) : new Date().getMonth() + 1;
-    const targetYear = year ? parseInt(year) : new Date().getFullYear();
+    let startDate: Date;
+    let endDate: Date;
 
-    // 🌟 หาวันที่ตัดรอบบิล (วันที่ 27 เดือนก่อนหน้า - วันที่ 26 เดือนที่เลือก)
-    const startMonth = targetMonth === 1 ? 12 : targetMonth - 1;
-    const startYear = targetMonth === 1 ? targetYear - 1 : targetYear;
-    
-    const startDate = new Date(startYear, startMonth - 1, 27, 0, 0, 0); 
-    const endDate = new Date(targetYear, targetMonth - 1, 26, 23, 59, 59, 999);
+    // 🌟 เช็คว่าหน้าเว็บส่งอะไรมา (รายเดือน หรือ รายปี)
+    if (monthStr && yearStr) {
+      // 📅 โหมด 1: หน้าจอ "รายเดือน" (ตัดรอบบิล 27 - 26)
+      const targetMonth = parseInt(monthStr);
+      const targetYear = parseInt(yearStr);
+      const startMonth = targetMonth === 1 ? 12 : targetMonth - 1;
+      const startYear = targetMonth === 1 ? targetYear - 1 : targetYear;
+      
+      startDate = new Date(startYear, startMonth - 1, 27, 0, 0, 0); 
+      endDate = new Date(targetYear, targetMonth - 1, 26, 23, 59, 59, 999);
+    } else if (yearStr) {
+      // 📅 โหมด 2: หน้าจอ "ภาพรวมรายปี" ของแอดมินหน้าแรก (1 ม.ค. - 31 ธ.ค.)
+      const targetYear = parseInt(yearStr);
+      startDate = new Date(targetYear, 0, 1, 0, 0, 0);
+      endDate = new Date(targetYear, 11, 31, 23, 59, 59, 999);
+    } else {
+      // กรณี Default ถ้าไม่ส่งอะไรมาเลย เอาเดือนปัจจุบัน
+      const targetMonth = new Date().getMonth() + 1;
+      const targetYear = new Date().getFullYear();
+      const startMonth = targetMonth === 1 ? 12 : targetMonth - 1;
+      const startYear = targetMonth === 1 ? targetYear - 1 : targetYear;
+      startDate = new Date(startYear, startMonth - 1, 27, 0, 0, 0); 
+      endDate = new Date(targetYear, targetMonth - 1, 26, 23, 59, 59, 999);
+    }
 
-    // ดึงรายจ่ายและรายได้ (ที่แอดมินคีย์มือ) จาก FinancialTransaction
+    // 1️⃣ ดึงรายจ่ายและรายได้ (ที่แอดมินคีย์มือ) จากช่วงเวลาที่กำหนด
     const manualTransactions = await prisma.financialTransaction.findMany({
       where: {
         date: { gte: startDate, lte: endDate },
@@ -31,7 +49,7 @@ export async function GET(request: Request) {
       include: { category: true },
     });
 
-    // ดึงรายรับอัตโนมัติ (เงินที่ลูกบ้านโอนจริง) จาก Invoice (สถานะ PAID / PARTIAL)
+    // 2️⃣ ดึงรายรับอัตโนมัติ (เงินที่ลูกบ้านโอนจริง) จาก Invoice
     const autoInvoices = await prisma.invoice.findMany({
       where: {
         status: { in: ['PAID', 'PARTIAL'] },
@@ -44,7 +62,7 @@ export async function GET(request: Request) {
       include: { house: true }
     });
 
-    // แปลงบิล Invoice ให้หน้าตาเหมือน Transaction เพื่อส่งไปโชว์ในตารางเดียวกัน
+    // 3️⃣ แปลงบิล Invoice ให้หน้าตาเหมือน Transaction
     const autoTransactions = autoInvoices.map(inv => ({
       id: `AUTO-${inv.id}`,
       type: 'INCOME' as TransactionType,
@@ -55,15 +73,15 @@ export async function GET(request: Request) {
       amount: inv.paidAmount > 0 ? inv.paidAmount : inv.baseAmount,
       date: inv.paidAt || inv.updatedAt,
       recordedBy: 'System',
-      isAuto: true, // ป้ายกำกับอัตโนมัติ
-      receiptUrl: inv.slipUrl // แปะรูปลงมาเผื่ออยากโชว์
+      isAuto: true,
+      receiptUrl: inv.slipUrl
     }));
 
-    // เอามารวมร่างกัน แล้วเรียงวันที่ล่าสุดขึ้นก่อน
+    // 4️⃣ เอามารวมร่างกัน แล้วเรียงวันที่ล่าสุดขึ้นก่อน
     const allTransactions = [...manualTransactions.map(t => ({...t, title: t.description || 'รายการบัญชี', isAuto: false})), ...autoTransactions]
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    // คำนวณสรุปยอดรวมส่งกลับไปให้หน้าบ้าน
+    // 5️⃣ คำนวณสรุปยอดรวมส่งกลับไปให้หน้าบ้าน
     let totalIncome = 0;
     let totalExpense = 0;
 
@@ -84,7 +102,7 @@ export async function GET(request: Request) {
 }
 
 // ========================================================
-// 2. บันทึกรายการรายรับ-รายจ่ายใหม่ (จากฟอร์มที่แอดมินกรอก)
+// 2. บันทึกรายการรายรับ-รายจ่ายใหม่ (POST)
 // ========================================================
 export async function POST(request: Request) {
   try {
