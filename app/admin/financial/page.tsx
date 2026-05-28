@@ -47,7 +47,7 @@ export default function FinancialDashboard() {
     amount: "",
     date: new Date().toISOString().split('T')[0],
     description: "",
-    receiptUrl: "" // ยังไม่ได้ต่อ Cloudinary ของจริง ให้เก็บเป็น string เปล่าไว้ก่อน
+    receiptUrl: "" 
   });
 
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' }>({ key: 'date', direction: 'desc' });
@@ -60,7 +60,6 @@ export default function FinancialDashboard() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      // 📌 ยิง API ดึงข้อมูลตามรอบบิล
       const resTx = await fetch(`/api/financial/transactions?month=${selectedMonth}&year=${selectedYear}`, { cache: 'no-store' });
       const resultTx = await resTx.json();
       
@@ -74,7 +73,6 @@ export default function FinancialDashboard() {
         setData(resultTx.data || []);
       }
 
-      // 📌 ยิง API ดึงหมวดหมู่
       const resCat = await fetch("/api/financial/categories", { cache: 'no-store' });
       const resultCat = await resCat.json();
       if (resultCat.success) setCategories(resultCat.data || []);
@@ -124,7 +122,6 @@ export default function FinancialDashboard() {
     try {
       let finalCategoryId = formData.categoryId;
 
-      // 🌟 สร้างหมวดหมู่ใหม่ถ้าแอดมินพิมพ์มา
       if (formData.categoryId === "NEW") {
         const catRes = await fetch("/api/financial/categories", { 
           method: "POST", headers: { "Content-Type": "application/json" },
@@ -135,7 +132,6 @@ export default function FinancialDashboard() {
         else throw new Error("สร้างหมวดหมู่ไม่สำเร็จ");
       }
 
-      // 🌟 บันทึกข้อมูล (ถ้าอนาคตมี Cloudinary อัปโหลดรูป ค่อยทำ FormData ตรงนี้)
       const txRes = await fetch("/api/financial/transactions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -165,7 +161,6 @@ export default function FinancialDashboard() {
     }
   };
 
-  // เตรียมข้อมูลกราฟ
   const pieData = categories.filter(c => c.type === 'EXPENSE').map(cat => {
     const total = data.filter(tx => tx.type === 'EXPENSE' && tx.category?.name === cat.name).reduce((sum, tx) => sum + tx.amount, 0);
     return { name: cat.name, value: total };
@@ -262,7 +257,6 @@ export default function FinancialDashboard() {
                       <Upload className="text-gray-400" size={20} />
                       <span className="text-xs text-gray-500 font-medium">คลิกเพื่ออัปโหลดรูปภาพ (กำลังพัฒนา)</span>
                     </div>
-                    {/* <input type="file" className="hidden" accept="image/*" /> */}
                   </label>
                 </div>
               </div>
@@ -338,7 +332,7 @@ export default function FinancialDashboard() {
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E5E7EB" />
                 <XAxis type="number" hide />
                 <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fill: '#6B7280', fontSize: 14, fontWeight: 'bold' }} width={80} />
-                <RechartsTooltip cursor={{fill: 'transparent'}} formatter={(value: number) => [`${value.toLocaleString()} บาท`, 'ยอดเงิน']} />
+                <RechartsTooltip cursor={{fill: 'transparent'}} formatter={(value: any) => [`${Number(value || 0).toLocaleString()} บาท`, 'ยอดเงิน']} />
                 <Bar dataKey="amount" radius={[0, 4, 4, 0]} barSize={32}>
                   {barData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.fill} />)}
                 </Bar>
@@ -356,7 +350,7 @@ export default function FinancialDashboard() {
                   <Pie data={pieData} innerRadius={60} outerRadius={80} paddingAngle={2} dataKey="value">
                     {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                   </Pie>
-                  <RechartsTooltip formatter={(value: number) => `${value.toLocaleString()} บาท`} />
+                  <RechartsTooltip formatter={(value: any) => `${Number(value || 0).toLocaleString()} บาท`} />
                   <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', fontWeight: 'bold' }} />
                 </PieChart>
               </ResponsiveContainer>
