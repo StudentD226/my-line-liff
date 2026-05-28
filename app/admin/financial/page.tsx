@@ -13,7 +13,6 @@ import {
 const COLORS = ["#10B981", "#3B82F6", "#F59E0B", "#8B5CF6", "#EC4899", "#14B8A6"];
 const fullThaiMonths = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
 
-// 🌟 Component: Tooltip แนะนำ
 const InfoTooltip = ({ text }: { text: string }) => (
   <div className="relative flex items-center group cursor-help ml-2">
     <Info size={16} className="text-gray-400 hover:text-[#1A534B] transition-colors" />
@@ -27,27 +26,21 @@ const InfoTooltip = ({ text }: { text: string }) => (
 export default function FinancialDashboard() {
   const [data, setData] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
+  const [yearlyChartData, setYearlyChartData] = useState<any[]>([]); // 🌟 State สำหรับกราฟ 12 เดือน
   const [summary, setSummary] = useState({ totalIncome: 0, totalExpense: 0, remaining: 0, totalTransactions: 0 });
-  const [isLoading, setIsLoading] = useState(true);
   
-  // 🌟 State รอบบิล
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
-  // 🌟 State ระบบ Alert
   const [alert, setAlert] = useState<{ show: boolean; message: string; type: "success" | "error" | "warning" }>({ show: false, message: "", type: "success" });
-
-  // 🌟 State Modal และ Form
   const [isModalOpen, setIsModalOpen] = useState(false);
+  
   const [formData, setFormData] = useState({
-    type: "EXPENSE",
-    title: "", 
-    categoryId: "",
-    newCategoryName: "",
-    amount: "",
-    date: new Date().toISOString().split('T')[0],
-    description: "",
-    receiptUrl: "" 
+    type: "EXPENSE", title: "", categoryId: "", newCategoryName: "", amount: "",
+    date: new Date().toISOString().split('T')[0], description: "", receiptUrl: "" 
   });
 
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' }>({ key: 'date', direction: 'desc' });
@@ -60,9 +53,9 @@ export default function FinancialDashboard() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
+      // ดึงข้อมูลตารางและสรุปยอด (ตามเดือนที่เลือก)
       const resTx = await fetch(`/api/financial/transactions?month=${selectedMonth}&year=${selectedYear}`, { cache: 'no-store' });
       const resultTx = await resTx.json();
-      
       if (resultTx.success) {
         setSummary({
           totalIncome: resultTx.summary?.totalIncome || 0,
@@ -73,9 +66,16 @@ export default function FinancialDashboard() {
         setData(resultTx.data || []);
       }
 
+      // ดึงข้อมูลกราฟ 12 เดือน (ตามปีที่เลือก)
+      const resSummary = await fetch(`/api/financial/summary?year=${selectedYear}`, { cache: 'no-store' });
+      const resultSummary = await resSummary.json();
+      if (resultSummary.success) setYearlyChartData(resultSummary.data || []);
+
+      // ดึงหมวดหมู่
       const resCat = await fetch("/api/financial/categories", { cache: 'no-store' });
       const resultCat = await resCat.json();
       if (resultCat.success) setCategories(resultCat.data || []);
+      
     } catch (error) {
       console.error("Error fetching data:", error);
       showAlert("เกิดข้อผิดพลาดในการโหลดข้อมูล", "error");
@@ -86,19 +86,15 @@ export default function FinancialDashboard() {
 
   useEffect(() => { fetchData(); }, [selectedMonth, selectedYear]);
 
-  // 🌟 ฟังก์ชัน Sorting
   const sortedData = useMemo(() => {
     let sortableItems = [...data];
     if (sortConfig !== null) {
       sortableItems.sort((a, b) => {
         let aValue = a[sortConfig.key];
         let bValue = b[sortConfig.key];
-        
         if (sortConfig.key === 'category') {
-          aValue = a.category?.name || '';
-          bValue = b.category?.name || '';
+          aValue = a.category?.name || ''; bValue = b.category?.name || '';
         }
-
         if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
         if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
         return 0;
@@ -115,10 +111,13 @@ export default function FinancialDashboard() {
 
   const handleSubmitTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
     if (!formData.title || !formData.amount || (!formData.categoryId && !formData.newCategoryName)) {
       return showAlert("กรุณากรอกข้อมูลให้ครบถ้วน", "warning");
     }
 
+    setIsSubmitting(true);
     try {
       let finalCategoryId = formData.categoryId;
 
@@ -133,16 +132,11 @@ export default function FinancialDashboard() {
       }
 
       const txRes = await fetch("/api/financial/transactions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          type: formData.type,
-          categoryId: finalCategoryId,
-          title: formData.title,
-          amount: parseFloat(formData.amount),
-          date: formData.date,
-          description: formData.description,
-          receiptUrl: formData.receiptUrl
+          type: formData.type, categoryId: finalCategoryId, title: formData.title,
+          amount: parseFloat(formData.amount), date: formData.date,
+          description: formData.description, receiptUrl: formData.receiptUrl
         })
       });
 
@@ -158,6 +152,8 @@ export default function FinancialDashboard() {
     } catch (error) {
       console.error(error);
       showAlert("ระบบขัดข้อง กรุณาลองใหม่", "error");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -166,17 +162,12 @@ export default function FinancialDashboard() {
     return { name: cat.name, value: total };
   }).filter(item => item.value > 0);
 
-  const barData = [
-    { name: 'รายรับ', amount: summary.totalIncome, fill: '#10B981' },
-    { name: 'รายจ่าย', amount: summary.totalExpense, fill: '#EF4444' }
-  ];
-
-  if (isLoading && data.length === 0) return <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]"><div className="text-[#1A534B] animate-pulse font-bold text-xl">กำลังประมวลผลบัญชี...</div></div>;
+  if (isLoading && data.length === 0 && yearlyChartData.length === 0) 
+    return <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]"><div className="text-[#1A534B] animate-pulse font-bold text-xl">กำลังประมวลผลบัญชี...</div></div>;
 
   return (
     <div className="p-6 lg:p-10 max-w-7xl mx-auto bg-[#F8FAFC] min-h-screen font-sans">
       
-      {/* 🌟 Alert อัตโนมัติ */}
       <div className={`fixed top-6 right-6 z-[60] transition-all duration-300 transform ${alert.show ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}`}>
         <div className={`flex items-center space-x-3 p-4 rounded-xl shadow-lg border-l-4 ${alert.type === 'success' ? 'bg-white border-emerald-500 text-gray-800' : alert.type === 'error' ? 'bg-white border-red-500 text-gray-800' : 'bg-white border-orange-500 text-gray-800'}`}>
           {alert.type === 'success' && <CheckCircle className="text-emerald-500" size={24} />}
@@ -186,7 +177,6 @@ export default function FinancialDashboard() {
         </div>
       </div>
 
-      {/* 🌟 Modal เพิ่มรายการ */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-fade-in-down">
@@ -263,14 +253,15 @@ export default function FinancialDashboard() {
 
               <div className="pt-4 flex space-x-3">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 font-bold rounded-lg hover:bg-gray-200 transition-colors">ยกเลิก</button>
-                <button type="submit" className="flex-1 px-4 py-2 bg-[#1A534B] text-white font-bold rounded-lg hover:bg-[#14423b] transition-colors shadow-md">บันทึกข้อมูล</button>
+                <button type="submit" disabled={isSubmitting} className={`flex-1 px-4 py-2 text-white font-bold rounded-lg transition-colors shadow-md ${isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#1A534B] hover:bg-[#14423b]'}`}>
+                  {isSubmitting ? 'กำลังบันทึก...' : 'บันทึกข้อมูล'}
+                </button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* Header & Filter เดือน */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 space-y-4 md:space-y-0">
         <div>
           <div className="flex items-center">
@@ -283,7 +274,6 @@ export default function FinancialDashboard() {
         <div className="flex items-center space-x-4 w-full md:w-auto">
           <select value={selectedMonth} onChange={(e) => setSelectedMonth(Number(e.target.value))} className="bg-white border border-gray-200 text-gray-700 text-sm rounded-lg focus:ring-[#1A534B] outline-none block p-2.5 font-bold shadow-sm cursor-pointer">
             {[...Array(12)].map((_, i) => (
-              // 🌟 แก้ตรงนี้: ปี พ.ศ. มาแล้วครับ
               <option key={i+1} value={i+1}>รอบบิล {fullThaiMonths[i+1]} {selectedYear + 543}</option>
             ))}
           </select>
@@ -294,7 +284,6 @@ export default function FinancialDashboard() {
         </div>
       </div>
 
-      {/* 🌟 การ์ดสรุปผล */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <div className="flex items-center justify-between mb-4">
@@ -323,27 +312,27 @@ export default function FinancialDashboard() {
         </div>
       </div>
 
-      {/* 🌟 กราฟแท่ง & กราฟวงกลม */}
+      {/* 🌟 กราฟแท่ง & กราฟวงกลม อัปเดตใหม่เป็น 12 เดือน */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <h3 className="font-bold text-gray-800 mb-6">เปรียบเทียบรายรับ - รายจ่าย</h3>
+          <h3 className="font-bold text-gray-800 mb-6 flex items-center">สถิติรายรับ - รายจ่าย รายปี <InfoTooltip text={`ข้อมูลสรุปรวมตั้งแต่ ม.ค. - ธ.ค. ปี ${selectedYear + 543}`} /></h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={barData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E5E7EB" />
-                <XAxis type="number" hide />
-                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fill: '#6B7280', fontSize: 14, fontWeight: 'bold' }} width={80} />
-                <RechartsTooltip cursor={{fill: 'transparent'}} formatter={(value: any) => [`${Number(value || 0).toLocaleString()} บาท`, 'ยอดเงิน']} />
-                <Bar dataKey="amount" radius={[0, 4, 4, 0]} barSize={32}>
-                  {barData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.fill} />)}
-                </Bar>
+              <BarChart data={yearlyChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#6B7280', fontSize: 12, fontWeight: 'bold' }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6B7280', fontSize: 12, fontWeight: 'bold' }} tickFormatter={(val) => val >= 1000 ? `${val/1000}k` : val} width={40} />
+                <RechartsTooltip cursor={{fill: '#F3F4F6'}} formatter={(value: any) => [`${Number(value || 0).toLocaleString()} บาท`]} />
+                <Legend verticalAlign="top" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', fontWeight: 'bold' }} />
+                <Bar dataKey="รายรับ" fill="#10B981" radius={[4, 4, 0, 0]} maxBarSize={30} />
+                <Bar dataKey="รายจ่าย" fill="#EF4444" radius={[4, 4, 0, 0]} maxBarSize={30} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <h3 className="font-bold text-gray-800 mb-2 flex items-center">สัดส่วนรายจ่าย <InfoTooltip text="วิเคราะห์รายจ่ายแยกตามหมวดหมู่ (ดึงข้อมูล Dynamic)" /></h3>
+          <h3 className="font-bold text-gray-800 mb-2 flex items-center">สัดส่วนรายจ่ายรอบบิลปัจจุบัน <InfoTooltip text={`วิเคราะห์รายจ่ายแยกตามหมวดหมู่ ของรอบบิล ${fullThaiMonths[selectedMonth]}`} /></h3>
           <div className="flex items-center justify-center h-64 relative">
             {pieData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
@@ -362,10 +351,9 @@ export default function FinancialDashboard() {
         </div>
       </div>
 
-      {/* 🌟 ตารางรายการล่าสุด พร้อม Sorting */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-          <h3 className="font-bold text-gray-800 flex items-center">รายการบัญชี <InfoTooltip text="กดที่หัวตารางเพื่อจัดเรียงลำดับข้อมูล" /></h3>
+          <h3 className="font-bold text-gray-800 flex items-center">รายการบัญชีรอบบิลนี้ <InfoTooltip text="กดที่หัวตารางเพื่อจัดเรียงลำดับข้อมูล" /></h3>
           <span className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full font-bold">{summary.totalTransactions} รายการ</span>
         </div>
         
