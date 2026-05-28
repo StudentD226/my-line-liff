@@ -12,17 +12,17 @@ datasource db {
 // ------------------------------------------------------
 model SystemConfig {
   id                  Int         @id @default(1)
-  projectType         ProjectType @default(HOUSING_ESTATE) // ใช้ Enum เพื่อความปลอดภัยของข้อมูล
-  flatRateAmount      Float       @default(500)   // ยอดเหมาจ่ายมาตรฐาน
-  penaltyRatePerDay   Float       @default(100)   // เก็บค่าปรับเหมาจ่ายรายเดือน หรือ % ต่อวัน
-  updatedAt           DateTime    @updatedAt      // บันทึกเวลาที่มีการแก้ไขข้อมูลล่าสุด
+  projectType         ProjectType @default(HOUSING_ESTATE)
+  flatRateAmount      Float       @default(500)   
+  penaltyRatePerDay   Float       @default(100)   
+  updatedAt           DateTime    @updatedAt      
 
   // 📅 การตั้งค่าวันที่และเวลาของระบบบิล
-  invoiceGenerateDay  Int         @default(27)    // วันที่ออกบิลประจำเดือน
-  invoiceGenerateTime String      @default("08:00") // 🌟 เวลาจัดส่งบิลอัตโนมัติ
-  dueDateDay          Int         @default(7)     // วันครบกำหนด / ทวงรอบแรก
-  penaltyStartDay     Int         @default(8)     // วันที่เริ่มคิดค่าปรับล่าช้า
-  secondReminderDay   Int         @default(15)    // วันที่ส่งทวงรอบสองพร้อมค่าปรับ
+  invoiceGenerateDay  Int         @default(27)    
+  invoiceGenerateTime String      @default("08:00") 
+  dueDateDay          Int         @default(7)     
+  penaltyStartDay     Int         @default(8)     
+  secondReminderDay   Int         @default(15)    
 
   // 🏦 ข้อมูลบัญชีธนาคารรับเงินส่วนกลาง
   bankName            String      @default("ธนาคารกรุงไทย")
@@ -32,8 +32,8 @@ model SystemConfig {
 }
 
 enum ProjectType {
-  HOUSING_ESTATE // หมู่บ้านจัดสรร
-  CONDO          // คอนโดมิเนียม
+  HOUSING_ESTATE 
+  CONDO          
 }
 
 // ------------------------------------------------------
@@ -47,7 +47,6 @@ model User {
   role            Role     @default(USER)
   isNotify        Boolean  @default(true)
   
-  // ความสัมพันธ์กับบ้าน
   residentHouseId String?
   residentHouse   House?   @relation("HouseResidents", fields: [residentHouseId], references: [id])
   ownedHouses     House[]  @relation("HouseOwner")
@@ -66,17 +65,14 @@ enum Role {
 model House {
   id        String    @id @default(cuid())
   houseNo   String    @unique
-  houseSize Float     @default(0) // ตร.ว. หรือ ตร.ม.
+  houseSize Float     @default(0) 
   
-  // รูปแบบการคำนวณเงิน
   feeType   FeeType   @default(CALCULATED)
-  feeRate   Float     @default(0) // เรทราคา (เช่น 15 บาท/ตร.ว. หรือ เหมา 850 บาท)
+  feeRate   Float     @default(0) 
   
-  // เจ้าของและผู้อยู่อาศัย
   ownerId   String?   
   owner     User?     @relation("HouseOwner", fields: [ownerId], references: [id])
   
-  // สมาชิกที่อาศัยอยู่ในบ้าน (หลายคน)
   residents User[]    @relation("HouseResidents")
   
   invoices  Invoice[]
@@ -85,8 +81,8 @@ model House {
 }
 
 enum FeeType {
-  CALCULATED // คำนวณตามพื้นที่ (เช่น เอา houseSize x feeRate)
-  FIXED      // เหมาจ่าย (จ่ายตามราคา feeRate เลย ไม่ต้องคูณ)
+  CALCULATED 
+  FIXED      
 }
 
 // ------------------------------------------------------
@@ -98,18 +94,15 @@ model Invoice {
   billingMonth    Int           
   billingYear     Int           
   
-  // แยกยอดเงินเพื่อความโปร่งใสและคำนวณใหม่ได้ง่าย
-  baseAmount      Float         // ยอดตั้งต้นที่ต้องจ่าย
-  penaltyAmount   Float         @default(0) // ยอดค่าปรับสะสม
-  totalAmount     Float         // ยอดสุทธิ (base + penalty)
+  baseAmount      Float         
+  penaltyAmount   Float         @default(0) 
+  totalAmount     Float         
   
-  // 🌟 เพิ่มฟิลด์สำหรับเก็บยอดที่ลูกบ้านชำระมาแล้ว (รองรับการแบ่งจ่าย/ทยอยจ่าย)
   paidAmount      Float         @default(0) 
   
   dueDate         DateTime      
   status          InvoiceStatus @default(PENDING)
   
-  // หลักฐานการโอนเงิน
   slipUrl         String?       
   payeeName       String?       
   transferDate    String?       
@@ -119,21 +112,20 @@ model Invoice {
   residentHouseId String
   house           House         @relation(fields: [residentHouseId], references: [id], onDelete: Cascade)
   
-  // เพิ่มฟิลด์สำหรับระบบตั้งเวลาส่งบิลและแจ้งเตือนเข้า LINE อัตโนมัติ
-  scheduledSendAt DateTime?     // วันและเวลาที่กำหนดให้ส่งบิล
-  isNotified      Boolean       @default(false) // Status การส่งแจ้งเตือนเข้า LINE ลูกบ้าน
+  scheduledSendAt DateTime?     
+  isNotified      Boolean       @default(false) 
 
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 }
 
 enum InvoiceStatus {
-  PENDING   // รอชำระ
-  OVERDUE   // เกินกำหนด
-  CHECKING  // รอตรวจสอบสลิป
-  PARTIAL   // 🌟 สถานะชำระแล้วบางส่วน (ยอด paidAmount ยังไม่เท่ากับ totalAmount)
-  PAID      // ชำระครบแล้ว
-  REJECTED  // สลิปไม่ถูกต้อง
+  PENDING   
+  OVERDUE   
+  CHECKING  
+  PARTIAL   
+  PAID      
+  REJECTED  
 }
 
 // ------------------------------------------------------
@@ -141,18 +133,18 @@ enum InvoiceStatus {
 // ------------------------------------------------------
 model Report {
   id              String   @id @default(cuid())
-  ticketNo        String   @unique  // เลขที่แจ้งซ่อม (เช่น MT-670501)
-  lineId          String   // เก็บ LINE ID คนแจ้งเพื่อไว้ส่งข้อความตอบกลับ
-  type            String   @default("REPAIR") // REPAIR แจ้งซ่อม, INFORM แจ้งเพื่อทราบ
+  ticketNo        String   @unique  
+  lineId          String   
+  type            String   @default("REPAIR") 
   
-  category        String   // ประเภทปัญหา (เช่น water, electric, clean, other)
-  location        String   // สถานที่เกิดปัญหา
-  title           String   // หัวข้อปัญหา
+  category        String   
+  location        String   
+  title           String   
   description     String   @db.Text 
   imageUrl        String?  
   
   status          String   @default("PENDING") 
-  adminNote       String?  @db.Text // ข้อความอัปเดตจากแอดมิน
+  adminNote       String?  @db.Text 
   
   residentHouseId String
   house           House    @relation(fields: [residentHouseId], references: [id], onDelete: Cascade)
@@ -176,15 +168,15 @@ model News {
 // 7. ระบบบัญชี รายรับ-รายจ่าย (Financial Tracking)
 // ------------------------------------------------------
 enum TransactionType {
-  INCOME  // รายรับ
-  EXPENSE // รายจ่าย
+  INCOME  
+  EXPENSE 
 }
 
 model TransactionCategory {
   id          String   @id @default(cuid())
-  name        String   // ชื่อหมวดหมู่ เช่น 'ค่าส่วนกลาง', 'ค่าจ้างยาม', 'ค่าจัดสวน'
+  name        String   
   type        TransactionType 
-  isFavorite  Boolean  @default(false) // ให้แอดมินกดดาว/ปักหมุดรายการที่ใช้บ่อยได้
+  isFavorite  Boolean  @default(false) 
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -199,10 +191,13 @@ model FinancialTransaction {
   categoryId  String
   category    TransactionCategory @relation(fields: [categoryId], references: [id])
   
-  description String?  // รายละเอียดเพิ่มเติม เช่น 'ซ่อมปั๊มน้ำซอย 2'
-  amount      Float    // จำนวนเงิน
-  date        DateTime // วันที่เกิดรายการ
-  recordedBy  String?  // ชื่อแอดมินที่บันทึก
+  description String?  
+  amount      Float    
+  date        DateTime 
+  recordedBy  String?  
+
+  // 🌟 เพิ่มฟิลด์สำหรับแนบสลิป/ใบเสร็จ
+  receiptUrl  String?  
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -213,9 +208,9 @@ model FinancialTransaction {
 // ------------------------------------------------------
 model AdminReminder {
   id          String   @id @default(cuid())
-  title       String   // เช่น 'ชำระค่าไฟส่วนกลาง', 'จ่ายค่าจ้างยาม'
-  dayOfMonth  Int      // วันที่ต้องการให้ระบบเตือนในทุกๆ เดือน (เช่น 25)
-  isActive    Boolean  @default(true) // เปิด/ปิด การเตือนได้
+  title       String   
+  dayOfMonth  Int      
+  isActive    Boolean  @default(true) 
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

@@ -280,7 +280,7 @@ export async function POST(request: Request) {
                     {
                       type: "box", layout: "horizontal", margin: "md",
                       contents: [
-                        { type: "text", text: "PAYMENT ID", size: "xs", color: "#4B5563", weight: "bold", flex: 0 },
+                        { type: "text", text: "PAYMENT ID", size: "xs", color: "#4B5563", weight: "regular", flex: 0 },
                         {
                           type: "text",
                           text: (user.residentHouse.invoices?.[0]?.invoiceNo && !user.residentHouse.invoices[0].invoiceNo.startsWith('INV'))
@@ -288,7 +288,7 @@ export async function POST(request: Request) {
                             : customTeacherInvoiceNo,
                           size: "xs", 
                           color: "#4B5563",
-                          weight: "bold",
+                          weight: "regular",
                           align: "end",
                           flex: 1
                         }
