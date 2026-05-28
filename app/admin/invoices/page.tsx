@@ -54,7 +54,6 @@ export default function AdminInvoicesPage() {
   // ==========================================
   const fetchInvoices = async () => {
     try {
-      // 🌟 พระเอกอยู่ตรงนี้ครับ! เติม { cache: 'no-store' } เพื่อสั่งไม่ให้เบราว์เซอร์จำข้อมูลเก่า
       const res  = await fetch('/api/admin/all-invoices', { cache: 'no-store' });
       if (!res.ok) return;
       const data = await res.json();
@@ -83,7 +82,6 @@ export default function AdminInvoicesPage() {
   // ==========================================
   const filteredInvoices = useMemo(() => {
     return invoices.filter(inv => {
-      // 🌟 1. ดักจับ TR- แบบขั้นเด็ดขาด ไม่ให้โผล่มาหน้าตารางนี้!
       if (inv.invoiceNo && inv.invoiceNo.startsWith('TR-')) return false;
 
       const matchHouse  = inv.house?.houseNo?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -240,24 +238,23 @@ export default function AdminInvoicesPage() {
         confirmButton: 'rounded-xl px-6 py-2.5 font-bold',
         cancelButton: 'rounded-xl px-6 py-2.5 font-bold',
       },
-    }).then(async (result) => {
+    }).then((result) => {
       if (result.isConfirmed) {
         Swal.fire({ title: 'กำลังลบ...', allowOutsideClick: false, didOpen: () => Swal.showLoading(), customClass: { popup: 'rounded-[2rem]' } });
         try {
-          const res  = await fetch('/api/admin/delete-invoices', {
+          fetch('/api/admin/delete-invoices', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ids: idsToDelete }),
+          }).then(r => r.json()).then(data => {
+            if (data.success) {
+              Toast.fire({ icon: 'success', title: `ลบเรียบร้อยแล้ว จำนวน ${data.count} ใบ` });
+              setSelectedInvoices([]);
+              fetchInvoices();
+            } else {
+              Toast.fire({ icon: 'error', title: 'เกิดข้อผิดพลาดในการลบ' });
+            }
           });
-          const data = await res.json();
-
-          if (data.success) {
-            Toast.fire({ icon: 'success', title: `ลบเรียบร้อยแล้ว จำนวน ${data.count} ใบ` });
-            setSelectedInvoices([]);
-            fetchInvoices();
-          } else {
-            Toast.fire({ icon: 'error', title: 'เกิดข้อผิดพลาดในการลบ' });
-          }
         } catch {
           Toast.fire({ icon: 'error', title: 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้' });
         }
@@ -282,23 +279,22 @@ export default function AdminInvoicesPage() {
       confirmButtonText: 'ใช่, ส่งเลย!',
       cancelButtonText: 'ยกเลิก',
       customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl px-6 py-2.5 font-bold', cancelButton: 'rounded-xl px-6 py-2.5 font-bold' },
-    }).then(async (result) => {
+    }).then((result) => {
       if (result.isConfirmed) {
         Swal.fire({ title: 'กำลังส่ง...', allowOutsideClick: false, didOpen: () => Swal.showLoading(), customClass: { popup: 'rounded-[2rem]' } });
         try {
-          const res  = await fetch('/api/admin-notify', {
+          fetch('/api/admin-notify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ invoiceId, type }),
+          }).then(r => r.json()).then(data => {
+            if (data.success) {
+              Toast.fire({ icon: 'success', title: 'แจ้งเตือนเข้า LINE เรียบร้อย!' });
+              if (type === 'OVERDUE') fetchInvoices();
+            } else {
+              Swal.fire({ icon: 'info', title: 'ระบบยังไม่พร้อม', text: 'ฟังก์ชันส่ง LINE แจ้งเตือนยังไม่ได้เชื่อมต่อระบบหลังบ้านครับ', showCloseButton: true, confirmButtonColor: '#376B64', customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl px-6 py-2.5 font-bold' } });
+            }
           });
-          const data = await res.json();
-
-          if (res.ok && data.success) {
-            Toast.fire({ icon: 'success', title: 'แจ้งเตือนเข้า LINE เรียบร้อย!' });
-            if (type === 'OVERDUE') fetchInvoices();
-          } else {
-            Swal.fire({ icon: 'info', title: 'ระบบยังไม่พร้อม', text: 'ฟังก์ชันส่ง LINE แจ้งเตือนยังไม่ได้เชื่อมต่อระบบหลังบ้านครับ', showCloseButton: true, confirmButtonColor: '#376B64', customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl px-6 py-2.5 font-bold' } });
-          }
         } catch {
           Toast.fire({ icon: 'error', title: 'เกิดข้อผิดพลาดในการส่งข้อความ' });
         }
@@ -380,17 +376,18 @@ export default function AdminInvoicesPage() {
         base:    (document.getElementById('swal-input1') as HTMLInputElement).value,
         penalty: (document.getElementById('swal-input2') as HTMLInputElement).value,
       }),
-    }).then(async (result) => {
+    }).then((result) => {
       if (result.isConfirmed) {
         Swal.fire({ title: 'กำลังอัปเดตยอด...', allowOutsideClick: false, didOpen: () => Swal.showLoading(), customClass: { popup: 'rounded-[2rem]' } });
         try {
-          const res = await fetch('/api/admin/update-invoice', {
+          fetch('/api/admin/update-invoice', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ invoiceId: inv.id, baseAmount: result.value?.base, penaltyAmount: result.value?.penalty }),
+          }).then(res => {
+            if (res.ok) { Toast.fire({ icon: 'success', title: 'อัปเดตยอดเงินเรียบร้อยแล้ว' }); fetchInvoices(); }
+            else          Toast.fire({ icon: 'error',   title: 'เกิดข้อผิดพลาดในการอัปเดต' });
           });
-          if (res.ok) { Toast.fire({ icon: 'success', title: 'อัปเดตยอดเงินเรียบร้อยแล้ว' }); fetchInvoices(); }
-          else          Toast.fire({ icon: 'error',   title: 'เกิดข้อผิดพลาดในการอัปเดต' });
         } catch {
           Toast.fire({ icon: 'error', title: 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้' });
         }
@@ -431,17 +428,18 @@ export default function AdminInvoicesPage() {
       inputValidator: (value) => new Promise((resolve) => {
         if (value) resolve(null); else resolve('กรุณาเลือกสถานะ!');
       }),
-    }).then(async (result) => {
+    }).then((result) => {
       if (result.isConfirmed) {
         Swal.fire({ title: 'กำลังอัปเดต...', allowOutsideClick: false, didOpen: () => Swal.showLoading(), customClass: { popup: 'rounded-[2rem]' } });
         try {
-          const res = await fetch('/api/admin/reset-invoice', {
+          fetch('/api/admin/reset-invoice', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ invoiceId: id, newStatus: result.value }),
+          }).then(res => {
+            if (res.ok) { Toast.fire({ icon: 'success', title: `เปลี่ยนสถานะเป็น ${result.value} แล้ว` }); fetchInvoices(); }
+            else          Toast.fire({ icon: 'error',   title: 'อัปเดตไม่สำเร็จ' });
           });
-          if (res.ok) { Toast.fire({ icon: 'success', title: `เปลี่ยนสถานะเป็น ${result.value} แล้ว` }); fetchInvoices(); }
-          else          Toast.fire({ icon: 'error',   title: 'อัปเดตไม่สำเร็จ' });
         } catch {
           Toast.fire({ icon: 'error', title: 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้' });
         }
@@ -464,34 +462,28 @@ export default function AdminInvoicesPage() {
     }
   };
 
-  // ==========================================
-  // Loading
-  // ==========================================
   if (loading) return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center text-[#376B64]">
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center text-[#376B64]">
       <RefreshCw className="animate-spin mb-4" size={40} />
       <span className="font-bold text-lg">กำลังโหลดข้อมูล...</span>
     </div>
   );
 
-  // ==========================================
-  // Render
-  // ==========================================
   return (
-    <div className="min-h-screen bg-gray-50 font-sans p-4 md:p-8">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-slate-50 font-sans p-4 md:p-8">
+      <div className="max-w-7xl mx-auto space-y-6 pb-20">
 
         {/* Top Action Card */}
-        <div className="bg-white p-6 md:p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="bg-white p-6 md:p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
+            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
               <Receipt className="text-[#376B64]" size={32} /> ระบบจัดการบิล
             </h1>
-            <p className="text-sm text-gray-500 mt-2">เรียงลำดับตาม: รอบบิลเก่าที่สุด และบ้านเลขที่น้อยไปมาก</p>
+            <p className="text-sm text-slate-500 mt-2">เรียงลำดับตาม: รอบบิลเก่าที่สุด และบ้านเลขที่น้อยไปมาก</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-            <Link href="/admin/settings" className="flex items-center justify-center px-5 py-2.5 bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 rounded-xl font-bold text-sm transition-all shadow-sm">
+            <Link href="/admin/settings" className="flex items-center justify-center px-5 py-2.5 bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 rounded-xl font-bold text-sm transition-all shadow-sm">
               <Settings size={16} className="mr-2" /> ตั้งค่า
             </Link>
             <button
@@ -504,34 +496,34 @@ export default function AdminInvoicesPage() {
         </div>
 
         {/* Search & Filter */}
-        <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4 items-center">
+        <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col md:flex-row gap-4 items-center">
           <div className="relative w-full md:w-1/4">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
             <input
               type="text"
               placeholder="ค้นหาบ้านเลขที่..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-[1.25rem] focus:ring-4 focus:ring-[#376B64]/10 focus:border-[#376B64] outline-none transition-all font-medium text-gray-700"
+              className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-[1.25rem] focus:ring-4 focus:ring-[#376B64]/10 focus:border-[#376B64] outline-none transition-all font-medium text-slate-700"
             />
           </div>
 
           <div className="flex gap-3 w-full md:w-auto overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
-            <div className="flex items-center bg-gray-50 border border-gray-200 rounded-[1.25rem] px-4 py-3 min-w-max hover:border-[#376B64]/30 transition-colors">
+            <div className="flex items-center bg-slate-50 border border-slate-200 rounded-[1.25rem] px-4 py-3 min-w-max hover:border-[#376B64]/30 transition-colors">
               <Filter size={16} className="text-[#376B64] mr-2" />
-              <select value={filterMonth} onChange={(e) => setFilterMonth(Number(e.target.value))} className="bg-transparent text-sm font-bold outline-none text-gray-700 cursor-pointer">
+              <select value={filterMonth} onChange={(e) => setFilterMonth(Number(e.target.value))} className="bg-transparent text-sm font-bold outline-none text-slate-700 cursor-pointer">
                 <option value={0}>ทุกเดือน</option>
                 {thaiMonths.map(m => <option key={m.num} value={m.num}>{m.full}</option>)}
               </select>
             </div>
-            <div className="flex items-center bg-gray-50 border border-gray-200 rounded-[1.25rem] px-4 py-3 min-w-max hover:border-[#376B64]/30 transition-colors">
-              <select value={filterYear} onChange={(e) => setFilterYear(Number(e.target.value))} className="bg-transparent text-sm font-bold outline-none text-gray-700 cursor-pointer">
+            <div className="flex items-center bg-slate-50 border border-slate-200 rounded-[1.25rem] px-4 py-3 min-w-max hover:border-[#376B64]/30 transition-colors">
+              <select value={filterYear} onChange={(e) => setFilterYear(Number(e.target.value))} className="bg-transparent text-sm font-bold outline-none text-slate-700 cursor-pointer">
                 <option value={0}>ทุกปี</option>
                 {availableYears.map(y => <option key={y} value={y}>{y + 543}</option>)}
               </select>
             </div>
-            <div className="flex items-center bg-gray-50 border border-gray-200 rounded-[1.25rem] px-4 py-3 min-w-max hover:border-[#376B64]/30 transition-colors">
-              <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="bg-transparent text-sm font-bold outline-none text-gray-700 cursor-pointer">
+            <div className="flex items-center bg-slate-50 border border-slate-200 rounded-[1.25rem] px-4 py-3 min-w-max hover:border-[#376B64]/30 transition-colors">
+              <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="bg-transparent text-sm font-bold outline-none text-slate-700 cursor-pointer">
                 <option value="ALL">ทุกสถานะ</option>
                 <option value="PENDING">รอชำระ (PENDING)</option>
                 <option value="OVERDUE">ค้างชำระ (OVERDUE)</option>
@@ -545,61 +537,58 @@ export default function AdminInvoicesPage() {
         </div>
 
         {/* Table Card */}
-        <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden relative">
+        <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden relative">
 
-          {/* Bulk Actions Bar */}
+          {/* 🌟 Bulk Actions Bar (แปลงโฉมเป็นแถบดำหรูหราแบบเดียวกับหน้าจัดการบ้านพัก) */}
           {selectedInvoices.length > 0 && (
-            <div className="bg-gradient-to-r from-teal-50 to-emerald-50 px-6 py-4 border-b border-teal-100 flex flex-col md:flex-row justify-between items-center gap-4 animate-in fade-in z-10 relative shadow-sm">
-              <span className="text-sm font-bold text-teal-800 flex items-center gap-2">
-                <span className="flex items-center justify-center bg-[#376B64] text-white w-7 h-7 rounded-full text-xs shadow-sm">{selectedInvoices.length}</span> รายการที่เลือก
+            <div className="bg-slate-900 text-white px-6 py-4 flex-col sm:flex-row justify-between items-center gap-4 animate-in slide-in-from-top duration-300 z-10 relative">
+              <span className="text-sm font-bold flex items-center gap-2">
+                <span className="flex items-center justify-center bg-[#376B64] text-white w-6 h-6 rounded-full text-xs shadow-sm font-black">{selectedInvoices.length}</span> รายการที่เลือกอยู่ขณะนี้
               </span>
-              <div className="flex flex-1 items-center w-full">
-                <div className="flex-1" />
-                <div className="flex items-center justify-center border-l border-teal-200 px-6">
-                  <button
-                    onClick={() => handleDelete()}
-                    className="flex items-center px-4 py-2 bg-white hover:bg-red-50 text-red-600 border border-red-200 text-xs font-bold rounded-xl transition shadow-sm hover:shadow active:scale-[0.98] whitespace-nowrap"
-                  >
-                    <Trash2 size={14} className="mr-1.5" /> ลบข้อมูลที่เลือก
-                  </button>
-                </div>
-                <div className="flex flex-wrap items-center justify-center gap-2 border-l border-teal-200 px-4">
-                  <button onClick={() => handleBulkNotify('SEND')}     className="flex items-center px-4 py-2 bg-white hover:bg-blue-50   text-blue-600   border border-blue-200   text-xs font-bold rounded-xl transition shadow-sm hover:shadow active:scale-[0.98]"><Send        size={14} className="mr-1.5" /> ส่งบิล</button>
-                  <button onClick={() => handleBulkNotify('REMINDER')} className="flex items-center px-4 py-2 bg-white hover:bg-orange-50 text-orange-600 border border-orange-200 text-xs font-bold rounded-xl transition shadow-sm hover:shadow active:scale-[0.98]"><Clock       size={14} className="mr-1.5" /> ทวงล่วงหน้า</button>
-                  <button onClick={() => handleBulkNotify('OVERDUE')}  className="flex items-center px-4 py-2 bg-white hover:bg-rose-50   text-rose-600   border border-rose-200   text-xs font-bold rounded-xl transition shadow-sm hover:shadow active:scale-[0.98]"><AlertCircle size={14} className="mr-1.5" /> ทวงยอดค้าง</button>
-                </div>
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+                <button
+                  onClick={() => handleDelete()}
+                  className="flex items-center px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition shadow-sm active:scale-[0.98] whitespace-nowrap"
+                >
+                  <Trash2 size={14} className="mr-1.5" /> ลบข้อมูลที่เลือก
+                </button>
+                <div className="h-6 w-px bg-slate-700 hidden sm:block mx-1" />
+                <button onClick={() => handleBulkNotify('SEND')}     className="flex items-center px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 text-xs font-bold rounded-xl transition active:scale-[0.98]"><Send        size={14} className="mr-1.5" /> ส่งบิล</button>
+                <button onClick={() => handleBulkNotify('REMINDER')} className="flex items-center px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-orange-400 border border-slate-700 text-xs font-bold rounded-xl transition active:scale-[0.98]"><Clock       size={14} className="mr-1.5" /> ทวงล่วงหน้า</button>
+                <button onClick={() => handleBulkNotify('OVERDUE')}  className="flex items-center px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-rose-400 border border-slate-700 text-xs font-bold rounded-xl transition active:scale-[0.98]"><AlertCircle size={14} className="mr-1.5" /> ทวงยอดค้าง</button>
               </div>
             </div>
           )}
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[900px]">
+            <table className="w-full border-collapse min-w-[900px]">
               <thead>
-                <tr className="bg-gray-50 border-b border-gray-100 text-gray-500">
+                {/* 🌟 เติม text-center ให้หัวตารางจัดตำแหน่งตรงกลางทั้งหมด */}
+                <tr className="bg-slate-50 border-b border-slate-100 text-slate-500">
                   <th className="p-4 w-12 text-center">
                     <input
                       type="checkbox"
-                      className="rounded border-gray-300 text-[#376B64] focus:ring-[#376B64] w-5 h-5 cursor-pointer"
+                      className="rounded border-slate-300 text-[#376B64] focus:ring-[#376B64] w-5 h-5 cursor-pointer"
                       onChange={handleSelectAll}
                       checked={selectedInvoices.length === filteredInvoices.length && filteredInvoices.length > 0}
                     />
                   </th>
-                  <th className="py-4 px-2 text-sm font-bold tracking-wide">บ้านเลขที่</th>
-                  <th className="py-4 px-2 text-sm font-bold tracking-wide">ประจำเดือน</th>
-                  <th className="py-4 px-2 text-sm font-bold tracking-wide">ยอดชำระ</th>
-                  <th className="py-4 px-2 text-sm font-bold tracking-wide">สถานะ</th>
-                  <th className="py-4 px-4 text-sm font-bold tracking-wide text-center border-l border-gray-100">จัดการบิล</th>
-                  <th className="py-4 px-4 text-sm font-bold tracking-wide text-center border-l border-gray-100">แจ้งเตือนผ่าน LINE</th>
+                  <th className="py-4 px-2 text-sm font-bold tracking-wide text-center">บ้านเลขที่</th>
+                  <th className="py-4 px-2 text-sm font-bold tracking-wide text-center">ประจำเดือน</th>
+                  <th className="py-4 px-2 text-sm font-bold tracking-wide text-center">ยอดชำระ</th>
+                  <th className="py-4 px-2 text-sm font-bold tracking-wide text-center">สถานะ</th>
+                  <th className="py-4 px-4 text-sm font-bold tracking-wide text-center border-l border-slate-100">จัดการบิล</th>
+                  <th className="py-4 px-4 text-sm font-bold tracking-wide text-center border-l border-slate-100">แจ้งเตือนผ่าน LINE</th>
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-slate-50">
                 {filteredInvoices.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="py-24 text-center">
-                      <Search className="mx-auto text-gray-300 mb-4" size={48} />
-                      <h3 className="text-lg font-bold text-gray-700 mb-1">ไม่พบบิล</h3>
-                      <p className="text-gray-500">ลองเปลี่ยนคำค้นหาหรือตัวกรองเดือน/ปี ดูสิ</p>
+                      <Search className="mx-auto text-slate-300 mb-4" size={48} />
+                      <h3 className="text-lg font-bold text-slate-700 mb-1">ไม่พบบิล</h3>
+                      <p className="text-slate-500">ลองเปลี่ยนคำค้นหาหรือตัวกรองเดือน/ปี ดูสิ</p>
                     </td>
                   </tr>
                 ) : (
@@ -607,56 +596,53 @@ export default function AdminInvoicesPage() {
                     const thMonth    = thaiMonths.find(m => m.num === inv.billingMonth)?.short || inv.billingMonth;
                     const isSelected = selectedInvoices.includes(inv.id);
 
-                    // 🌟 2. คำนวณยอดแบบตรงไปตรงมาที่สุด ไม่พึ่งใคร!
                     const base = Number(inv.baseAmount || 0);
                     const penalty = Number(inv.penaltyAmount || 0);
                     const paid = Number(inv.paidAmount || 0);
                     const total = base + penalty;
                     const outstanding = total - paid;
 
-                    // ถ้าเป็น PARTIAL ให้โชว์ยอดคงเหลือ ถ้าสถานะอื่นโชว์ยอดเต็มบิล
                     const displayAmount = inv.status === 'PARTIAL' ? outstanding : total;
 
                     return (
-                      <tr key={inv.id} className={`transition-colors hover:bg-gray-50/50 ${isSelected ? 'bg-teal-50/30' : ''}`}>
+                      /* 🌟 เติมสีไฮไลต์แถวเมื่อถูกเลือกแบบนุ่มนวลเหมือนหน้ายูนิตบ้าน */
+                      <tr key={inv.id} className="transition-all duration-200 hover:bg-slate-50/50" style={{ backgroundColor: isSelected ? 'rgba(55, 107, 100, 0.05)' : '' }}>
 
                         {/* Checkbox */}
                         <td className="p-4 text-center">
                           <input
                             type="checkbox"
-                            className="rounded border-gray-300 text-[#376B64] focus:ring-[#376B64] w-5 h-5 cursor-pointer"
+                            className="rounded border-slate-300 text-[#376B64] focus:ring-[#376B64] w-5 h-5 cursor-pointer"
                             checked={isSelected}
                             onChange={() => handleSelectOne(inv.id)}
                           />
                         </td>
 
                         {/* บ้านเลขที่ */}
-                        <td className="py-4 px-2">
-                          <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl font-black text-sm border ${isSelected ? 'bg-teal-100 text-[#376B64] border-teal-200' : 'bg-gray-100 text-gray-700 border-gray-200'}`}>
+                        <td className="py-4 px-2 text-center">
+                          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl font-black text-sm border bg-slate-100 text-slate-700 border-slate-200">
                             {inv.house?.houseNo || '-'}
                           </div>
                         </td>
 
                         {/* ประจำเดือน */}
-                        <td className="py-4 px-2 text-gray-700 font-bold text-sm">{thMonth} {inv.billingYear + 543}</td>
+                        <td className="py-4 px-2 text-slate-700 font-bold text-sm text-center">{thMonth} {inv.billingYear + 543}</td>
 
-                        {/* 🌟 ช่องยอดชำระ */}
-                        <td className="py-4 px-2">
-                          <div className="flex flex-col font-bold">
-                            <span className="text-gray-900 text-base">
+                        {/* ยอดชำระ */}
+                        <td className="py-4 px-2 text-center">
+                          <div className="flex flex-col items-center font-bold">
+                            <span className="text-slate-900 text-base">
                               {displayAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} ฿
                             </span>
 
-                            {/* PARTIAL: โชว์บอกแอดมินว่านี่คือยอดค้างนะ */}
                             {inv.status === 'PARTIAL' && paid > 0 && (
-                              <span className="text-[10px] text-orange-600 bg-orange-100 px-2 py-0.5 rounded mt-1 w-fit">
+                              <span className="text-[10px] text-orange-600 bg-orange-100 px-2 py-0.5 rounded mt-1 w-fit font-black whitespace-nowrap">
                                 ยอดคงเหลือ (จ่ายแล้ว {paid.toLocaleString('th-TH', { minimumFractionDigits: 2 })} ฿)
                               </span>
                             )}
 
-                            {/* ค่าปรับ (ถ้ามี) */}
                             {penalty > 0 && (
-                              <span className="text-[11px] text-rose-500 font-medium mt-0.5">
+                              <span className="text-[11px] text-rose-500 font-medium mt-0.5 whitespace-nowrap">
                                 {inv.status === 'PAID' ? '(รวมค่าปรับแล้ว)' : `(รวมค่าปรับ ${penalty.toLocaleString('th-TH')} ฿)`}
                               </span>
                             )}
@@ -664,38 +650,35 @@ export default function AdminInvoicesPage() {
                         </td>
 
                         {/* Status Badge */}
-                        <td className="py-4 px-2">
+                        <td className="py-4 px-2 text-center">
                           <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider ${getStatusBadge(inv.status)}`}>
                             {inv.status}
                           </span>
                         </td>
 
-                        {/* จัดการบิล */}
-                        <td className="py-4 px-4 border-l border-gray-50">
-                          <div className="flex items-center justify-center gap-1.5">
-                            <div className="flex bg-gray-50 p-1.5 rounded-xl gap-1.5 border border-gray-200/60 shadow-sm">
-                              <button onClick={() => handleEditAmount(inv)} className="group relative p-2 text-gray-500 hover:text-[#376B64] hover:bg-[#376B64]/10 hover:shadow-sm rounded-lg transition-all">
+                        {/* 🌟 จัดการบิล: ยุบรวมใส่กล่องโมเดิร์นคลีนๆ แบบหน้าบ้านพัก */}
+                        <td className="py-4 px-4 border-l border-slate-50 text-center">
+                          <div className="flex items-center justify-center">
+                            <div className="flex bg-slate-50 p-1.5 rounded-xl gap-1.5 border border-slate-200/60 shadow-sm">
+                              <button onClick={() => handleEditAmount(inv)} className="group relative p-2 text-slate-500 hover:text-[#376B64] hover:bg-[#376B64]/10 rounded-lg transition-all shadow-sm hover:shadow">
                                 <Edit size={16} />
-                                <span className="absolute -top-10 left-1/2 -translate-x-1/2 hidden whitespace-nowrap rounded bg-gray-800 px-2.5 py-1.5 text-xs font-medium text-white group-hover:block z-10 shadow-lg">แก้ไขยอดเงิน</span>
                               </button>
-                              <button onClick={() => handleResetInvoice(inv.id, inv.status)} className="group relative p-2 text-gray-500 hover:text-amber-600 hover:bg-amber-50 hover:shadow-sm rounded-lg transition-all">
+                              <button onClick={() => handleResetInvoice(inv.id, inv.status)} className="group relative p-2 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all shadow-sm hover:shadow">
                                 <RefreshCw size={16} />
-                                <span className="absolute -top-10 left-1/2 -translate-x-1/2 hidden whitespace-nowrap rounded bg-gray-800 px-2.5 py-1.5 text-xs font-medium text-white group-hover:block z-10 shadow-lg">เปลี่ยนสถานะ</span>
                               </button>
-                              <button onClick={() => handleDelete(inv.id)} className="group relative p-2 text-gray-500 hover:text-rose-600 hover:bg-rose-50 hover:shadow-sm rounded-lg transition-all">
+                              <button onClick={() => handleDelete(inv.id)} className="group relative p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all shadow-sm hover:shadow">
                                 <Trash2 size={16} />
-                                <span className="absolute -top-10 left-1/2 -translate-x-1/2 hidden whitespace-nowrap rounded bg-gray-800 px-2.5 py-1.5 text-xs font-medium text-white group-hover:block z-10 shadow-lg">ลบบิลนี้</span>
                               </button>
                             </div>
                           </div>
                         </td>
 
-                        {/* แจ้งเตือน LINE */}
-                        <td className="py-4 px-4 border-l border-gray-50">
-                          <div className="flex flex-wrap items-center justify-center gap-2">
-                            <button onClick={() => handleNotify(inv.id, 'SEND')}     className="flex items-center px-3 py-2 bg-blue-50   hover:bg-blue-100   text-blue-600   rounded-xl text-[11px] font-bold transition border border-blue-100   active:scale-95"><Send        size={12} className="mr-1.5" /> ส่งบิล</button>
-                            <button onClick={() => handleNotify(inv.id, 'REMINDER')} className="flex items-center px-3 py-2 bg-orange-50 hover:bg-orange-100 text-orange-600 rounded-xl text-[11px] font-bold transition border border-orange-100 active:scale-95"><Clock       size={12} className="mr-1.5" /> ทวงล่วงหน้า</button>
-                            <button onClick={() => handleNotify(inv.id, 'OVERDUE')}  className="flex items-center px-3 py-2 bg-rose-50   hover:bg-rose-100   text-rose-600   rounded-xl text-[11px] font-bold transition border border-rose-100   active:scale-95"><AlertCircle size={12} className="mr-1.5" /> ทวงยอดค้าง</button>
+                        {/* 🌟 แจ้งเตือน LINE: ปรับแต่งให้ขอบนุ่มนวล ปุ่มดูเป็นเซ็ตเดียวกัน */}
+                        <td className="py-4 px-4 border-l border-slate-50 text-center">
+                          <div className="flex flex-wrap items-center justify-center gap-1.5">
+                            <button onClick={() => handleNotify(inv.id, 'SEND')}     className="flex items-center px-3 py-1.5 bg-blue-50   hover:bg-blue-100   text-blue-600   rounded-xl text-[11px] font-bold transition border border-blue-100   active:scale-95 shadow-sm"><Send        size={12} className="mr-1" /> ส่งบิล</button>
+                            <button onClick={() => handleNotify(inv.id, 'REMINDER')} className="flex items-center px-3 py-1.5 bg-orange-50 hover:bg-orange-100 text-orange-600 rounded-xl text-[11px] font-bold transition border border-orange-100 active:scale-95 shadow-sm"><Clock       size={12} className="mr-1" /> ทวงล่วงหน้า</button>
+                            <button onClick={() => handleNotify(inv.id, 'OVERDUE')}  className="flex items-center px-3 py-1.5 bg-rose-50   hover:bg-rose-100   text-rose-600   rounded-xl text-[11px] font-bold transition border border-rose-100   active:scale-95 shadow-sm"><AlertCircle size={12} className="mr-1" /> ทวงยอดค้าง</button>
                           </div>
                         </td>
 
@@ -711,12 +694,12 @@ export default function AdminInvoicesPage() {
 
       {/* Calendar Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl w-full max-w-sm border border-gray-100 animate-in zoom-in-95 duration-200 relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl w-full max-w-sm border border-slate-100 animate-in zoom-in-95 duration-200 relative">
 
             <button
               onClick={() => setIsModalOpen(false)}
-              className="absolute top-5 right-5 text-gray-400 hover:text-gray-600 bg-gray-50 hover:bg-gray-100 p-2.5 rounded-full transition-colors"
+              className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 bg-slate-50 hover:bg-slate-100 p-2.5 rounded-full transition-colors"
             >
               <X size={20} />
             </button>
@@ -725,24 +708,24 @@ export default function AdminInvoicesPage() {
               <div className="w-16 h-16 bg-[#376B64]/10 text-[#376B64] rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm border border-[#376B64]/20">
                 <Plus size={32} strokeWidth={2.5} />
               </div>
-              <h2 className="text-2xl font-black text-gray-900">ระบุรอบบิล</h2>
-              <p className="text-gray-500 text-sm mt-2">
+              <h2 className="text-2xl font-black text-slate-900">ระบุรอบบิล</h2>
+              <p className="text-slate-500 text-sm mt-2">
                 {targetHouseNo
                   ? <span>สร้างบิลให้บ้านเลขที่ <span className="font-bold text-[#376B64] bg-[#376B64]/10 px-2 py-0.5 rounded-md">{targetHouseNo}</span></span>
                   : 'สร้างบิลให้ลูกบ้านทุกคนในโครงการ'}
               </p>
             </div>
 
-            <div className="bg-gray-50 p-5 rounded-3xl border border-gray-200 mb-8 shadow-inner">
-              <div className="flex items-center justify-between mb-5 bg-white p-2.5 rounded-2xl border border-gray-100 shadow-sm">
-                <button onClick={() => setSelectedYear(y => y - 1)} className="w-10 h-10 flex items-center justify-center bg-gray-50 hover:bg-gray-100 rounded-xl text-gray-600 transition-colors hover:shadow-sm">
+            <div className="bg-slate-50 p-5 rounded-3xl border border-slate-200 mb-8 shadow-inner">
+              <div className="flex items-center justify-between mb-5 bg-white p-2.5 rounded-2xl border border-slate-100 shadow-sm">
+                <button onClick={() => setSelectedYear(y => y - 1)} className="w-10 h-10 flex items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-xl text-slate-600 transition-colors hover:shadow-sm">
                   <ChevronLeft size={20} />
                 </button>
                 <div className="flex flex-col items-center">
-                  <span className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">ปี พ.ศ.</span>
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">ปี พ.ศ.</span>
                   <span className="font-black text-[#376B64] text-xl">{selectedYear + 543}</span>
                 </div>
-                <button onClick={() => setSelectedYear(y => y + 1)} className="w-10 h-10 flex items-center justify-center bg-gray-50 hover:bg-gray-100 rounded-xl text-gray-600 transition-colors hover:shadow-sm">
+                <button onClick={() => setSelectedYear(y => y + 1)} className="w-10 h-10 flex items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-xl text-slate-600 transition-colors hover:shadow-sm">
                   <ChevronRight size={20} />
                 </button>
               </div>
@@ -752,7 +735,7 @@ export default function AdminInvoicesPage() {
                   <button
                     key={m.num}
                     onClick={() => setSelectedMonth(m.num)}
-                    className={`py-3 rounded-2xl text-sm font-bold transition-all ${selectedMonth === m.num ? 'bg-[#376B64] text-white shadow-md shadow-[#376B64]/30 scale-105' : 'bg-white text-gray-600 hover:bg-[#376B64]/10 hover:text-[#376B64] border border-gray-200'}`}
+                    className={`py-3 rounded-2xl text-sm font-bold transition-all ${selectedMonth === m.num ? 'bg-[#376B64] text-white shadow-md shadow-[#376B64]/30 scale-105' : 'bg-white text-slate-600 hover:bg-[#376B64]/10 hover:text-[#376B64] border border-slate-200'}`}
                   >
                     {m.short}
                   </button>
@@ -761,7 +744,7 @@ export default function AdminInvoicesPage() {
             </div>
 
             <div className="flex gap-3">
-              <button onClick={() => setIsModalOpen(false)}  className="flex-1 py-4 rounded-2xl font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">ยกเลิก</button>
+              <button onClick={() => setIsModalOpen(false)}  className="flex-1 py-4 rounded-2xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">ยกเลิก</button>
               <button onClick={submitGenerateInvoices}       className="flex-1 py-4 rounded-2xl font-bold text-white bg-[#376B64] hover:bg-[#2A524C] shadow-lg shadow-[#376B64]/30 transition-all active:scale-[0.98]">ยืนยันสร้างบิล</button>
             </div>
           </div>
