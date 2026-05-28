@@ -58,10 +58,15 @@ export default function FinancialDashboard() {
     date: new Date().toISOString().split('T')[0], description: "", receiptUrl: "" 
   });
 
-  // 🌟 State สำหรับระบบ Sorter และ Pagination
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' }>({ key: 'date', direction: 'desc' });
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  // 🌟 สร้างรายการปี พ.ศ. (ย้อนหลัง 5 ปี) สำหรับ Dropdown
+  const yearOptions = useMemo(() => {
+    const current = new Date().getFullYear();
+    return Array.from({ length: 5 }, (_, i) => current - i);
+  }, []);
 
   const showAlert = (message: string, type: "success" | "error" | "warning" = "success") => {
     setAlert({ show: true, message, type });
@@ -101,10 +106,9 @@ export default function FinancialDashboard() {
 
   useEffect(() => { 
     fetchData(); 
-    setCurrentPage(1); // รีเซ็ตหน้ากลับไป 1 เสมอเวลาเปลี่ยนเดือน
+    setCurrentPage(1); 
   }, [selectedMonth, selectedYear]);
 
-  // 🌟 ฟังก์ชันจัดการ Sorter
   const sortedData = useMemo(() => {
     let sortableItems = [...data];
     if (sortConfig !== null) {
@@ -129,7 +133,6 @@ export default function FinancialDashboard() {
     setCurrentPage(1);
   };
 
-  // 🌟 ฟังก์ชันคำนวณ Pagination
   const totalPages = Math.ceil(sortedData.length / rowsPerPage);
   const paginatedData = sortedData.slice(
     (currentPage - 1) * rowsPerPage, 
@@ -538,6 +541,7 @@ export default function FinancialDashboard() {
         </div>
       )}
 
+      {/* 🌟 ปรับส่วน Header ให้มี Dropdown ปี และ เดือน อยู่คู่กัน */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 space-y-4 md:space-y-0">
         <div>
           <div className="flex items-center">
@@ -547,12 +551,29 @@ export default function FinancialDashboard() {
           <p className="text-sm text-gray-500 mt-1">รายละเอียดรายรับ-รายจ่ายของหมู่บ้าน</p>
         </div>
         
-        <div className="flex items-center space-x-4 w-full md:w-auto">
-          <select value={selectedMonth} onChange={(e) => setSelectedMonth(Number(e.target.value))} className="bg-white border border-gray-200 text-gray-700 text-sm rounded-lg focus:ring-[#1A534B] outline-none block p-2.5 font-bold shadow-sm cursor-pointer">
-            {[...Array(12)].map((_, i) => (
-              <option key={i+1} value={i+1}>รอบบิล {fullThaiMonths[i+1]} {selectedYear + 543}</option>
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+          {/* 🌟 Dropdown เลือกปี */}
+          <select 
+            value={selectedYear} 
+            onChange={(e) => setSelectedYear(Number(e.target.value))} 
+            className="bg-white border border-gray-200 text-gray-700 text-sm rounded-lg focus:ring-[#1A534B] outline-none block p-2.5 font-bold shadow-sm cursor-pointer"
+          >
+            {yearOptions.map(year => (
+              <option key={year} value={year}>ปี พ.ศ. {year + 543}</option>
             ))}
           </select>
+
+          {/* 🌟 Dropdown เลือกเดือน */}
+          <select 
+            value={selectedMonth} 
+            onChange={(e) => setSelectedMonth(Number(e.target.value))} 
+            className="bg-white border border-gray-200 text-gray-700 text-sm rounded-lg focus:ring-[#1A534B] outline-none block p-2.5 font-bold shadow-sm cursor-pointer"
+          >
+            {[...Array(12)].map((_, i) => (
+              <option key={i+1} value={i+1}>รอบบิล {fullThaiMonths[i+1]}</option>
+            ))}
+          </select>
+
           <button onClick={() => setIsModalOpen(true)} className="bg-[#1A534B] hover:bg-[#14423b] text-white font-bold py-2.5 px-5 rounded-lg flex items-center space-x-2 shadow-md transition-colors whitespace-nowrap">
             <Plus size={18} />
             <span>เพิ่มรายการ</span>
@@ -590,7 +611,7 @@ export default function FinancialDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <h3 className="font-bold text-gray-800 mb-6 flex items-center">สถิติรายรับ - รายจ่าย รายปี <InfoTooltip text={`ข้อมูลสรุปรวมตั้งแต่ ม.ค. - ธ.ค. ปี ${selectedYear + 543}`} /></h3>
+          <h3 className="font-bold text-gray-800 mb-6 flex items-center">สถิติรายรับ - รายจ่าย รายปี <InfoTooltip text={`ข้อมูลสรุปรวมตั้งแต่ ม.ค. - ธ.ค. ปี พ.ศ. ${selectedYear + 543}`} /></h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={yearlyChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
@@ -607,7 +628,7 @@ export default function FinancialDashboard() {
         </div>
 
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <h3 className="font-bold text-gray-800 mb-2 flex items-center">สัดส่วนรายจ่ายรอบบิลปัจจุบัน <InfoTooltip text={`วิเคราะห์รายจ่ายแยกตามหมวดหมู่ ของรอบบิล ${fullThaiMonths[selectedMonth]}`} /></h3>
+          <h3 className="font-bold text-gray-800 mb-2 flex items-center">สัดส่วนรายจ่ายรอบบิลปัจจุบัน <InfoTooltip text={`วิเคราะห์รายจ่ายแยกตามหมวดหมู่ ของรอบบิล ${fullThaiMonths[selectedMonth]} ${selectedYear + 543}`} /></h3>
           <div className="flex items-center justify-center h-64 relative">
             {pieData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
@@ -635,7 +656,6 @@ export default function FinancialDashboard() {
         <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-gray-50/50 space-y-3 sm:space-y-0">
           <h3 className="font-bold text-gray-800 flex items-center">รายการบัญชีรอบบิลนี้ <InfoTooltip text="กดที่หัวตารางเพื่อจัดเรียงลำดับข้อมูล" /></h3>
           
-          {/* 🌟 จุดเลือกจำนวนรายการต่อหน้า (Pagination) */}
           <div className="flex items-center space-x-3 text-sm">
             <span className="text-gray-500 font-medium">แสดง:</span>
             <select 
@@ -722,7 +742,6 @@ export default function FinancialDashboard() {
           </table>
         </div>
 
-        {/* 🌟 ปุ่มเปลี่ยนหน้า (Next/Prev) */}
         {totalPages > 1 && (
           <div className="p-4 border-t border-gray-100 flex items-center justify-between bg-white">
             <span className="text-sm text-gray-500 font-medium">
