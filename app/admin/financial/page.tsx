@@ -11,7 +11,6 @@ import {
   Edit, Trash2, AlertTriangle, Settings, Save
 } from "lucide-react";
 
-// 🌟 1. อัปเกรดชุดสี: เพิ่มจาก 6 สี เป็น 12 สี ไม่ซ้ำกันแน่นอน
 const COLORS = [
   "#10B981", "#3B82F6", "#F59E0B", "#8B5CF6", "#EC4899", "#14B8A6", 
   "#EF4444", "#06B6D4", "#F97316", "#84CC16", "#6366F1", "#D946EF"
@@ -219,9 +218,21 @@ export default function FinancialDashboard() {
     }
   };
 
+  // 🌟 ฟังก์ชัน ลบหมวดหมู่ พร้อมแจ้งเตือน และรองรับ Error
   const handleDeleteCategory = async (id: string) => {
+    // 🌟 ใส่ Pop-up แจ้งเตือนตรงนี้ครับ
+    if (!window.confirm("ยืนยันการลบหมวดหมู่นี้?\n\n*หากหมวดหมู่นี้ถูกใช้งานในบัญชีไปแล้ว จะไม่สามารถลบได้ครับ")) return;
+
     try {
       const res = await fetch(`/api/financial/categories/${id}`, { method: "DELETE" });
+      
+      // ดัก Error กรณี API พัง (เช่น หาไฟล์ API ไม่เจอ จะคืนค่าเป็น 404/500)
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => null);
+        showAlert(errorData?.error || "เกิดข้อผิดพลาดจากเซิร์ฟเวอร์", "error");
+        return;
+      }
+
       const data = await res.json();
       if (data.success) {
         showAlert("ลบหมวดหมู่เรียบร้อยแล้ว", "success");
@@ -230,7 +241,8 @@ export default function FinancialDashboard() {
         showAlert(data.error || "ลบหมวดหมู่ล้มเหลว", "error");
       }
     } catch (error) {
-      showAlert("ระบบขัดข้อง", "error");
+      console.error(error);
+      showAlert("ระบบขัดข้อง ติดต่อเซิร์ฟเวอร์ไม่ได้", "error");
     }
   };
 
@@ -309,7 +321,6 @@ export default function FinancialDashboard() {
                   <div key={cat.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
                     {editingCategory?.id === cat.id ? (
                       <div className="flex-1 flex items-center space-x-2 mr-2">
-                        {/* 🌟 จุดที่แก้เส้นแดง: ใส่ ? และ || "" */}
                         <input 
                           type="text" 
                           value={editingCategory?.name || ""} 
