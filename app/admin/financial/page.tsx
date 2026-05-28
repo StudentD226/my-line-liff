@@ -503,7 +503,7 @@ export default function FinancialDashboard() {
                           <Upload className="text-gray-400" size={20} />
                         )}
                         <span className="text-xs text-gray-500 font-medium">
-                          {isUploading ? 'กำลังอัปโหลด...' : 'คลิกเพื่ออัปโหลดรูปภาพ (ไม่เกิน 4MB)'}
+                          {isUploading ? 'กำลังอัปโหลด...' : 'คลิกเพื่ออัปโหลดรูปภาพ (ไม่เกิน 10MB)'}
                         </span>
                       </div>
                       <input type="file" accept="image/*" className="hidden" onChange={handleFileUpload} disabled={isUploading} />
