@@ -8,7 +8,7 @@ import {
 import { 
   TrendingUp, TrendingDown, Wallet, Plus, Info, Upload, 
   ArrowUpDown, X, CheckCircle, AlertCircle, FileText, Calendar, Tag,
-  Edit, Trash2, AlertTriangle, Settings, Save // 🌟 เพิ่ม Settings, Save
+  Edit, Trash2, AlertTriangle, Settings, Save
 } from "lucide-react";
 
 // 🌟 1. อัปเกรดชุดสี: เพิ่มจาก 6 สี เป็น 12 สี ไม่ซ้ำกันแน่นอน
@@ -48,7 +48,6 @@ export default function FinancialDashboard() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // 🌟 เพิ่ม State สำหรับระบบจัดการหมวดหมู่
   const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<{ id: string, name: string } | null>(null);
 
@@ -220,14 +219,13 @@ export default function FinancialDashboard() {
     }
   };
 
-  // 🌟 ฟังก์ชัน ลบหมวดหมู่
   const handleDeleteCategory = async (id: string) => {
     try {
       const res = await fetch(`/api/financial/categories/${id}`, { method: "DELETE" });
       const data = await res.json();
       if (data.success) {
         showAlert("ลบหมวดหมู่เรียบร้อยแล้ว", "success");
-        fetchData(); // โหลดข้อมูลใหม่
+        fetchData(); 
       } else {
         showAlert(data.error || "ลบหมวดหมู่ล้มเหลว", "error");
       }
@@ -236,7 +234,6 @@ export default function FinancialDashboard() {
     }
   };
 
-  // 🌟 ฟังก์ชัน บันทึกการแก้ไขชื่อหมวดหมู่
   const handleSaveCategoryEdit = async () => {
     if (!editingCategory) return;
     try {
@@ -263,7 +260,6 @@ export default function FinancialDashboard() {
     return { name: cat.name, value: total };
   }).filter(item => item.value > 0);
 
-  // 🌟 2. คำนวณยอดรายจ่ายรวมทั้งหมด เพื่อเอาไปหาเปอร์เซ็นต์
   const totalExpenseForPie = pieData.reduce((sum, item) => sum + item.value, 0);
 
   if (isLoading && data.length === 0 && yearlyChartData.length === 0) 
@@ -299,7 +295,6 @@ export default function FinancialDashboard() {
         </div>
       )}
 
-      {/* 🌟 Modal จัดการหมวดหมู่ (เด้งขึ้นมาให้ลบ/แก้ไข) */}
       {isCategoryManagerOpen && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-fade-in-down">
@@ -314,10 +309,11 @@ export default function FinancialDashboard() {
                   <div key={cat.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
                     {editingCategory?.id === cat.id ? (
                       <div className="flex-1 flex items-center space-x-2 mr-2">
+                        {/* 🌟 จุดที่แก้เส้นแดง: ใส่ ? และ || "" */}
                         <input 
                           type="text" 
-                          value={editingCategory.name} 
-                          onChange={(e) => setEditingCategory({...editingCategory, name: e.target.value})}
+                          value={editingCategory?.name || ""} 
+                          onChange={(e) => setEditingCategory(prev => prev ? { ...prev, name: e.target.value } : null)}
                           className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:border-[#1A534B]"
                           autoFocus
                         />
@@ -390,7 +386,6 @@ export default function FinancialDashboard() {
                 </div>
 
                 <div>
-                  {/* 🌟 ปุ่ม "จัดการ" เอาไว้เรียก Modal ลบ/แก้หมวดหมู่ */}
                   <div className="flex items-center justify-between mb-1">
                     <label className="block text-sm font-bold text-gray-700">หมวดหมู่ <span className="text-red-500">*</span></label>
                     <button type="button" onClick={() => setIsCategoryManagerOpen(true)} className="text-xs font-bold text-[#1A534B] flex items-center hover:underline">
