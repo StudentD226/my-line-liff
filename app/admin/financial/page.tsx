@@ -8,7 +8,7 @@ import {
 import { 
   TrendingUp, TrendingDown, Wallet, Plus, Info, Upload, 
   ArrowUpDown, X, CheckCircle, AlertCircle, FileText, Calendar, Tag,
-  Edit, Trash2, AlertTriangle, Settings, Save
+  Edit, Trash2, AlertTriangle, Settings, Save, Loader2
 } from "lucide-react";
 
 const COLORS = [
@@ -49,9 +49,10 @@ export default function FinancialDashboard() {
 
   const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<{ id: string, name: string } | null>(null);
-  
-  // 🌟 เพิ่ม State สำหรับ Pop-up ลบหมวดหมู่
   const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null);
+
+  // 🌟 เพิ่ม State สำหรับหมุน Loading ตอนอัปโหลดรูป
+  const [isUploading, setIsUploading] = useState(false);
 
   const [formData, setFormData] = useState({
     type: "EXPENSE", title: "", categoryId: "", newCategoryName: "", amount: "",
@@ -143,9 +144,46 @@ export default function FinancialDashboard() {
     setIsModalOpen(true);
   };
 
+  // 🌟 ฟังก์ชัน อัปโหลดรูปภาพ
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // เช็คขนาดไฟล์ไม่ให้เกิน 5MB
+    if (file.size > 5 * 1024 * 1024) {
+      return showAlert("ขนาดไฟล์ต้องไม่เกิน 5MB", "warning");
+    }
+
+    setIsUploading(true);
+    const uploadData = new FormData();
+    uploadData.append('file', file);
+
+    try {
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: uploadData,
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        setFormData({ ...formData, receiptUrl: data.url }); // 🌟 เซฟ URL ของรูปลงฟอร์ม
+        showAlert("อัปโหลดรูปภาพสำเร็จ!", "success");
+      } else {
+        showAlert(data.error || "อัปโหลดล้มเหลว", "error");
+      }
+    } catch (error) {
+      console.error(error);
+      showAlert("ระบบขัดข้องในการอัปโหลด", "error");
+    } finally {
+      setIsUploading(false);
+      // เคลียร์ค่า input เผื่อผู้ใช้อยากอัปโหลดไฟล์เดิมซ้ำ
+      e.target.value = '';
+    }
+  };
+
   const handleSubmitTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSubmitting) return;
+    if (isSubmitting || isUploading) return; // 🌟 ป้องกันการกดบันทึกตอนรูปยังอัปไม่เสร็จ
 
     if (!formData.title || !formData.amount || (!formData.categoryId && !formData.newCategoryName)) {
       return showAlert("กรุณากรอกข้อมูลให้ครบถ้วน", "warning");
@@ -221,24 +259,21 @@ export default function FinancialDashboard() {
     }
   };
 
-  // 🌟 ฟังก์ชัน ยืนยันการลบหมวดหมู่ (ดึงข้อมูลแบบหล่อๆ)
   const confirmDeleteCategory = async () => {
     if (!categoryToDelete) return;
     setIsSubmitting(true);
     try {
       const res = await fetch(`/api/financial/categories/${categoryToDelete}`, { method: "DELETE" });
-      
       if (!res.ok) {
         const errorData = await res.json().catch(() => null);
         showAlert(errorData?.error || "เกิดข้อผิดพลาดจากเซิร์ฟเวอร์", "error");
-        setCategoryToDelete(null); // ปิด Pop-up
+        setCategoryToDelete(null); 
         return;
       }
-
       const data = await res.json();
       if (data.success) {
         showAlert("ลบหมวดหมู่เรียบร้อยแล้ว", "success");
-        setCategoryToDelete(null); // ปิด Pop-up
+        setCategoryToDelete(null); 
         fetchData(); 
       } else {
         showAlert(data.error || "ลบหมวดหมู่ล้มเหลว", "error");
@@ -287,7 +322,6 @@ export default function FinancialDashboard() {
   return (
     <div className="p-6 lg:p-10 max-w-7xl mx-auto bg-[#F8FAFC] min-h-screen font-sans">
       
-      {/* 🌟 1. ดัน Toast Alert ให้ z-index สูงปรี๊ด (z-[100]) จะได้ไม่โดนใครทับ */}
       <div className={`fixed top-6 right-6 z-[100] transition-all duration-300 transform ${alert.show ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}`}>
         <div className={`flex items-center space-x-3 p-4 rounded-xl shadow-xl border-l-4 ${alert.type === 'success' ? 'bg-white border-emerald-500 text-gray-800' : alert.type === 'error' ? 'bg-white border-red-500 text-gray-800' : 'bg-white border-orange-500 text-gray-800'}`}>
           {alert.type === 'success' && <CheckCircle className="text-emerald-500" size={24} />}
@@ -315,7 +349,6 @@ export default function FinancialDashboard() {
         </div>
       )}
 
-      {/* 🌟 2. Pop-up ตัวใหม่สำหรับ "ลบหมวดหมู่" โดยเฉพาะ! หล่อๆ สไตล์ Tailwind */}
       {categoryToDelete && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in-down p-6 text-center">
@@ -365,7 +398,6 @@ export default function FinancialDashboard() {
                           <button onClick={() => setEditingCategory({ id: cat.id, name: cat.name })} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded transition-colors" title="แก้ไข">
                             <Edit size={16} />
                           </button>
-                          {/* 🌟 เปลี่ยนมาเรียก State แทน Alert เบราว์เซอร์ */}
                           <button onClick={() => setCategoryToDelete(cat.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors" title="ลบ">
                             <Trash2 size={16} />
                           </button>
@@ -451,20 +483,42 @@ export default function FinancialDashboard() {
                   <textarea rows={2} value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1A534B] outline-none transition-all text-sm resize-none" placeholder="รายละเอียดอื่นๆ (ถ้ามี)"></textarea>
                 </div>
 
+                {/* 🌟 อัปเดต UI ส่วนของการอัปโหลดหลักฐาน */}
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1">หลักฐาน (บิล/สลิป)</label>
-                  <label className="flex items-center justify-center w-full h-24 px-4 transition bg-gray-50 border-2 border-gray-300 border-dashed rounded-lg appearance-none cursor-pointer hover:border-[#1A534B] hover:bg-gray-100">
-                    <div className="flex flex-col items-center space-y-2">
-                      <Upload className="text-gray-400" size={20} />
-                      <span className="text-xs text-gray-500 font-medium">คลิกเพื่ออัปโหลดรูปภาพ (กำลังพัฒนา)</span>
+                  {formData.receiptUrl ? (
+                    <div className="relative w-full h-32 rounded-lg border border-gray-200 overflow-hidden bg-gray-50 flex items-center justify-center group">
+                      <img src={formData.receiptUrl} alt="Receipt" className="max-w-full max-h-full object-contain" />
+                      <button 
+                        type="button" 
+                        onClick={() => setFormData({...formData, receiptUrl: ""})} 
+                        className="absolute top-2 right-2 p-1.5 bg-white text-red-500 rounded-full shadow-md hover:bg-red-50 transition-colors"
+                        title="ลบรูปนี้"
+                      >
+                        <X size={16} />
+                      </button>
                     </div>
-                  </label>
+                  ) : (
+                    <label className={`flex items-center justify-center w-full h-24 px-4 transition bg-gray-50 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer hover:border-[#1A534B] hover:bg-gray-100 ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                      <div className="flex flex-col items-center space-y-2">
+                        {isUploading ? (
+                          <Loader2 className="text-[#1A534B] animate-spin" size={24} />
+                        ) : (
+                          <Upload className="text-gray-400" size={20} />
+                        )}
+                        <span className="text-xs text-gray-500 font-medium">
+                          {isUploading ? 'กำลังอัปโหลด...' : 'คลิกเพื่ออัปโหลดรูปภาพ (ไม่เกิน 5MB)'}
+                        </span>
+                      </div>
+                      <input type="file" accept="image/*" className="hidden" onChange={handleFileUpload} disabled={isUploading} />
+                    </label>
+                  )}
                 </div>
               </div>
 
               <div className="pt-4 flex space-x-3">
                 <button type="button" onClick={resetAndCloseModal} className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 font-bold rounded-lg hover:bg-gray-200 transition-colors">ยกเลิก</button>
-                <button type="submit" disabled={isSubmitting} className={`flex-1 px-4 py-2 text-white font-bold rounded-lg transition-colors shadow-md ${isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#1A534B] hover:bg-[#14423b]'}`}>
+                <button type="submit" disabled={isSubmitting || isUploading} className={`flex-1 px-4 py-2 text-white font-bold rounded-lg transition-colors shadow-md ${(isSubmitting || isUploading) ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#1A534B] hover:bg-[#14423b]'}`}>
                   {isSubmitting ? 'กำลังบันทึก...' : (editingId ? 'บันทึกการแก้ไข' : 'บันทึกข้อมูล')}
                 </button>
               </div>
@@ -600,7 +654,15 @@ export default function FinancialDashboard() {
                   <tr key={idx} className="hover:bg-gray-50 transition-colors group">
                     <td className="px-6 py-4 text-gray-600 font-medium">{new Date(tx.date).toLocaleDateString('th-TH')}</td>
                     <td className="px-6 py-4">
-                      <p className="font-bold text-gray-800">{tx.title}</p>
+                      <div className="flex items-center space-x-2">
+                        <p className="font-bold text-gray-800">{tx.title}</p>
+                        {/* 🌟 แสดงไอคอนรูปภาพเล็กๆ ถ้ามีบิลแนบมา */}
+                        {tx.receiptUrl && (
+                          <a href={tx.receiptUrl} target="_blank" rel="noreferrer" title="ดูหลักฐานบิล/สลิป" className="text-blue-500 hover:text-blue-700 bg-blue-50 p-1 rounded transition-colors">
+                            <FileText size={14} />
+                          </a>
+                        )}
+                      </div>
                       {tx.isAuto && <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded text-[10px] font-bold bg-[#1A534B]/10 text-[#1A534B]">ดึงอัตโนมัติจากบิลค่าส่วนกลาง</span>}
                     </td>
                     <td className="px-6 py-4 text-gray-600 font-medium">{tx.category?.name}</td>
