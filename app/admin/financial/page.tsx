@@ -49,6 +49,9 @@ export default function FinancialDashboard() {
 
   const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<{ id: string, name: string } | null>(null);
+  
+  // 🌟 เพิ่ม State สำหรับ Pop-up ลบหมวดหมู่
+  const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     type: "EXPENSE", title: "", categoryId: "", newCategoryName: "", amount: "",
@@ -218,31 +221,35 @@ export default function FinancialDashboard() {
     }
   };
 
-  // 🌟 ฟังก์ชัน ลบหมวดหมู่ พร้อมแจ้งเตือน และรองรับ Error
-  const handleDeleteCategory = async (id: string) => {
-    // 🌟 ใส่ Pop-up แจ้งเตือนตรงนี้ครับ
-    if (!window.confirm("ยืนยันการลบหมวดหมู่นี้?\n\n*หากหมวดหมู่นี้ถูกใช้งานในบัญชีไปแล้ว จะไม่สามารถลบได้ครับ")) return;
-
+  // 🌟 ฟังก์ชัน ยืนยันการลบหมวดหมู่ (ดึงข้อมูลแบบหล่อๆ)
+  const confirmDeleteCategory = async () => {
+    if (!categoryToDelete) return;
+    setIsSubmitting(true);
     try {
-      const res = await fetch(`/api/financial/categories/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/financial/categories/${categoryToDelete}`, { method: "DELETE" });
       
-      // ดัก Error กรณี API พัง (เช่น หาไฟล์ API ไม่เจอ จะคืนค่าเป็น 404/500)
       if (!res.ok) {
         const errorData = await res.json().catch(() => null);
         showAlert(errorData?.error || "เกิดข้อผิดพลาดจากเซิร์ฟเวอร์", "error");
+        setCategoryToDelete(null); // ปิด Pop-up
         return;
       }
 
       const data = await res.json();
       if (data.success) {
         showAlert("ลบหมวดหมู่เรียบร้อยแล้ว", "success");
+        setCategoryToDelete(null); // ปิด Pop-up
         fetchData(); 
       } else {
         showAlert(data.error || "ลบหมวดหมู่ล้มเหลว", "error");
+        setCategoryToDelete(null);
       }
     } catch (error) {
       console.error(error);
       showAlert("ระบบขัดข้อง ติดต่อเซิร์ฟเวอร์ไม่ได้", "error");
+      setCategoryToDelete(null);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -280,8 +287,9 @@ export default function FinancialDashboard() {
   return (
     <div className="p-6 lg:p-10 max-w-7xl mx-auto bg-[#F8FAFC] min-h-screen font-sans">
       
-      <div className={`fixed top-6 right-6 z-[60] transition-all duration-300 transform ${alert.show ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}`}>
-        <div className={`flex items-center space-x-3 p-4 rounded-xl shadow-lg border-l-4 ${alert.type === 'success' ? 'bg-white border-emerald-500 text-gray-800' : alert.type === 'error' ? 'bg-white border-red-500 text-gray-800' : 'bg-white border-orange-500 text-gray-800'}`}>
+      {/* 🌟 1. ดัน Toast Alert ให้ z-index สูงปรี๊ด (z-[100]) จะได้ไม่โดนใครทับ */}
+      <div className={`fixed top-6 right-6 z-[100] transition-all duration-300 transform ${alert.show ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}`}>
+        <div className={`flex items-center space-x-3 p-4 rounded-xl shadow-xl border-l-4 ${alert.type === 'success' ? 'bg-white border-emerald-500 text-gray-800' : alert.type === 'error' ? 'bg-white border-red-500 text-gray-800' : 'bg-white border-orange-500 text-gray-800'}`}>
           {alert.type === 'success' && <CheckCircle className="text-emerald-500" size={24} />}
           {alert.type === 'error' && <X className="text-red-500" size={24} />}
           {alert.type === 'warning' && <AlertCircle className="text-orange-500" size={24} />}
@@ -290,7 +298,7 @@ export default function FinancialDashboard() {
       </div>
 
       {isDeleteModalOpen && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-fade-in-down p-6 text-center">
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertTriangle className="text-red-500" size={32} />
@@ -300,6 +308,25 @@ export default function FinancialDashboard() {
             <div className="flex space-x-3">
               <button onClick={() => setIsDeleteModalOpen(false)} disabled={isSubmitting} className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 font-bold rounded-lg hover:bg-gray-200 transition-colors">ยกเลิก</button>
               <button onClick={confirmDelete} disabled={isSubmitting} className="flex-1 px-4 py-2.5 bg-red-500 text-white font-bold rounded-lg hover:bg-red-600 transition-colors shadow-md">
+                {isSubmitting ? 'กำลังลบ...' : 'ลบทิ้ง'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🌟 2. Pop-up ตัวใหม่สำหรับ "ลบหมวดหมู่" โดยเฉพาะ! หล่อๆ สไตล์ Tailwind */}
+      {categoryToDelete && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in-down p-6 text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertTriangle className="text-red-500" size={32} />
+            </div>
+            <h2 className="font-bold text-xl text-gray-800 mb-2">ยืนยันการลบหมวดหมู่?</h2>
+            <p className="text-gray-500 text-sm mb-6">หากหมวดหมู่นี้ถูกนำไปใช้บันทึกบัญชีแล้ว จะไม่สามารถลบได้ครับ</p>
+            <div className="flex space-x-3">
+              <button onClick={() => setCategoryToDelete(null)} disabled={isSubmitting} className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 font-bold rounded-lg hover:bg-gray-200 transition-colors">ยกเลิก</button>
+              <button onClick={confirmDeleteCategory} disabled={isSubmitting} className="flex-1 px-4 py-2.5 bg-red-500 text-white font-bold rounded-lg hover:bg-red-600 transition-colors shadow-md">
                 {isSubmitting ? 'กำลังลบ...' : 'ลบทิ้ง'}
               </button>
             </div>
@@ -338,7 +365,8 @@ export default function FinancialDashboard() {
                           <button onClick={() => setEditingCategory({ id: cat.id, name: cat.name })} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded transition-colors" title="แก้ไข">
                             <Edit size={16} />
                           </button>
-                          <button onClick={() => handleDeleteCategory(cat.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors" title="ลบ">
+                          {/* 🌟 เปลี่ยนมาเรียก State แทน Alert เบราว์เซอร์ */}
+                          <button onClick={() => setCategoryToDelete(cat.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors" title="ลบ">
                             <Trash2 size={16} />
                           </button>
                         </div>
