@@ -8,10 +8,14 @@ import {
 import { 
   TrendingUp, TrendingDown, Wallet, Plus, Info, Upload, 
   ArrowUpDown, X, CheckCircle, AlertCircle, FileText, Calendar, Tag,
-  Edit, Trash2, AlertTriangle // 🌟 นำเข้าไอคอนแก้ไขและลบ
+  Edit, Trash2, AlertTriangle
 } from "lucide-react";
 
-const COLORS = ["#10B981", "#3B82F6", "#F59E0B", "#8B5CF6", "#EC4899", "#14B8A6"];
+// 🌟 1. อัปเกรดชุดสี: เพิ่มจาก 6 สี เป็น 12 สี ไม่ซ้ำกันแน่นอน
+const COLORS = [
+  "#10B981", "#3B82F6", "#F59E0B", "#8B5CF6", "#EC4899", "#14B8A6", 
+  "#EF4444", "#06B6D4", "#F97316", "#84CC16", "#6366F1", "#D946EF"
+];
 const fullThaiMonths = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
 
 const InfoTooltip = ({ text }: { text: string }) => (
@@ -38,11 +42,9 @@ export default function FinancialDashboard() {
 
   const [alert, setAlert] = useState<{ show: boolean; message: string; type: "success" | "error" | "warning" }>({ show: false, message: "", type: "success" });
   
-  // 🌟 State จัดการ Modal ฟอร์ม
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null); // เช็คว่ากำลัง "แก้ไข" หรือ "สร้างใหม่"
+  const [editingId, setEditingId] = useState<string | null>(null);
 
-  // 🌟 State จัดการ Modal ยืนยันการลบ
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -114,16 +116,14 @@ export default function FinancialDashboard() {
     setSortConfig({ key, direction });
   };
 
-  // 🌟 ฟังก์ชัน ปิด-เคลียร์ฟอร์ม
   const resetAndCloseModal = () => {
     setIsModalOpen(false);
     setEditingId(null);
     setFormData({ type: "EXPENSE", title: "", categoryId: "", newCategoryName: "", amount: "", date: new Date().toISOString().split('T')[0], description: "", receiptUrl: "" });
   };
 
-  // 🌟 ฟังก์ชัน ดึงข้อมูลใส่ฟอร์มเตรียมแก้ไข
   const handleEditClick = (tx: any) => {
-    let titleParts = tx.title.split(' - '); // แยก title ออกจาก description (ถ้ามี)
+    let titleParts = tx.title.split(' - ');
     setEditingId(tx.id);
     setFormData({
       type: tx.type,
@@ -138,7 +138,6 @@ export default function FinancialDashboard() {
     setIsModalOpen(true);
   };
 
-  // 🌟 ฟังก์ชัน บันทึก หรือ แก้ไข
   const handleSubmitTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
@@ -169,13 +168,11 @@ export default function FinancialDashboard() {
 
       let txRes;
       if (editingId) {
-        // อัปเดตรายการเดิม (PUT)
         txRes = await fetch(`/api/financial/transactions/${editingId}`, {
           method: "PUT", headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         });
       } else {
-        // สร้างรายการใหม่ (POST)
         txRes = await fetch("/api/financial/transactions", {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
@@ -186,7 +183,7 @@ export default function FinancialDashboard() {
       if (txData.success) {
         showAlert(editingId ? "อัปเดตข้อมูลสำเร็จ!" : "บันทึกข้อมูลเรียบร้อยแล้ว!", "success");
         resetAndCloseModal();
-        fetchData(); // ดึงข้อมูลใหม่ ยอดเงินจะรีเฟรชออโต้!
+        fetchData(); 
       } else {
         showAlert("เกิดข้อผิดพลาดในการบันทึก", "error");
       }
@@ -198,7 +195,6 @@ export default function FinancialDashboard() {
     }
   };
 
-  // 🌟 ฟังก์ชัน สั่งลบข้อมูล
   const confirmDelete = async () => {
     if (!deletingId) return;
     setIsSubmitting(true);
@@ -209,7 +205,7 @@ export default function FinancialDashboard() {
         showAlert("ลบรายการเรียบร้อยแล้ว!", "success");
         setIsDeleteModalOpen(false);
         setDeletingId(null);
-        fetchData(); // ดึงข้อมูลใหม่ ยอดเงินจะรีเฟรชออโต้!
+        fetchData(); 
       } else {
         showAlert("ลบรายการล้มเหลว", "error");
       }
@@ -225,13 +221,15 @@ export default function FinancialDashboard() {
     return { name: cat.name, value: total };
   }).filter(item => item.value > 0);
 
+  // 🌟 2. คำนวณยอดรายจ่ายรวมทั้งหมด เพื่อเอาไปหาเปอร์เซ็นต์
+  const totalExpenseForPie = pieData.reduce((sum, item) => sum + item.value, 0);
+
   if (isLoading && data.length === 0 && yearlyChartData.length === 0) 
     return <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]"><div className="text-[#1A534B] animate-pulse font-bold text-xl">กำลังประมวลผลบัญชี...</div></div>;
 
   return (
     <div className="p-6 lg:p-10 max-w-7xl mx-auto bg-[#F8FAFC] min-h-screen font-sans">
       
-      {/* 🌟 Alert อัตโนมัติ */}
       <div className={`fixed top-6 right-6 z-[60] transition-all duration-300 transform ${alert.show ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}`}>
         <div className={`flex items-center space-x-3 p-4 rounded-xl shadow-lg border-l-4 ${alert.type === 'success' ? 'bg-white border-emerald-500 text-gray-800' : alert.type === 'error' ? 'bg-white border-red-500 text-gray-800' : 'bg-white border-orange-500 text-gray-800'}`}>
           {alert.type === 'success' && <CheckCircle className="text-emerald-500" size={24} />}
@@ -241,7 +239,6 @@ export default function FinancialDashboard() {
         </div>
       </div>
 
-      {/* 🌟 Modal ยืนยันการลบ */}
       {isDeleteModalOpen && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-fade-in-down p-6 text-center">
@@ -260,7 +257,6 @@ export default function FinancialDashboard() {
         </div>
       )}
 
-      {/* 🌟 Modal เพิ่ม/แก้ไข รายการ */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-fade-in-down">
@@ -346,7 +342,6 @@ export default function FinancialDashboard() {
         </div>
       )}
 
-      {/* Header & Filter เดือน */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 space-y-4 md:space-y-0">
         <div>
           <div className="flex items-center">
@@ -424,7 +419,13 @@ export default function FinancialDashboard() {
                   <Pie data={pieData} innerRadius={60} outerRadius={80} paddingAngle={2} dataKey="value">
                     {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                   </Pie>
-                  <RechartsTooltip formatter={(value: any) => `${Number(value || 0).toLocaleString()} บาท`} />
+                  {/* 🌟 3. ปรับปรุง Tooltip ให้โชว์ทั้งจำนวนเงิน และ เปอร์เซ็นต์ */}
+                  <RechartsTooltip 
+                    formatter={(value: any) => {
+                      const percent = ((Number(value) / totalExpenseForPie) * 100).toFixed(1);
+                      return [`${Number(value || 0).toLocaleString()} บาท (${percent}%)`, 'ยอดเงิน'];
+                    }} 
+                  />
                   <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', fontWeight: 'bold' }} />
                 </PieChart>
               </ResponsiveContainer>
@@ -435,7 +436,6 @@ export default function FinancialDashboard() {
         </div>
       </div>
 
-      {/* 🌟 ตารางพร้อมปุ่มแก้ไข/ลบ */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="p-6 border-b border-gray-100 flex justify-between items-center">
           <h3 className="font-bold text-gray-800 flex items-center">รายการบัญชีรอบบิลนี้ <InfoTooltip text="กดที่หัวตารางเพื่อจัดเรียงลำดับข้อมูล" /></h3>
@@ -483,7 +483,6 @@ export default function FinancialDashboard() {
                       {tx.type === 'INCOME' ? '+' : '-'}{tx.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </td>
                     <td className="px-6 py-4 text-center">
-                      {/* 🌟 แสดงปุ่มแก้ไข/ลบ เฉพาะรายการที่แอดมินสร้างมือ */}
                       {!tx.isAuto ? (
                         <div className="flex items-center justify-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button onClick={() => handleEditClick(tx)} className="p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-md transition-colors" title="แก้ไขรายการ">
