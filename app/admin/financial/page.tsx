@@ -8,7 +8,7 @@ import {
 import { 
   TrendingUp, TrendingDown, Wallet, Plus, Info, Upload, 
   ArrowUpDown, X, CheckCircle, AlertCircle, FileText, Calendar, Tag,
-  Edit, Trash2, AlertTriangle, Settings, Save, Loader2
+  Edit, Trash2, AlertTriangle, Settings, Save, Loader2, ChevronLeft, ChevronRight
 } from "lucide-react";
 
 const COLORS = [
@@ -58,7 +58,10 @@ export default function FinancialDashboard() {
     date: new Date().toISOString().split('T')[0], description: "", receiptUrl: "" 
   });
 
+  // 🌟 State สำหรับระบบ Sorter และ Pagination
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' }>({ key: 'date', direction: 'desc' });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const showAlert = (message: string, type: "success" | "error" | "warning" = "success") => {
     setAlert({ show: true, message, type });
@@ -96,8 +99,12 @@ export default function FinancialDashboard() {
     }
   };
 
-  useEffect(() => { fetchData(); }, [selectedMonth, selectedYear]);
+  useEffect(() => { 
+    fetchData(); 
+    setCurrentPage(1); // รีเซ็ตหน้ากลับไป 1 เสมอเวลาเปลี่ยนเดือน
+  }, [selectedMonth, selectedYear]);
 
+  // 🌟 ฟังก์ชันจัดการ Sorter
   const sortedData = useMemo(() => {
     let sortableItems = [...data];
     if (sortConfig !== null) {
@@ -119,7 +126,15 @@ export default function FinancialDashboard() {
     let direction: 'asc' | 'desc' = 'asc';
     if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc';
     setSortConfig({ key, direction });
+    setCurrentPage(1);
   };
+
+  // 🌟 ฟังก์ชันคำนวณ Pagination
+  const totalPages = Math.ceil(sortedData.length / rowsPerPage);
+  const paginatedData = sortedData.slice(
+    (currentPage - 1) * rowsPerPage, 
+    currentPage * rowsPerPage
+  );
 
   const resetAndCloseModal = () => {
     setIsModalOpen(false);
@@ -526,10 +541,10 @@ export default function FinancialDashboard() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 space-y-4 md:space-y-0">
         <div>
           <div className="flex items-center">
-            <h1 className="text-2xl font-bold text-gray-800">สรุปรายงานการเงิน</h1>
+            <h1 className="text-2xl font-bold text-gray-800">จัดการรายการบัญชี (รายเดือน)</h1>
             <InfoTooltip text="ยอดรวมคิดจากรอบบิลวันที่ 27 ของเดือนก่อนหน้า ถึงวันที่ 26 ของเดือนที่เลือก" />
           </div>
-          <p className="text-sm text-gray-500 mt-1">ภาพรวมรายรับรายจ่ายของหมู่บ้าน</p>
+          <p className="text-sm text-gray-500 mt-1">รายละเอียดรายรับ-รายจ่ายของหมู่บ้าน</p>
         </div>
         
         <div className="flex items-center space-x-4 w-full md:w-auto">
@@ -616,37 +631,52 @@ export default function FinancialDashboard() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+        <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-gray-50/50 space-y-3 sm:space-y-0">
           <h3 className="font-bold text-gray-800 flex items-center">รายการบัญชีรอบบิลนี้ <InfoTooltip text="กดที่หัวตารางเพื่อจัดเรียงลำดับข้อมูล" /></h3>
-          <span className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full font-bold">{summary.totalTransactions} รายการ</span>
+          
+          {/* 🌟 จุดเลือกจำนวนรายการต่อหน้า (Pagination) */}
+          <div className="flex items-center space-x-3 text-sm">
+            <span className="text-gray-500 font-medium">แสดง:</span>
+            <select 
+              value={rowsPerPage} 
+              onChange={(e) => { setRowsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+              className="border border-gray-200 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-[#1A534B] font-bold text-gray-700 bg-white"
+            >
+              <option value={10}>10 รายการ</option>
+              <option value={20}>20 รายการ</option>
+              <option value={50}>50 รายการ</option>
+              <option value={100}>100 รายการ</option>
+            </select>
+            <span className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full font-bold">รวม {summary.totalTransactions} รายการ</span>
+          </div>
         </div>
         
-        <div className="overflow-x-auto max-h-[400px] custom-scrollbar">
+        <div className="overflow-x-auto custom-scrollbar flex-1">
           <table className="w-full text-sm text-left relative">
             <thead className="bg-gray-50 text-gray-500 sticky top-0 z-10 shadow-sm">
               <tr>
                 <th className="px-6 py-4 font-bold cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap" onClick={() => requestSort('date')}>
-                  <div className="flex items-center space-x-1"><span>วันที่</span><ArrowUpDown size={14} /></div>
+                  <div className="flex items-center space-x-1"><span>วันที่</span><ArrowUpDown size={14} className={sortConfig?.key === 'date' ? 'text-[#1A534B]' : ''} /></div>
                 </th>
                 <th className="px-6 py-4 font-bold cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap" onClick={() => requestSort('title')}>
-                  <div className="flex items-center space-x-1"><span>รายการ</span><ArrowUpDown size={14} /></div>
+                  <div className="flex items-center space-x-1"><span>รายการ</span><ArrowUpDown size={14} className={sortConfig?.key === 'title' ? 'text-[#1A534B]' : ''} /></div>
                 </th>
                 <th className="px-6 py-4 font-bold cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap" onClick={() => requestSort('category')}>
-                  <div className="flex items-center space-x-1"><span>หมวดหมู่</span><ArrowUpDown size={14} /></div>
+                  <div className="flex items-center space-x-1"><span>หมวดหมู่</span><ArrowUpDown size={14} className={sortConfig?.key === 'category' ? 'text-[#1A534B]' : ''} /></div>
                 </th>
                 <th className="px-6 py-4 font-bold cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap text-center" onClick={() => requestSort('type')}>
-                  <div className="flex items-center justify-center space-x-1"><span>ประเภท</span><ArrowUpDown size={14} /></div>
+                  <div className="flex items-center justify-center space-x-1"><span>ประเภท</span><ArrowUpDown size={14} className={sortConfig?.key === 'type' ? 'text-[#1A534B]' : ''} /></div>
                 </th>
                 <th className="px-6 py-4 font-bold cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap text-right" onClick={() => requestSort('amount')}>
-                  <div className="flex items-center justify-end space-x-1"><span>จำนวนเงิน</span><ArrowUpDown size={14} /></div>
+                  <div className="flex items-center justify-end space-x-1"><span>จำนวนเงิน</span><ArrowUpDown size={14} className={sortConfig?.key === 'amount' ? 'text-[#1A534B]' : ''} /></div>
                 </th>
                 <th className="px-6 py-4 font-bold text-center whitespace-nowrap">จัดการ</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {sortedData.length > 0 ? (
-                sortedData.map((tx, idx) => (
+              {paginatedData.length > 0 ? (
+                paginatedData.map((tx, idx) => (
                   <tr key={idx} className="hover:bg-gray-50 transition-colors group">
                     <td className="px-6 py-4 text-gray-600 font-medium">{new Date(tx.date).toLocaleDateString('th-TH')}</td>
                     <td className="px-6 py-4">
@@ -691,6 +721,31 @@ export default function FinancialDashboard() {
             </tbody>
           </table>
         </div>
+
+        {/* 🌟 ปุ่มเปลี่ยนหน้า (Next/Prev) */}
+        {totalPages > 1 && (
+          <div className="p-4 border-t border-gray-100 flex items-center justify-between bg-white">
+            <span className="text-sm text-gray-500 font-medium">
+              หน้า <span className="font-bold text-gray-800">{currentPage}</span> จาก <span className="font-bold text-gray-800">{totalPages}</span>
+            </span>
+            <div className="flex space-x-2">
+              <button 
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className={`p-2 rounded-lg flex items-center transition-colors ${currentPage === 1 ? 'text-gray-300 cursor-not-allowed bg-gray-50' : 'text-gray-600 hover:bg-gray-100 hover:text-[#1A534B]'}`}
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <button 
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className={`p-2 rounded-lg flex items-center transition-colors ${currentPage === totalPages ? 'text-gray-300 cursor-not-allowed bg-gray-50' : 'text-gray-600 hover:bg-gray-100 hover:text-[#1A534B]'}`}
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <style jsx>{`
