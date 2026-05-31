@@ -54,7 +54,7 @@ const CustomDayPicker = ({
         {tooltipText && (
           <div className="group relative flex items-center justify-center cursor-help">
             <Info size={16} className="text-gray-400 hover:text-[#376B64] transition-colors" />
-            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-56 p-2.5 bg-gray-800 text-white text-xs font-medium rounded-lg shadow-xl z-50 text-center leading-relaxed">
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-[250px] sm:w-56 max-w-[90vw] p-2.5 bg-gray-800 text-white text-xs font-medium rounded-lg shadow-xl z-50 text-center leading-relaxed">
               {tooltipText}
               <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
             </div>
@@ -72,16 +72,16 @@ const CustomDayPicker = ({
               : 'border-gray-200 bg-gray-50 hover:bg-white hover:border-[#376B64]/40'
           }`}
         >
-          <span className={`font-medium text-[15px] ${value ? 'text-gray-900' : 'text-gray-400'}`}>
+          <span className={`font-medium text-[15px] truncate pr-2 ${value ? 'text-gray-900' : 'text-gray-400'}`}>
             {value ? `วันที่ ${value}` : placeholder}
           </span>
-          <Icon size={20} className="text-[#376B64]" />
+          <Icon size={20} className="text-[#376B64] shrink-0" />
         </button>
         
         {isOpen && (
           <>
             <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)}></div>
-            <div className="absolute top-full left-0 z-50 mt-2 w-64 p-4 bg-white border border-gray-100 shadow-2xl rounded-2xl transform origin-top animate-fadeIn">
+            <div className="absolute top-full left-0 sm:left-auto sm:right-0 md:left-0 z-50 mt-2 w-64 p-4 bg-white border border-gray-100 shadow-2xl rounded-2xl transform origin-top animate-fadeIn">
               <div className="text-xs font-bold text-gray-400 mb-3 text-center uppercase tracking-wider">เลือกวันที่ของเดือน</div>
               <div className="grid grid-cols-7 gap-1">
                 {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
@@ -122,7 +122,6 @@ export default function AdminSettingsPage() {
   const [bankAccountName, setBankAccountName] = useState("นิติบุคคลหมู่บ้าน");
   const [bankLogoUrl, setBankLogoUrl] = useState("/banks/KTB.png");
   
-  // 🌟 State สำหรับ Custom Dropdown เลือกธนาคาร และรูป Error
   const [isBankDropdownOpen, setIsBankDropdownOpen] = useState(false);
   const [imageError, setImageError] = useState(false); 
 
@@ -332,7 +331,7 @@ export default function AdminSettingsPage() {
   );
 
   return (
-    <div className="p-4 md:p-8 bg-gray-50 min-h-screen font-sans text-gray-800 relative">
+    <div className="p-4 md:p-8 bg-gray-50 min-h-screen font-sans text-gray-800 relative w-full overflow-x-hidden">
       <div className="max-w-6xl mx-auto space-y-6">
         
         <div className="mb-2">
@@ -346,19 +345,19 @@ export default function AdminSettingsPage() {
         </div>
 
         <div>
-          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">ตั้งค่าระบบ & ค่าส่วนกลาง</h1>
-          <p className="text-gray-500 mt-2">จัดการรูปแบบโครงการ เรทราคาพื้นฐาน และกำหนดค่าส่วนกลางราย{projectType === 'CONDO' ? 'ห้อง' : 'บ้าน'}</p>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">ตั้งค่าระบบ & ค่าส่วนกลาง</h1>
+          <p className="text-sm sm:text-base text-gray-500 mt-2">จัดการรูปแบบโครงการ เรทราคาพื้นฐาน และกำหนดค่าส่วนกลางราย{projectType === 'CONDO' ? 'ห้อง' : 'บ้าน'}</p>
         </div>
         
         <section className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
-          <div className="p-6 md:p-8">
-            <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+          <div className="p-5 sm:p-6 md:p-8">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
               <span className="p-2 bg-[#376B64]/10 text-[#376B64] rounded-lg"><SettingsIcon size={20} /></span> การตั้งค่าระบบส่วนกลาง (Global Settings)
             </h2>
             <form onSubmit={handleSaveGlobal} className="space-y-6">
               
               {/* ส่วนที่ 1: การคิดเงิน */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">ประเภทโครงการ</label>
                   <select 
@@ -381,7 +380,7 @@ export default function AdminSettingsPage() {
                   />
                 </div>
 
-                <div>
+                <div className="sm:col-span-2 md:col-span-1">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">ค่าปรับล่าช้าเหมาจ่าย (บาท/เดือน)</label>
                   <input 
                     type="number" 
@@ -398,7 +397,7 @@ export default function AdminSettingsPage() {
                   id="applyAll"
                   checked={applyToAllHouses}
                   onChange={(e) => setApplyToAllHouses(e.target.checked)}
-                  className="mt-1 w-5 h-5 text-orange-600 rounded border-gray-300 focus:ring-orange-500 cursor-pointer"
+                  className="mt-1 shrink-0 w-5 h-5 text-orange-600 rounded border-gray-300 focus:ring-orange-500 cursor-pointer"
                 />
                 <label htmlFor="applyAll" className="cursor-pointer flex-1">
                   <span className="block font-bold text-orange-800 text-sm">อัปเดตเรทมาตรฐานนี้ ทับราคาของ{projectType === 'CONDO' ? 'ห้อง' : 'บ้าน'}ทุกหลังทันที</span>
@@ -412,7 +411,7 @@ export default function AdminSettingsPage() {
                   <span className="text-2xl">🏦</span> บัญชีธนาคารรับเงิน (สำหรับลูกบ้านโอนชำระ)
                 </h3>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
                   {/* 🌟 Custom Dropdown เลือกธนาคาร */}
                   <div className="relative col-span-1">
                     <label className="block text-sm font-semibold text-gray-700 mb-2">เลือกธนาคาร</label>
@@ -421,22 +420,22 @@ export default function AdminSettingsPage() {
                       onClick={() => setIsBankDropdownOpen(!isBankDropdownOpen)}
                       className={`w-full flex items-center justify-between border rounded-xl p-3 transition-all shadow-sm outline-none ${isBankDropdownOpen ? 'bg-white border-[#376B64] ring-2 ring-[#376B64]/20' : 'bg-gray-50 border-gray-200 hover:bg-white hover:border-[#376B64]/50'}`}
                     >
-                      <div className="flex items-center space-x-3">
+                      <div className="flex items-center space-x-3 truncate">
                         {!imageError ? (
                           <img 
                             src={bankLogoUrl || BANK_OPTIONS[3].url} 
                             alt="Bank Logo" 
                             onError={() => setImageError(true)}
-                            className="w-7 h-7 object-contain bg-white rounded-full p-0.5 shadow-sm border border-gray-100" 
+                            className="w-7 h-7 shrink-0 object-contain bg-white rounded-full p-0.5 shadow-sm border border-gray-100" 
                           />
                         ) : (
-                          <div className="w-7 h-7 bg-white rounded-full shadow-sm border border-gray-100 flex items-center justify-center text-[#376B64]">
+                          <div className="w-7 h-7 shrink-0 bg-white rounded-full shadow-sm border border-gray-100 flex items-center justify-center text-[#376B64]">
                             <Landmark size={14} />
                           </div>
                         )}
-                        <span className="text-[15px] font-semibold text-gray-700">{bankName}</span>
+                        <span className="text-[14px] sm:text-[15px] font-semibold text-gray-700 truncate">{bankName}</span>
                       </div>
-                      <ChevronDown size={18} className={`text-[#376B64] transition-transform ${isBankDropdownOpen ? 'rotate-180' : ''}`} />
+                      <ChevronDown size={18} className={`text-[#376B64] shrink-0 transition-transform ${isBankDropdownOpen ? 'rotate-180' : ''}`} />
                     </button>
 
                     {/* เมนู Dropdown */}
@@ -460,9 +459,9 @@ export default function AdminSettingsPage() {
                                 <img 
                                   src={bank.url} 
                                   alt={bank.name} 
-                                  className="w-7 h-7 object-contain bg-white rounded-full p-0.5 shadow-sm border border-gray-100" 
+                                  className="w-7 h-7 shrink-0 object-contain bg-white rounded-full p-0.5 shadow-sm border border-gray-100" 
                                 />
-                                <span className={`text-[15px] ${bankName === bank.name ? 'font-bold' : 'font-medium'}`}>{bank.name}</span>
+                                <span className={`text-[14px] sm:text-[15px] truncate ${bankName === bank.name ? 'font-bold' : 'font-medium'}`}>{bank.name}</span>
                               </button>
                             ))}
                           </div>
@@ -485,7 +484,7 @@ export default function AdminSettingsPage() {
                   </div>
 
                   {/* เลขบัญชี */}
-                  <div className="col-span-1">
+                  <div className="col-span-1 sm:col-span-2 md:col-span-1">
                     <label className="block text-sm font-semibold text-gray-700 mb-2">เลขบัญชี (Account Number)</label>
                     <input
                       type="text"
@@ -505,7 +504,7 @@ export default function AdminSettingsPage() {
                   <span className="p-2 bg-[#376B64]/10 text-[#376B64] rounded-lg"><CalendarDays size={20} /></span> รอบบิลอัตโนมัติ (Automated Billing)
                 </h3>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
                   <CustomDayPicker 
                     label="วันที่ออกบิลประจำเดือน" 
                     value={invoiceGenerateDay} 
@@ -536,7 +535,7 @@ export default function AdminSettingsPage() {
                       <label className="block text-sm font-semibold text-gray-700">เวลาจัดส่งบิล</label>
                       <div className="group relative flex items-center justify-center cursor-help">
                         <Info size={16} className="text-gray-400 hover:text-[#376B64] transition-colors" />
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-56 p-2.5 bg-gray-800 text-white text-xs font-medium rounded-lg shadow-xl z-50 text-center leading-relaxed">
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 sm:left-auto sm:right-0 md:left-1/2 md:-translate-x-1/2 mb-2 hidden group-hover:block w-[250px] sm:w-56 max-w-[90vw] p-2.5 bg-gray-800 text-white text-xs font-medium rounded-lg shadow-xl z-50 text-center leading-relaxed">
                           เวลาที่ระบบจะส่งแจ้งเตือนบิลใหม่เข้า LINE ลูกบ้าน
                           <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
                         </div>
@@ -557,10 +556,11 @@ export default function AdminSettingsPage() {
                 </div>
               </div>
 
+              {/* 🌟 ปรับปุ่มเซฟให้เต็มจอเมื่อเปิดบนมือถือ */}
               <div className="flex justify-end pt-6 border-t border-gray-50">
                 <button 
                   type="submit" disabled={savingGlobal}
-                  className={`px-8 py-3.5 rounded-xl font-bold text-white shadow-lg transition-all flex items-center gap-2 ${savingGlobal ? 'bg-gray-400' : 'bg-[#376B64] hover:bg-[#2A524C] hover:-translate-y-0.5 active:scale-[0.98]'}`}
+                  className={`w-full sm:w-auto px-8 py-3.5 rounded-xl font-bold text-white shadow-lg transition-all flex items-center justify-center gap-2 ${savingGlobal ? 'bg-gray-400' : 'bg-[#376B64] hover:bg-[#2A524C] hover:-translate-y-0.5 active:scale-[0.98]'}`}
                 >
                   <Save size={18} />
                   {savingGlobal ? 'กำลังบันทึก...' : 'บันทึกการตั้งค่าส่วนกลาง'}
@@ -571,15 +571,15 @@ export default function AdminSettingsPage() {
 
           {/* ส่วนที่ 3: จัดการบ้าน */}
           <div className="border-t-[8px] border-gray-50">
-            <div className="p-6 md:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-gray-100">
-              <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+            <div className="p-5 sm:p-6 md:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-gray-100">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-800 flex items-center gap-2">
                 <span className="p-2 bg-[#376B64]/10 text-[#376B64] rounded-lg"><CreditCard size={20} /></span> จัดการเรทราคาแยกราย{projectType === 'CONDO' ? 'ห้อง' : 'บ้าน'}
                 
                 <div className="group relative flex items-center justify-center cursor-help ml-1">
                   <Info size={18} className="text-gray-400 hover:text-[#376B64] transition-colors" />
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-72 p-3 bg-gray-800 text-white text-xs font-medium rounded-lg shadow-xl z-50 text-center leading-relaxed">
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 sm:left-0 sm:translate-x-0 md:left-1/2 md:-translate-x-1/2 mb-2 hidden group-hover:block w-[280px] sm:w-72 max-w-[90vw] p-3 bg-gray-800 text-white text-xs font-medium rounded-lg shadow-xl z-50 text-center sm:text-left md:text-center leading-relaxed">
                     💡 <b>วิธีใช้งาน:</b><br/>คุณสามารถติ๊กถูกหน้าบ้านเลขที่เพื่อตั้งค่ารูปแบบการคิดเงิน (เหมาจ่าย/คำนวณตามพื้นที่) พร้อมกันทีละหลายหลัง หรือกดปุ่ม "ตั้งค่า" ด้านหลังเพื่อปรับราคาทีละหลังก็ได้ครับ
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 sm:left-6 sm:-translate-x-0 md:left-1/2 md:-translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
                   </div>
                 </div>
               </h2>
@@ -587,15 +587,16 @@ export default function AdminSettingsPage() {
               {selectedHouses.length > 0 && (
                 <button 
                   onClick={openBulkPopup}
-                  className="animate-fadeIn px-5 py-2.5 bg-[#376B64] text-white text-sm font-bold rounded-xl shadow-md hover:bg-[#2A524C] transition flex items-center gap-2 active:scale-[0.98]"
+                  className="w-full md:w-auto justify-center animate-fadeIn px-5 py-2.5 bg-[#376B64] text-white text-sm font-bold rounded-xl shadow-md hover:bg-[#2A524C] transition flex items-center gap-2 active:scale-[0.98]"
                 >
                    ตั้งค่าพร้อมกัน {selectedHouses.length} รายการ
                 </button>
               )}
             </div>
             
-            <div className="overflow-x-auto bg-white pb-6">
-              <table className="w-full text-left border-collapse">
+            {/* 🌟 เพิ่ม min-w-[800px] และ overflow-x-auto ให้ตารางเลื่อนซ้าย-ขวาได้แบบสวยงาม */}
+            <div className="overflow-x-auto bg-white pb-6 w-full custom-scrollbar">
+              <table className="w-full text-left border-collapse min-w-[800px]">
                 <thead>
                   <tr className="bg-gray-50 text-gray-500 text-sm border-b border-gray-100">
                     <th className="p-4 w-12 text-center">
@@ -606,11 +607,11 @@ export default function AdminSettingsPage() {
                         checked={selectedHouses.length === houses.length && houses.length > 0}
                       />
                     </th>
-                    <th className="p-4 font-semibold">{projectType === 'CONDO' ? 'ห้องเลขที่' : 'บ้านเลขที่'}</th>
-                    <th className="p-4 font-semibold">ขนาดพื้นที่</th>
-                    <th className="p-4 font-semibold">รูปแบบการคิดเงิน</th>
-                    <th className="p-4 font-semibold">อัตรา (บาท)</th>
-                    <th className="p-4 font-semibold text-center">จัดการ</th>
+                    <th className="p-4 font-semibold whitespace-nowrap">{projectType === 'CONDO' ? 'ห้องเลขที่' : 'บ้านเลขที่'}</th>
+                    <th className="p-4 font-semibold whitespace-nowrap">ขนาดพื้นที่</th>
+                    <th className="p-4 font-semibold whitespace-nowrap">รูปแบบการคิดเงิน</th>
+                    <th className="p-4 font-semibold whitespace-nowrap">อัตรา (บาท)</th>
+                    <th className="p-4 font-semibold text-center whitespace-nowrap">จัดการ</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -629,19 +630,19 @@ export default function AdminSettingsPage() {
                               onChange={() => handleSelectOne(house.id)}
                             />
                           </td>
-                          <td className="p-4 font-bold text-gray-800 text-base flex items-center gap-2">
-                            <Building size={16} className="text-gray-400" /> {house.houseNo}
+                          <td className="p-4 font-bold text-gray-800 text-base flex items-center gap-2 whitespace-nowrap">
+                            <Building size={16} className="text-gray-400 shrink-0" /> {house.houseNo}
                           </td>
-                          <td className="p-4 text-gray-600">{house.houseSize} {projectType === 'CONDO' ? 'ตร.ม.' : 'ตร.ว.'}</td>
-                          <td className="p-4">
+                          <td className="p-4 text-gray-600 whitespace-nowrap">{house.houseSize} {projectType === 'CONDO' ? 'ตร.ม.' : 'ตร.ว.'}</td>
+                          <td className="p-4 whitespace-nowrap">
                             <span className={`px-3 py-1 rounded-full text-[11px] font-black tracking-wide ${house.feeType === 'FIXED' ? 'bg-[#376B64]/10 text-[#376B64]' : 'bg-orange-100 text-orange-700'}`}>
                               {house.feeType === 'FIXED' ? 'เหมาจ่าย (FIXED)' : 'ตามพื้นที่ (CALCULATED)'}
                             </span>
                           </td>
-                          <td className="p-4 font-bold text-gray-700 text-base">
+                          <td className="p-4 font-bold text-gray-700 text-base whitespace-nowrap">
                             {Number(house.feeRate).toLocaleString('th-TH')} <span className="text-xs font-normal text-gray-400">{house.feeType === 'FIXED' ? '/ บิล' : '/ หน่วย'}</span>
                           </td>
-                          <td className="p-4 text-center">
+                          <td className="p-4 text-center whitespace-nowrap">
                             <button 
                               onClick={() => openSinglePopup(house)}
                               className="bg-white border border-gray-200 hover:border-[#376B64] hover:bg-[#376B64]/10 hover:text-[#376B64] text-gray-600 px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-sm active:scale-95 flex items-center justify-center gap-1.5 mx-auto"
@@ -660,6 +661,7 @@ export default function AdminSettingsPage() {
         </section>
       </div>
 
+      {/* 🌟 Modal Popup: ลด Padding เวลาจอเล็ก */}
       {isPopupOpen && editHouse && (
         <div className="fixed inset-0 z-50 flex justify-center items-center p-4 animate-fadeIn">
           
@@ -668,12 +670,12 @@ export default function AdminSettingsPage() {
             onClick={() => setIsPopupOpen(false)}
           ></div>
 
-          <div className="bg-white rounded-[2.5rem] p-8 w-full max-w-md shadow-2xl relative z-10 transform transition-all scale-100 border border-gray-100">
-            <button onClick={() => setIsPopupOpen(false)} className="absolute top-6 right-6 text-gray-400 hover:text-rose-500 bg-gray-100 hover:bg-rose-50 rounded-full p-2.5 transition-colors">
+          <div className="bg-white rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-8 w-full max-w-md shadow-2xl relative z-10 transform transition-all scale-100 border border-gray-100 max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <button onClick={() => setIsPopupOpen(false)} className="absolute top-4 sm:top-6 right-4 sm:right-6 text-gray-400 hover:text-rose-500 bg-gray-100 hover:bg-rose-50 rounded-full p-2 sm:p-2.5 transition-colors">
               <X size={20} />
             </button>
 
-            <h3 className="text-2xl font-black text-gray-800 mb-2">
+            <h3 className="text-xl sm:text-2xl font-black text-gray-800 mb-2 mt-2 sm:mt-0 pr-8">
               {isBulkMode ? 'ตั้งค่าเรทราคาหลายรายการ' : 'ตั้งค่าเรทราคา'}
             </h3>
             <p className="text-gray-500 text-sm mb-6 leading-relaxed bg-gray-50 inline-block px-3 py-1.5 rounded-lg border border-gray-200">
@@ -723,7 +725,7 @@ export default function AdminSettingsPage() {
       <style dangerouslySetInnerHTML={{__html: `
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fadeIn { animation: fadeIn 0.2s ease-out forwards; }
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar { height: 6px; width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
       `}} />

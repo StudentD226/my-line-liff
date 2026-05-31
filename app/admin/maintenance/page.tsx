@@ -65,61 +65,64 @@ export default function AdminMaintenanceManager() {
   );
 
   return (
-    <div className="p-6 md:p-10 bg-slate-50 min-h-screen font-sans">
-      <div className="max-w-6xl mx-auto space-y-8">
-        <h1 className="text-3xl font-black text-slate-800 flex items-center gap-3">
-          <ShieldAlert className="text-teal-600" size={36} /> จัดการศูนย์รับเรื่อง
+    /* 🌟 ปรับ Padding ให้ลดลงบนมือถือ */
+    <div className="p-4 sm:p-6 md:p-10 bg-slate-50 min-h-screen font-sans w-full overflow-x-hidden">
+      <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8">
+        
+        <h1 className="text-2xl sm:text-3xl font-black text-slate-800 flex items-center gap-2 sm:gap-3">
+          <ShieldAlert className="text-teal-600 shrink-0" size={32} /> จัดการศูนย์รับเรื่อง
         </h1>
 
-        <div className="grid gap-5">
+        <div className="grid gap-4 sm:gap-5">
           {requests.length === 0 && (
-            <div className="bg-white p-10 rounded-[2rem] text-center border border-slate-100 shadow-sm">
-              <p className="text-slate-500 font-bold text-lg">ยังไม่มีรายการรับเรื่อง</p>
+            <div className="bg-white p-8 sm:p-10 rounded-[2rem] text-center border border-slate-100 shadow-sm">
+              <p className="text-slate-500 font-bold text-base sm:text-lg">ยังไม่มีรายการรับเรื่อง</p>
             </div>
           )}
           {requests.map((item) => (
-            <div key={item.id} className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col md:flex-row justify-between md:items-center gap-6 hover:shadow-lg transition-all">
+            <div key={item.id} className="bg-white p-5 sm:p-6 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col md:flex-row justify-between md:items-center gap-5 sm:gap-6 hover:shadow-lg transition-all">
               
-              <div className="space-y-4 flex-1">
-                <div className="flex items-center gap-3 flex-wrap">
-                  <span className={`px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-1.5 ${item.type === 'REPAIR' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
+              <div className="space-y-4 flex-1 min-w-0">
+                <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                  <span className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest flex items-center gap-1.5 whitespace-nowrap ${item.type === 'REPAIR' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
                     {item.type === 'REPAIR' ? <Wrench size={14}/> : <Info size={14}/>} 
                     {item.type === 'REPAIR' ? 'แจ้งซ่อม' : 'แจ้งเพื่อทราบ'}
                   </span>
-                  <span className={`px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-widest ${item.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' : item.status === 'IN_PROGRESS' ? 'bg-orange-100 text-orange-700' : item.status === 'CANCELED' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'}`}>
+                  <span className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest whitespace-nowrap ${item.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' : item.status === 'IN_PROGRESS' ? 'bg-orange-100 text-orange-700' : item.status === 'CANCELED' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'}`}>
                     {item.status === 'PENDING' ? 'รอตรวจสอบ' : item.status === 'IN_PROGRESS' ? 'กำลังดำเนินการ' : item.status === 'COMPLETED' ? 'แก้ไขเสร็จสิ้น' : 'ยกเลิก'}
                   </span>
-                  <span className="text-xs font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-lg">#{item.ticketNo}</span>
+                  <span className="text-[10px] sm:text-xs font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-lg">#{item.ticketNo}</span>
                 </div>
                 
                 <div>
-                  <h3 className="font-black text-xl text-slate-800 mb-2">{item.title}</h3>
-                  <div className="flex items-center gap-4 text-sm font-semibold text-slate-500">
-                    <span className="flex items-center gap-1"><Home size={16} className="text-teal-600"/> บ้านเลขที่ {item.house?.houseNo || '-'}</span>
-                    <span className="text-slate-300">|</span>
-                    <span>📍 {item.location}</span>
+                  <h3 className="font-black text-lg sm:text-xl text-slate-800 mb-2 truncate">{item.title}</h3>
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm font-semibold text-slate-500">
+                    <span className="flex items-center gap-1 whitespace-nowrap"><Home size={16} className="text-teal-600 shrink-0"/> บ้านเลขที่ {item.house?.houseNo || '-'}</span>
+                    <span className="text-slate-300 hidden sm:inline">|</span>
+                    <span className="break-all">📍 {item.location}</span>
                   </div>
                 </div>
                 
-                <div className="p-4 bg-slate-50 rounded-2xl text-sm font-medium text-slate-600 border border-slate-100 leading-relaxed">
+                <div className="p-3 sm:p-4 bg-slate-50 rounded-2xl text-xs sm:text-sm font-medium text-slate-600 border border-slate-100 leading-relaxed break-words">
                   {item.description}
                 </div>
               </div>
               
-              <div className="flex flex-row md:flex-col gap-2">
+              {/* 🌟 ปรับปุ่มให้เรียงแนวตั้งบนจอมือถือเล็ก เพื่อป้องกันปุ่มบีบกันจนตัวหนังสือเบียด */}
+              <div className="flex flex-col sm:flex-row md:flex-col gap-2 w-full md:w-auto shrink-0">
                 {item.status !== 'COMPLETED' && item.status !== 'CANCELED' && (
                   <>
-                    <button onClick={() => updateStatus(item.id, 'IN_PROGRESS', item.lineId)} className="flex-1 flex items-center justify-center gap-2 py-3.5 md:px-6 bg-white border-2 border-orange-100 text-orange-600 rounded-xl font-bold text-sm hover:bg-orange-50 transition active:scale-95">
-                      <Clock size={18} /> กำลังดำเนินการ
+                    <button onClick={() => updateStatus(item.id, 'IN_PROGRESS', item.lineId)} className="flex-1 flex items-center justify-center gap-2 py-3 sm:py-3.5 md:px-6 bg-white border-2 border-orange-100 text-orange-600 rounded-xl font-bold text-xs sm:text-sm hover:bg-orange-50 transition active:scale-95 whitespace-nowrap w-full">
+                      <Clock size={16} className="sm:w-[18px] sm:h-[18px] shrink-0" /> กำลังดำเนินการ
                     </button>
-                    <button onClick={() => updateStatus(item.id, 'COMPLETED', item.lineId)} className="flex-1 flex items-center justify-center gap-2 py-3.5 md:px-6 bg-teal-600 text-white rounded-xl font-bold text-sm hover:bg-teal-700 shadow-md shadow-teal-600/20 transition active:scale-95">
-                      <CheckCircle size={18} /> ปิดงาน/แก้ไขเสร็จ
+                    <button onClick={() => updateStatus(item.id, 'COMPLETED', item.lineId)} className="flex-1 flex items-center justify-center gap-2 py-3 sm:py-3.5 md:px-6 bg-teal-600 text-white rounded-xl font-bold text-xs sm:text-sm hover:bg-teal-700 shadow-md shadow-teal-600/20 transition active:scale-95 whitespace-nowrap w-full">
+                      <CheckCircle size={16} className="sm:w-[18px] sm:h-[18px] shrink-0" /> ปิดงาน/แก้ไขเสร็จ
                     </button>
                   </>
                 )}
                 {item.status === 'PENDING' && (
-                  <button onClick={() => updateStatus(item.id, 'CANCELED', item.lineId)} className="flex-1 flex items-center justify-center gap-2 py-3.5 md:px-6 bg-white border-2 border-rose-100 text-rose-600 rounded-xl font-bold text-sm hover:bg-rose-50 transition active:scale-95">
-                    <XCircle size={18} /> รับทราบ/ยกเลิก
+                  <button onClick={() => updateStatus(item.id, 'CANCELED', item.lineId)} className="flex-1 flex items-center justify-center gap-2 py-3 sm:py-3.5 md:px-6 bg-white border-2 border-rose-100 text-rose-600 rounded-xl font-bold text-xs sm:text-sm hover:bg-rose-50 transition active:scale-95 whitespace-nowrap w-full">
+                    <XCircle size={16} className="sm:w-[18px] sm:h-[18px] shrink-0" /> รับทราบ/ยกเลิก
                   </button>
                 )}
               </div>

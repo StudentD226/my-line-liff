@@ -18,9 +18,9 @@ const COLORS = [
 const fullThaiMonths = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
 
 const InfoTooltip = ({ text }: { text: string }) => (
-  <div className="relative flex items-center group cursor-help ml-2">
+  <div className="relative flex items-center group cursor-help ml-2 shrink-0">
     <Info size={16} className="text-gray-400 hover:text-[#1A534B] transition-colors" />
-    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-64 p-2 bg-gray-800 text-white text-xs rounded-lg shadow-lg z-50 text-center">
+    <div className="absolute bottom-full left-1/2 -translate-x-1/2 sm:left-1/2 sm:-translate-x-1/2 mb-2 hidden group-hover:block w-[200px] sm:w-64 p-2 bg-gray-800 text-white text-xs rounded-lg shadow-lg z-50 text-center">
       {text}
       <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-800"></div>
     </div>
@@ -62,7 +62,6 @@ export default function FinancialDashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  // 🌟 สร้างรายการปี พ.ศ. (ย้อนหลัง 5 ปี) สำหรับ Dropdown
   const yearOptions = useMemo(() => {
     const current = new Date().getFullYear();
     return Array.from({ length: 5 }, (_, i) => current - i);
@@ -133,7 +132,7 @@ export default function FinancialDashboard() {
     setCurrentPage(1);
   };
 
-  const totalPages = Math.ceil(sortedData.length / rowsPerPage);
+  const totalPages = Math.max(1, Math.ceil(sortedData.length / rowsPerPage));
   const paginatedData = sortedData.slice(
     (currentPage - 1) * rowsPerPage, 
     currentPage * rowsPerPage
@@ -335,17 +334,18 @@ export default function FinancialDashboard() {
     return <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]"><div className="text-[#1A534B] animate-pulse font-bold text-xl">กำลังประมวลผลบัญชี...</div></div>;
 
   return (
-    <div className="p-6 lg:p-10 max-w-7xl mx-auto bg-[#F8FAFC] min-h-screen font-sans">
+    <div className="p-4 sm:p-6 lg:p-10 max-w-7xl mx-auto bg-[#F8FAFC] min-h-screen font-sans w-full overflow-x-hidden">
       
-      <div className={`fixed top-6 right-6 z-[100] transition-all duration-300 transform ${alert.show ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}`}>
+      <div className={`fixed top-6 right-6 z-[100] transition-all duration-300 transform ${alert.show ? 'translate-x-0 opacity-100' : 'translate-x-[150%] opacity-0'} max-w-[90vw]`}>
         <div className={`flex items-center space-x-3 p-4 rounded-xl shadow-xl border-l-4 ${alert.type === 'success' ? 'bg-white border-emerald-500 text-gray-800' : alert.type === 'error' ? 'bg-white border-red-500 text-gray-800' : 'bg-white border-orange-500 text-gray-800'}`}>
-          {alert.type === 'success' && <CheckCircle className="text-emerald-500" size={24} />}
-          {alert.type === 'error' && <X className="text-red-500" size={24} />}
-          {alert.type === 'warning' && <AlertCircle className="text-orange-500" size={24} />}
+          {alert.type === 'success' && <CheckCircle className="text-emerald-500 shrink-0" size={24} />}
+          {alert.type === 'error' && <X className="text-red-500 shrink-0" size={24} />}
+          {alert.type === 'warning' && <AlertCircle className="text-orange-500 shrink-0" size={24} />}
           <span className="font-bold text-sm">{alert.message}</span>
         </div>
       </div>
 
+      {/* Delete Transaction Modal */}
       {isDeleteModalOpen && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-fade-in-down p-6 text-center">
@@ -364,6 +364,7 @@ export default function FinancialDashboard() {
         </div>
       )}
 
+      {/* Delete Category Modal */}
       {categoryToDelete && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in-down p-6 text-center">
@@ -382,15 +383,16 @@ export default function FinancialDashboard() {
         </div>
       )}
 
+      {/* Category Manager Modal */}
       {isCategoryManagerOpen && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-fade-in-down">
-            <div className="flex justify-between items-center p-6 border-b border-gray-100">
-              <h2 className="font-bold text-xl text-gray-800">จัดการหมวดหมู่ ({formData.type === 'INCOME' ? 'รายรับ' : 'รายจ่าย'})</h2>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-fade-in-down max-h-[90vh] flex flex-col">
+            <div className="flex justify-between items-center p-5 sm:p-6 border-b border-gray-100 shrink-0">
+              <h2 className="font-bold text-lg sm:text-xl text-gray-800">จัดการหมวดหมู่ ({formData.type === 'INCOME' ? 'รายรับ' : 'รายจ่าย'})</h2>
               <button onClick={() => setIsCategoryManagerOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors"><X size={24} /></button>
             </div>
             
-            <div className="p-6 max-h-[60vh] overflow-y-auto custom-scrollbar">
+            <div className="p-5 sm:p-6 overflow-y-auto custom-scrollbar flex-1">
               <div className="space-y-3">
                 {categories.filter(c => c.type === formData.type).map(cat => (
                   <div key={cat.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
@@ -400,16 +402,16 @@ export default function FinancialDashboard() {
                           type="text" 
                           value={editingCategory?.name || ""} 
                           onChange={(e) => setEditingCategory(prev => prev ? { ...prev, name: e.target.value } : null)}
-                          className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:border-[#1A534B]"
+                          className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:border-[#1A534B] w-full"
                           autoFocus
                         />
-                        <button onClick={handleSaveCategoryEdit} className="p-1.5 bg-emerald-100 text-emerald-600 rounded hover:bg-emerald-200" title="บันทึก"><Save size={16} /></button>
-                        <button onClick={() => setEditingCategory(null)} className="p-1.5 bg-gray-200 text-gray-600 rounded hover:bg-gray-300" title="ยกเลิก"><X size={16} /></button>
+                        <button onClick={handleSaveCategoryEdit} className="p-1.5 bg-emerald-100 text-emerald-600 rounded hover:bg-emerald-200 shrink-0" title="บันทึก"><Save size={16} /></button>
+                        <button onClick={() => setEditingCategory(null)} className="p-1.5 bg-gray-200 text-gray-600 rounded hover:bg-gray-300 shrink-0" title="ยกเลิก"><X size={16} /></button>
                       </div>
                     ) : (
                       <>
-                        <span className="font-medium text-gray-700">{cat.name}</span>
-                        <div className="flex items-center space-x-1">
+                        <span className="font-medium text-gray-700 truncate mr-2">{cat.name}</span>
+                        <div className="flex items-center space-x-1 shrink-0">
                           <button onClick={() => setEditingCategory({ id: cat.id, name: cat.name })} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded transition-colors" title="แก้ไข">
                             <Edit size={16} />
                           </button>
@@ -430,196 +432,201 @@ export default function FinancialDashboard() {
         </div>
       )}
 
+      {/* Add/Edit Transaction Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-fade-in-down">
-            <div className="flex justify-between items-center p-6 border-b border-gray-100">
-              <h2 className="font-bold text-xl text-gray-800">{editingId ? 'แก้ไขรายการบัญชี' : 'เพิ่มรายการบัญชี'}</h2>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-fade-in-down max-h-[90vh] flex flex-col">
+            <div className="flex justify-between items-center p-4 sm:p-6 border-b border-gray-100 shrink-0">
+              <h2 className="font-bold text-lg sm:text-xl text-gray-800">{editingId ? 'แก้ไขรายการบัญชี' : 'เพิ่มรายการบัญชี'}</h2>
               <button onClick={resetAndCloseModal} className="text-gray-400 hover:text-gray-600 transition-colors"><X size={24} /></button>
             </div>
             
-            <form onSubmit={handleSubmitTransaction} className="p-6 space-y-5">
-              <div className="flex p-1 bg-gray-100 rounded-xl">
-                <button type="button" onClick={() => setFormData({...formData, type: 'INCOME', categoryId: ""})} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${formData.type === 'INCOME' ? 'bg-white text-emerald-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
-                  รายรับ
-                </button>
-                <button type="button" onClick={() => setFormData({...formData, type: 'EXPENSE', categoryId: ""})} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${formData.type === 'EXPENSE' ? 'bg-white text-red-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
-                  รายจ่าย
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">ชื่อรายการ <span className="text-red-500">*</span></label>
-                  <div className="relative">
-                    <FileText className="absolute left-3 top-3 text-gray-400" size={18} />
-                    <input type="text" required value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} placeholder="เช่น ซ่อมไฟถนน" className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1A534B] outline-none transition-all" />
-                  </div>
+            <div className="overflow-y-auto custom-scrollbar flex-1">
+              <form onSubmit={handleSubmitTransaction} className="p-4 sm:p-6 space-y-4 sm:space-y-5">
+                <div className="flex p-1 bg-gray-100 rounded-xl">
+                  <button type="button" onClick={() => setFormData({...formData, type: 'INCOME', categoryId: ""})} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${formData.type === 'INCOME' ? 'bg-white text-emerald-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+                    รายรับ
+                  </button>
+                  <button type="button" onClick={() => setFormData({...formData, type: 'EXPENSE', categoryId: ""})} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${formData.type === 'EXPENSE' ? 'bg-white text-red-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+                    รายจ่าย
+                  </button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">จำนวนเงิน (บาท) <span className="text-red-500">*</span></label>
-                    <input type="number" required min="0" step="0.01" value={formData.amount} onChange={(e) => setFormData({...formData, amount: e.target.value})} placeholder="0.00" className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1A534B] outline-none transition-all font-medium" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">วันที่ <span className="text-red-500">*</span></label>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">ชื่อรายการ <span className="text-red-500">*</span></label>
                     <div className="relative">
-                      <Calendar className="absolute left-3 top-3 text-gray-400" size={18} />
-                      <input type="date" required value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1A534B] outline-none transition-all text-sm" />
+                      <FileText className="absolute left-3 top-3 text-gray-400" size={18} />
+                      <input type="text" required value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} placeholder="เช่น ซ่อมไฟถนน" className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1A534B] outline-none transition-all" />
                     </div>
                   </div>
-                </div>
 
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-sm font-bold text-gray-700">หมวดหมู่ <span className="text-red-500">*</span></label>
-                    <button type="button" onClick={() => setIsCategoryManagerOpen(true)} className="text-xs font-bold text-[#1A534B] flex items-center hover:underline">
-                      <Settings size={12} className="mr-1" /> จัดการ
-                    </button>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-1">จำนวนเงิน (บาท) <span className="text-red-500">*</span></label>
+                      <input type="number" required min="0" step="0.01" value={formData.amount} onChange={(e) => setFormData({...formData, amount: e.target.value})} placeholder="0.00" className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1A534B] outline-none transition-all font-medium" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-1">วันที่ <span className="text-red-500">*</span></label>
+                      <div className="relative">
+                        <Calendar className="absolute left-3 top-3 text-gray-400" size={18} />
+                        <input type="date" required value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1A534B] outline-none transition-all text-sm" />
+                      </div>
+                    </div>
                   </div>
-                  <div className="relative mb-2">
-                    <Tag className="absolute left-3 top-3 text-gray-400" size={18} />
-                    <select required value={formData.categoryId} onChange={(e) => setFormData({...formData, categoryId: e.target.value})} className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1A534B] outline-none transition-all text-sm appearance-none bg-white">
-                      <option value="" disabled>เลือกหมวดหมู่</option>
-                      {categories.filter(c => c.type === formData.type).map(cat => (
-                        <option key={cat.id} value={cat.id}>{cat.name}</option>
-                      ))}
-                      <option value="NEW" className="font-bold text-[#1A534B]">+ สร้างหมวดหมู่ใหม่...</option>
-                    </select>
-                  </div>
-                  {formData.categoryId === "NEW" && (
-                    <input type="text" required value={formData.newCategoryName} onChange={(e) => setFormData({...formData, newCategoryName: e.target.value})} placeholder="พิมพ์ชื่อหมวดหมู่ใหม่" className="w-full px-4 py-2 border border-dashed border-[#1A534B] rounded-lg focus:ring-1 focus:ring-[#1A534B] outline-none transition-all text-sm bg-[#1A534B]/5" />
-                  )}
-                </div>
 
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">หมายเหตุเพิ่มเติม</label>
-                  <textarea rows={2} value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1A534B] outline-none transition-all text-sm resize-none" placeholder="รายละเอียดอื่นๆ (ถ้ามี)"></textarea>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">หลักฐาน (บิล/สลิป)</label>
-                  {formData.receiptUrl ? (
-                    <div className="relative w-full h-32 rounded-lg border border-gray-200 overflow-hidden bg-gray-50 flex items-center justify-center group">
-                      <img src={formData.receiptUrl} alt="Receipt" className="max-w-full max-h-full object-contain" />
-                      <button 
-                        type="button" 
-                        onClick={() => setFormData({...formData, receiptUrl: ""})} 
-                        className="absolute top-2 right-2 p-1.5 bg-white text-red-500 rounded-full shadow-md hover:bg-red-50 transition-colors"
-                        title="ลบรูปนี้"
-                      >
-                        <X size={16} />
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-sm font-bold text-gray-700">หมวดหมู่ <span className="text-red-500">*</span></label>
+                      <button type="button" onClick={() => setIsCategoryManagerOpen(true)} className="text-xs font-bold text-[#1A534B] flex items-center hover:underline">
+                        <Settings size={12} className="mr-1" /> จัดการ
                       </button>
                     </div>
-                  ) : (
-                    <label className={`flex items-center justify-center w-full h-24 px-4 transition bg-gray-50 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer hover:border-[#1A534B] hover:bg-gray-100 ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                      <div className="flex flex-col items-center space-y-2">
-                        {isUploading ? (
-                          <Loader2 className="text-[#1A534B] animate-spin" size={24} />
-                        ) : (
-                          <Upload className="text-gray-400" size={20} />
-                        )}
-                        <span className="text-xs text-gray-500 font-medium">
-                          {isUploading ? 'กำลังอัปโหลด...' : 'คลิกเพื่ออัปโหลดรูปภาพ (ไม่เกิน 10MB)'}
-                        </span>
-                      </div>
-                      <input type="file" accept="image/*" className="hidden" onChange={handleFileUpload} disabled={isUploading} />
-                    </label>
-                  )}
-                </div>
-              </div>
+                    <div className="relative mb-2">
+                      <Tag className="absolute left-3 top-3 text-gray-400" size={18} />
+                      <select required value={formData.categoryId} onChange={(e) => setFormData({...formData, categoryId: e.target.value})} className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1A534B] outline-none transition-all text-sm appearance-none bg-white">
+                        <option value="" disabled>เลือกหมวดหมู่</option>
+                        {categories.filter(c => c.type === formData.type).map(cat => (
+                          <option key={cat.id} value={cat.id}>{cat.name}</option>
+                        ))}
+                        <option value="NEW" className="font-bold text-[#1A534B]">+ สร้างหมวดหมู่ใหม่...</option>
+                      </select>
+                    </div>
+                    {formData.categoryId === "NEW" && (
+                      <input type="text" required value={formData.newCategoryName} onChange={(e) => setFormData({...formData, newCategoryName: e.target.value})} placeholder="พิมพ์ชื่อหมวดหมู่ใหม่" className="w-full px-4 py-2 border border-dashed border-[#1A534B] rounded-lg focus:ring-1 focus:ring-[#1A534B] outline-none transition-all text-sm bg-[#1A534B]/5" />
+                    )}
+                  </div>
 
-              <div className="pt-4 flex space-x-3">
-                <button type="button" onClick={resetAndCloseModal} className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 font-bold rounded-lg hover:bg-gray-200 transition-colors">ยกเลิก</button>
-                <button type="submit" disabled={isSubmitting || isUploading} className={`flex-1 px-4 py-2 text-white font-bold rounded-lg transition-colors shadow-md ${(isSubmitting || isUploading) ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#1A534B] hover:bg-[#14423b]'}`}>
-                  {isSubmitting ? 'กำลังบันทึก...' : (editingId ? 'บันทึกการแก้ไข' : 'บันทึกข้อมูล')}
-                </button>
-              </div>
-            </form>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">หมายเหตุเพิ่มเติม</label>
+                    <textarea rows={2} value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1A534B] outline-none transition-all text-sm resize-none" placeholder="รายละเอียดอื่นๆ (ถ้ามี)"></textarea>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">หลักฐาน (บิล/สลิป)</label>
+                    {formData.receiptUrl ? (
+                      <div className="relative w-full h-32 rounded-lg border border-gray-200 overflow-hidden bg-gray-50 flex items-center justify-center group">
+                        <img src={formData.receiptUrl} alt="Receipt" className="max-w-full max-h-full object-contain" />
+                        <button 
+                          type="button" 
+                          onClick={() => setFormData({...formData, receiptUrl: ""})} 
+                          className="absolute top-2 right-2 p-1.5 bg-white text-red-500 rounded-full shadow-md hover:bg-red-50 transition-colors"
+                          title="ลบรูปนี้"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ) : (
+                      <label className={`flex items-center justify-center w-full h-24 px-4 transition bg-gray-50 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer hover:border-[#1A534B] hover:bg-gray-100 ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                        <div className="flex flex-col items-center space-y-2">
+                          {isUploading ? (
+                            <Loader2 className="text-[#1A534B] animate-spin" size={24} />
+                          ) : (
+                            <Upload className="text-gray-400" size={20} />
+                          )}
+                          <span className="text-xs text-gray-500 font-medium text-center">
+                            {isUploading ? 'กำลังอัปโหลด...' : 'คลิกเพื่ออัปโหลดรูปภาพ (ไม่เกิน 10MB)'}
+                          </span>
+                        </div>
+                        <input type="file" accept="image/*" className="hidden" onChange={handleFileUpload} disabled={isUploading} />
+                      </label>
+                    )}
+                  </div>
+                </div>
+
+                <div className="pt-4 flex space-x-3 pb-2">
+                  <button type="button" onClick={resetAndCloseModal} className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 font-bold rounded-lg hover:bg-gray-200 transition-colors">ยกเลิก</button>
+                  <button type="submit" disabled={isSubmitting || isUploading} className={`flex-1 px-4 py-2.5 text-white font-bold rounded-lg transition-colors shadow-md ${(isSubmitting || isUploading) ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#1A534B] hover:bg-[#14423b]'}`}>
+                    {isSubmitting ? 'กำลังบันทึก...' : (editingId ? 'บันทึกการแก้ไข' : 'บันทึกข้อมูล')}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}
 
-      {/* 🌟 ปรับส่วน Header ให้มี Dropdown ปี และ เดือน อยู่คู่กัน */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 space-y-4 md:space-y-0">
+      {/* 🌟 Header Section */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 sm:mb-8 gap-4 w-full">
         <div>
-          <div className="flex items-center">
-            <h1 className="text-2xl font-bold text-gray-800">จัดการรายการบัญชี (รายเดือน)</h1>
+          <div className="flex items-center flex-wrap">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-800">จัดการรายการบัญชี (รายเดือน)</h1>
             <InfoTooltip text="ยอดรวมคิดจากรอบบิลวันที่ 27 ของเดือนก่อนหน้า ถึงวันที่ 26 ของเดือนที่เลือก" />
           </div>
-          <p className="text-sm text-gray-500 mt-1">รายละเอียดรายรับ-รายจ่ายของหมู่บ้าน</p>
+          <p className="text-xs sm:text-sm text-gray-500 mt-1">รายละเอียดรายรับ-รายจ่ายของหมู่บ้าน</p>
         </div>
         
-        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-          {/* 🌟 Dropdown เลือกปี */}
+        <div className="flex flex-col sm:flex-row flex-wrap items-center gap-2 sm:gap-3 w-full md:w-auto">
+          {/* Dropdown เลือกปี */}
           <select 
             value={selectedYear} 
             onChange={(e) => setSelectedYear(Number(e.target.value))} 
-            className="bg-white border border-gray-200 text-gray-700 text-sm rounded-lg focus:ring-[#1A534B] outline-none block p-2.5 font-bold shadow-sm cursor-pointer"
+            className="w-full sm:w-auto flex-1 bg-white border border-gray-200 text-gray-700 text-sm rounded-lg focus:ring-[#1A534B] outline-none p-2.5 font-bold shadow-sm cursor-pointer"
           >
             {yearOptions.map(year => (
               <option key={year} value={year}>ปี พ.ศ. {year + 543}</option>
             ))}
           </select>
 
-          {/* 🌟 Dropdown เลือกเดือน */}
+          {/* Dropdown เลือกเดือน */}
           <select 
             value={selectedMonth} 
             onChange={(e) => setSelectedMonth(Number(e.target.value))} 
-            className="bg-white border border-gray-200 text-gray-700 text-sm rounded-lg focus:ring-[#1A534B] outline-none block p-2.5 font-bold shadow-sm cursor-pointer"
+            className="w-full sm:w-auto flex-1 bg-white border border-gray-200 text-gray-700 text-sm rounded-lg focus:ring-[#1A534B] outline-none p-2.5 font-bold shadow-sm cursor-pointer"
           >
             {[...Array(12)].map((_, i) => (
               <option key={i+1} value={i+1}>รอบบิล {fullThaiMonths[i+1]}</option>
             ))}
           </select>
 
-          <button onClick={() => setIsModalOpen(true)} className="bg-[#1A534B] hover:bg-[#14423b] text-white font-bold py-2.5 px-5 rounded-lg flex items-center space-x-2 shadow-md transition-colors whitespace-nowrap">
-            <Plus size={18} />
+          <button onClick={() => setIsModalOpen(true)} className="w-full sm:w-auto justify-center bg-[#1A534B] hover:bg-[#14423b] text-white font-bold py-2.5 px-5 rounded-lg flex items-center space-x-2 shadow-md transition-colors whitespace-nowrap">
+            <Plus size={18} className="shrink-0" />
             <span>เพิ่มรายการ</span>
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-gray-500 text-sm font-bold flex items-center">รายรับรวม <InfoTooltip text="รวมรายรับทั้งหมด (ค่าส่วนกลาง + รายรับอื่นๆ)" /></h3>
-            <div className="p-2 bg-emerald-50 rounded-lg"><TrendingUp className="text-emerald-500" size={20} /></div>
+      {/* 🌟 Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+        <div className="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-3 sm:mb-4">
+            <h3 className="text-gray-500 text-xs sm:text-sm font-bold flex items-center">รายรับรวม <InfoTooltip text="รวมรายรับทั้งหมด (ค่าส่วนกลาง + รายรับอื่นๆ)" /></h3>
+            <div className="p-2 bg-emerald-50 rounded-lg"><TrendingUp className="text-emerald-500" size={18} /></div>
           </div>
-          <p className="text-3xl font-extrabold text-gray-800">{summary.totalIncome.toLocaleString()} <span className="text-sm text-gray-500 font-normal">บาท</span></p>
+          <p className="text-2xl sm:text-3xl font-extrabold text-gray-800 truncate">{summary.totalIncome.toLocaleString()} <span className="text-xs sm:text-sm text-gray-500 font-normal">บาท</span></p>
         </div>
         
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-gray-500 text-sm font-bold flex items-center">รายจ่ายรวม</h3>
-            <div className="p-2 bg-red-50 rounded-lg"><TrendingDown className="text-red-500" size={20} /></div>
+        <div className="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-3 sm:mb-4">
+            <h3 className="text-gray-500 text-xs sm:text-sm font-bold flex items-center">รายจ่ายรวม</h3>
+            <div className="p-2 bg-red-50 rounded-lg"><TrendingDown className="text-red-500" size={18} /></div>
           </div>
-          <p className="text-3xl font-extrabold text-gray-800">{summary.totalExpense.toLocaleString()} <span className="text-sm text-gray-500 font-normal">บาท</span></p>
+          <p className="text-2xl sm:text-3xl font-extrabold text-gray-800 truncate">{summary.totalExpense.toLocaleString()} <span className="text-xs sm:text-sm text-gray-500 font-normal">บาท</span></p>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-gray-500 text-sm font-bold flex items-center">คงเหลือสุทธิ</h3>
-            <div className="p-2 bg-[#1A534B]/10 rounded-lg"><Wallet className="text-[#1A534B]" size={20} /></div>
+        <div className="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-gray-100 sm:col-span-2 md:col-span-1">
+          <div className="flex items-center justify-between mb-3 sm:mb-4">
+            <h3 className="text-gray-500 text-xs sm:text-sm font-bold flex items-center">คงเหลือสุทธิ</h3>
+            <div className="p-2 bg-[#1A534B]/10 rounded-lg"><Wallet className="text-[#1A534B]" size={18} /></div>
           </div>
-          <p className={`text-3xl font-extrabold ${summary.remaining >= 0 ? 'text-[#1A534B]' : 'text-red-500'}`}>
-            {summary.remaining.toLocaleString()} <span className="text-sm text-gray-500 font-normal">บาท</span>
+          <p className={`text-2xl sm:text-3xl font-extrabold truncate ${summary.remaining >= 0 ? 'text-[#1A534B]' : 'text-red-500'}`}>
+            {summary.remaining.toLocaleString()} <span className="text-xs sm:text-sm text-gray-500 font-normal">บาท</span>
           </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <h3 className="font-bold text-gray-800 mb-6 flex items-center">สถิติรายรับ - รายจ่าย รายปี <InfoTooltip text={`ข้อมูลสรุปรวมตั้งแต่ ม.ค. - ธ.ค. ปี พ.ศ. ${selectedYear + 543}`} /></h3>
-          <div className="h-64">
+      {/* 🌟 Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
+        <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <h3 className="font-bold text-gray-800 mb-4 sm:mb-6 flex items-center text-sm sm:text-base">สถิติรายรับ - รายจ่าย รายปี <InfoTooltip text={`ข้อมูลสรุปรวมตั้งแต่ ม.ค. - ธ.ค. ปี พ.ศ. ${selectedYear + 543}`} /></h3>
+          <div className="h-56 sm:h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={yearlyChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <BarChart data={yearlyChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#6B7280', fontSize: 12, fontWeight: 'bold' }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6B7280', fontSize: 12, fontWeight: 'bold' }} tickFormatter={(val) => val >= 1000 ? `${val/1000}k` : val} width={40} />
-                <RechartsTooltip cursor={{fill: '#F3F4F6'}} formatter={(value: any) => [`${Number(value || 0).toLocaleString()} บาท`]} />
-                <Legend verticalAlign="top" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', fontWeight: 'bold' }} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#6B7280', fontSize: 10, fontWeight: 'bold' }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6B7280', fontSize: 10, fontWeight: 'bold' }} tickFormatter={(val) => val >= 1000 ? `${val/1000}k` : val} width={40} />
+                <RechartsTooltip cursor={{fill: '#F3F4F6'}} formatter={(value: any) => [`${Number(value || 0).toLocaleString()} บาท`]} wrapperStyle={{ fontSize: '12px' }} />
+                <Legend verticalAlign="top" height={36} iconType="circle" wrapperStyle={{ fontSize: '11px', fontWeight: 'bold' }} />
                 <Bar dataKey="รายรับ" fill="#10B981" radius={[4, 4, 0, 0]} maxBarSize={30} />
                 <Bar dataKey="รายจ่าย" fill="#EF4444" radius={[4, 4, 0, 0]} maxBarSize={30} />
               </BarChart>
@@ -627,13 +634,13 @@ export default function FinancialDashboard() {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <h3 className="font-bold text-gray-800 mb-2 flex items-center">สัดส่วนรายจ่ายรอบบิลปัจจุบัน <InfoTooltip text={`วิเคราะห์รายจ่ายแยกตามหมวดหมู่ ของรอบบิล ${fullThaiMonths[selectedMonth]} ${selectedYear + 543}`} /></h3>
-          <div className="flex items-center justify-center h-64 relative">
+        <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <h3 className="font-bold text-gray-800 mb-2 flex items-center text-sm sm:text-base">สัดส่วนรายจ่ายรอบบิลปัจจุบัน <InfoTooltip text={`วิเคราะห์รายจ่ายแยกตามหมวดหมู่ ของรอบบิล ${fullThaiMonths[selectedMonth]} ${selectedYear + 543}`} /></h3>
+          <div className="flex items-center justify-center h-56 sm:h-64 relative w-full">
             {pieData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={pieData} innerRadius={60} outerRadius={80} paddingAngle={2} dataKey="value">
+                  <Pie data={pieData} innerRadius="50%" outerRadius="80%" paddingAngle={2} dataKey="value">
                     {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                   </Pie>
                   <RechartsTooltip 
@@ -641,22 +648,24 @@ export default function FinancialDashboard() {
                       const percent = ((Number(value) / totalExpenseForPie) * 100).toFixed(1);
                       return [`${Number(value || 0).toLocaleString()} บาท (${percent}%)`, 'ยอดเงิน'];
                     }} 
+                    wrapperStyle={{ fontSize: '12px' }}
                   />
-                  <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', fontWeight: 'bold' }} />
+                  <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '11px', fontWeight: 'bold' }} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <p className="text-gray-400 font-bold">ไม่มีข้อมูลรายจ่ายในรอบบิลนี้</p>
+              <p className="text-gray-400 font-bold text-sm">ไม่มีข้อมูลรายจ่ายในรอบบิลนี้</p>
             )}
           </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
-        <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-gray-50/50 space-y-3 sm:space-y-0">
-          <h3 className="font-bold text-gray-800 flex items-center">รายการบัญชีรอบบิลนี้ <InfoTooltip text="กดที่หัวตารางเพื่อจัดเรียงลำดับข้อมูล" /></h3>
+      {/* 🌟 Table Section */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col w-full">
+        <div className="p-4 sm:p-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-gray-50/50 gap-3">
+          <h3 className="font-bold text-gray-800 flex items-center text-sm sm:text-base">รายการบัญชีรอบบิลนี้ <InfoTooltip text="กดที่หัวตารางเพื่อจัดเรียงลำดับข้อมูล" /></h3>
           
-          <div className="flex items-center space-x-3 text-sm">
+          <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm w-full sm:w-auto">
             <span className="text-gray-500 font-medium">แสดง:</span>
             <select 
               value={rowsPerPage} 
@@ -668,60 +677,60 @@ export default function FinancialDashboard() {
               <option value={50}>50 รายการ</option>
               <option value={100}>100 รายการ</option>
             </select>
-            <span className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full font-bold">รวม {summary.totalTransactions} รายการ</span>
+            <span className="text-gray-500 bg-gray-100 px-3 py-1 rounded-full font-bold whitespace-nowrap">รวม {summary.totalTransactions} รายการ</span>
           </div>
         </div>
         
-        <div className="overflow-x-auto custom-scrollbar flex-1">
-          <table className="w-full text-sm text-left relative">
+        <div className="overflow-x-auto custom-scrollbar flex-1 w-full">
+          <table className="w-full text-sm text-left relative min-w-[800px]">
             <thead className="bg-gray-50 text-gray-500 sticky top-0 z-10 shadow-sm">
               <tr>
-                <th className="px-6 py-4 font-bold cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap" onClick={() => requestSort('date')}>
+                <th className="px-4 sm:px-6 py-4 font-bold cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap" onClick={() => requestSort('date')}>
                   <div className="flex items-center space-x-1"><span>วันที่</span><ArrowUpDown size={14} className={sortConfig?.key === 'date' ? 'text-[#1A534B]' : ''} /></div>
                 </th>
-                <th className="px-6 py-4 font-bold cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap" onClick={() => requestSort('title')}>
+                <th className="px-4 sm:px-6 py-4 font-bold cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap" onClick={() => requestSort('title')}>
                   <div className="flex items-center space-x-1"><span>รายการ</span><ArrowUpDown size={14} className={sortConfig?.key === 'title' ? 'text-[#1A534B]' : ''} /></div>
                 </th>
-                <th className="px-6 py-4 font-bold cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap" onClick={() => requestSort('category')}>
+                <th className="px-4 sm:px-6 py-4 font-bold cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap" onClick={() => requestSort('category')}>
                   <div className="flex items-center space-x-1"><span>หมวดหมู่</span><ArrowUpDown size={14} className={sortConfig?.key === 'category' ? 'text-[#1A534B]' : ''} /></div>
                 </th>
-                <th className="px-6 py-4 font-bold cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap text-center" onClick={() => requestSort('type')}>
+                <th className="px-4 sm:px-6 py-4 font-bold cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap text-center" onClick={() => requestSort('type')}>
                   <div className="flex items-center justify-center space-x-1"><span>ประเภท</span><ArrowUpDown size={14} className={sortConfig?.key === 'type' ? 'text-[#1A534B]' : ''} /></div>
                 </th>
-                <th className="px-6 py-4 font-bold cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap text-right" onClick={() => requestSort('amount')}>
+                <th className="px-4 sm:px-6 py-4 font-bold cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap text-right" onClick={() => requestSort('amount')}>
                   <div className="flex items-center justify-end space-x-1"><span>จำนวนเงิน</span><ArrowUpDown size={14} className={sortConfig?.key === 'amount' ? 'text-[#1A534B]' : ''} /></div>
                 </th>
-                <th className="px-6 py-4 font-bold text-center whitespace-nowrap">จัดการ</th>
+                <th className="px-4 sm:px-6 py-4 font-bold text-center whitespace-nowrap">จัดการ</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {paginatedData.length > 0 ? (
                 paginatedData.map((tx, idx) => (
                   <tr key={idx} className="hover:bg-gray-50 transition-colors group">
-                    <td className="px-6 py-4 text-gray-600 font-medium">{new Date(tx.date).toLocaleDateString('th-TH')}</td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 sm:px-6 py-4 text-gray-600 font-medium whitespace-nowrap">{new Date(tx.date).toLocaleDateString('th-TH')}</td>
+                    <td className="px-4 sm:px-6 py-4">
                       <div className="flex items-center space-x-2">
-                        <p className="font-bold text-gray-800">{tx.title}</p>
+                        <p className="font-bold text-gray-800 whitespace-nowrap">{tx.title}</p>
                         {tx.receiptUrl && (
-                          <a href={tx.receiptUrl} target="_blank" rel="noreferrer" title="ดูหลักฐานบิล/สลิป" className="text-blue-500 hover:text-blue-700 bg-blue-50 p-1 rounded transition-colors">
+                          <a href={tx.receiptUrl} target="_blank" rel="noreferrer" title="ดูหลักฐานบิล/สลิป" className="text-blue-500 hover:text-blue-700 bg-blue-50 p-1 rounded transition-colors shrink-0">
                             <FileText size={14} />
                           </a>
                         )}
                       </div>
-                      {tx.isAuto && <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded text-[10px] font-bold bg-[#1A534B]/10 text-[#1A534B]">ดึงอัตโนมัติจากบิลค่าส่วนกลาง</span>}
+                      {tx.isAuto && <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded text-[10px] font-bold bg-[#1A534B]/10 text-[#1A534B] whitespace-nowrap">ดึงอัตโนมัติจากบิลค่าส่วนกลาง</span>}
                     </td>
-                    <td className="px-6 py-4 text-gray-600 font-medium">{tx.category?.name}</td>
-                    <td className="px-6 py-4 text-center">
+                    <td className="px-4 sm:px-6 py-4 text-gray-600 font-medium whitespace-nowrap">{tx.category?.name}</td>
+                    <td className="px-4 sm:px-6 py-4 text-center whitespace-nowrap">
                       <span className={`px-2.5 py-1 rounded-md text-[11px] font-bold ${tx.type === 'INCOME' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
                         {tx.type === 'INCOME' ? 'รายรับ' : 'รายจ่าย'}
                       </span>
                     </td>
-                    <td className={`px-6 py-4 text-right font-bold ${tx.type === 'INCOME' ? 'text-emerald-500' : 'text-red-500'}`}>
+                    <td className={`px-4 sm:px-6 py-4 text-right font-bold whitespace-nowrap ${tx.type === 'INCOME' ? 'text-emerald-500' : 'text-red-500'}`}>
                       {tx.type === 'INCOME' ? '+' : '-'}{tx.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </td>
-                    <td className="px-6 py-4 text-center">
+                    <td className="px-4 sm:px-6 py-4 text-center whitespace-nowrap">
                       {!tx.isAuto ? (
-                        <div className="flex items-center justify-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center justify-center space-x-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
                           <button onClick={() => handleEditClick(tx)} className="p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-md transition-colors" title="แก้ไขรายการ">
                             <Edit size={16} />
                           </button>
@@ -743,7 +752,7 @@ export default function FinancialDashboard() {
         </div>
 
         {totalPages > 1 && (
-          <div className="p-4 border-t border-gray-100 flex items-center justify-between bg-white">
+          <div className="p-4 border-t border-gray-100 flex items-center justify-between bg-white gap-3 flex-wrap">
             <span className="text-sm text-gray-500 font-medium">
               หน้า <span className="font-bold text-gray-800">{currentPage}</span> จาก <span className="font-bold text-gray-800">{totalPages}</span>
             </span>

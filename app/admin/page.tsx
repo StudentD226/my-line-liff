@@ -18,15 +18,12 @@ export default function AdminDashboardHome() {
   const [categories, setCategories] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 🌟 State สำหรับ Dropdown เลือกปี
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
-  // State สำหรับระบบ Table (Sorter & Pagination)
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' }>({ key: 'date', direction: 'desc' });
   const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(10); // จำนวนรายการต่อหน้า
+  const [rowsPerPage, setRowsPerPage] = useState(10); 
 
-  // 🌟 สร้างรายการตัวเลือกปี (ย้อนหลัง 5 ปี)
   const yearOptions = useMemo(() => {
     const current = new Date().getFullYear();
     return Array.from({ length: 5 }, (_, i) => current - i);
@@ -39,7 +36,6 @@ export default function AdminDashboardHome() {
       const resultCat = await resCat.json();
       if (resultCat.success) setCategories(resultCat.data || []);
 
-      // 🌟 ดึงข้อมูลตามปีที่เลือกใน Dropdown
       const resTx = await fetch(`/api/financial/transactions?year=${selectedYear}`, { cache: 'no-store' });
       const resultTx = await resTx.json();
       if (resultTx.success) {
@@ -54,7 +50,7 @@ export default function AdminDashboardHome() {
 
   useEffect(() => {
     fetchData();
-    setCurrentPage(1); // กลับไปหน้า 1 เสมอเวลาเปลี่ยนปี
+    setCurrentPage(1); 
   }, [selectedYear]);
 
   const summary = useMemo(() => {
@@ -112,7 +108,6 @@ export default function AdminDashboardHome() {
     setCurrentPage(1);
   };
 
-  // 🌟 บังคับให้จำนวนหน้าขั้นต่ำคือ 1 (กันบั๊กหน้า 1 จาก 0)
   const totalPages = Math.max(1, Math.ceil(sortedTransactions.length / rowsPerPage));
   const paginatedTransactions = sortedTransactions.slice(
     (currentPage - 1) * rowsPerPage, 
@@ -121,7 +116,7 @@ export default function AdminDashboardHome() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#F8FAFC]">
+      <div className="min-h-[80vh] flex flex-col items-center justify-center bg-[#F8FAFC]">
         <Loader2 className="text-[#1A534B] animate-spin mb-4" size={40} />
         <div className="text-[#1A534B] font-bold text-lg">กำลังโหลดข้อมูลภาพรวม...</div>
       </div>
@@ -129,22 +124,24 @@ export default function AdminDashboardHome() {
   }
 
   return (
-    <div className="p-6 lg:p-10 max-w-7xl mx-auto bg-[#F8FAFC] min-h-screen font-sans">
+    /* 🌟 ปรับ p-4 สำหรับจอเล็กสุด และ sm:p-6 */
+    <div className="p-4 sm:p-6 lg:p-10 max-w-7xl mx-auto bg-[#F8FAFC] min-h-screen font-sans w-full overflow-x-hidden">
       
-      {/* 🌟 ปรับ Header เพิ่ม Dropdown เลือกปี */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 space-y-4 sm:space-y-0">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">ภาพรวมระบบ (Dashboard)</h1>
+      {/* 🌟 Header Section: ใช้ flex-wrap และ gap เพื่อให้ไม่ล้นจอ */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-8 gap-4 sm:gap-0 w-full">
+        <div className="w-full sm:w-auto">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-800">ภาพรวมระบบ (Dashboard)</h1>
           <p className="text-sm text-gray-500 mt-1">สรุปข้อมูลการเงินทั้งหมดประจำปี พ.ศ. {selectedYear + 543}</p>
         </div>
         
-        <div className="flex items-center space-x-3 bg-white p-2.5 rounded-xl shadow-sm border border-gray-100">
-          <Calendar className="text-[#1A534B]" size={20} />
-          <span className="text-sm font-bold text-gray-600">เลือกปีงบประมาณ:</span>
+        {/* 🌟 Dropdown: บนมือถือให้กางเต็ม w-full */}
+        <div className="flex items-center gap-2 sm:gap-3 bg-white p-2.5 rounded-xl shadow-sm border border-gray-100 w-full sm:w-auto overflow-hidden">
+          <Calendar className="text-[#1A534B] shrink-0" size={20} />
+          <span className="text-sm font-bold text-gray-600 shrink-0">เลือกปีงบประมาณ:</span>
           <select 
             value={selectedYear} 
             onChange={(e) => setSelectedYear(Number(e.target.value))}
-            className="bg-gray-50 border border-gray-200 text-[#1A534B] text-sm rounded-lg focus:ring-2 focus:ring-[#1A534B] outline-none block p-2 font-bold cursor-pointer"
+            className="bg-gray-50 border border-gray-200 text-[#1A534B] text-sm rounded-lg focus:ring-2 focus:ring-[#1A534B] outline-none block p-2 font-bold cursor-pointer w-full sm:w-auto"
           >
             {yearOptions.map(year => (
               <option key={year} value={year}>พ.ศ. {year + 543}</option>
@@ -153,45 +150,45 @@ export default function AdminDashboardHome() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
         
         {/* ฝั่งซ้าย: สรุปตัวเลข */}
-        <div className="lg:col-span-1 flex flex-col space-y-6">
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex-1 flex flex-col justify-center">
+        <div className="lg:col-span-1 flex flex-col gap-4 sm:gap-6">
+          <div className="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-gray-100 flex-1 flex flex-col justify-center">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-gray-500 text-sm font-bold flex items-center">รายรับรวมทั้งหมด</h3>
               <div className="p-2 bg-emerald-50 rounded-lg"><TrendingUp className="text-emerald-500" size={20} /></div>
             </div>
-            <p className="text-3xl font-extrabold text-gray-800">{summary.totalIncome.toLocaleString()} <span className="text-sm text-gray-500 font-normal">บาท</span></p>
+            <p className="text-2xl sm:text-3xl font-extrabold text-gray-800 truncate">{summary.totalIncome.toLocaleString()} <span className="text-xs sm:text-sm text-gray-500 font-normal">บาท</span></p>
           </div>
           
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex-1 flex flex-col justify-center">
+          <div className="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-gray-100 flex-1 flex flex-col justify-center">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-gray-500 text-sm font-bold flex items-center">รายจ่ายรวมทั้งหมด</h3>
               <div className="p-2 bg-red-50 rounded-lg"><TrendingDown className="text-red-500" size={20} /></div>
             </div>
-            <p className="text-3xl font-extrabold text-gray-800">{summary.totalExpense.toLocaleString()} <span className="text-sm text-gray-500 font-normal">บาท</span></p>
+            <p className="text-2xl sm:text-3xl font-extrabold text-gray-800 truncate">{summary.totalExpense.toLocaleString()} <span className="text-xs sm:text-sm text-gray-500 font-normal">บาท</span></p>
           </div>
 
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex-1 flex flex-col justify-center">
+          <div className="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-gray-100 flex-1 flex flex-col justify-center">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-gray-500 text-sm font-bold flex items-center">ยอดคงเหลือสุทธิ</h3>
               <div className="p-2 bg-[#1A534B]/10 rounded-lg"><Wallet className="text-[#1A534B]" size={20} /></div>
             </div>
-            <p className={`text-4xl font-extrabold ${summary.remaining >= 0 ? 'text-[#1A534B]' : 'text-red-500'}`}>
-              {summary.remaining.toLocaleString()} <span className="text-base text-gray-500 font-normal">บาท</span>
+            <p className={`text-3xl sm:text-4xl font-extrabold truncate ${summary.remaining >= 0 ? 'text-[#1A534B]' : 'text-red-500'}`}>
+              {summary.remaining.toLocaleString()} <span className="text-sm sm:text-base text-gray-500 font-normal">บาท</span>
             </p>
           </div>
         </div>
 
         {/* ฝั่งขวา: กราฟวงกลม */}
-        <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
-          <h3 className="font-bold text-gray-800 mb-2 flex items-center">สัดส่วนรายจ่ายตามหมวดหมู่ (ปี พ.ศ. {selectedYear + 543})</h3>
-          <div className="flex-1 min-h-[300px] flex items-center justify-center relative w-full">
+        <div className="lg:col-span-2 bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
+          <h3 className="font-bold text-gray-800 mb-2 flex items-center text-sm sm:text-base">สัดส่วนรายจ่ายตามหมวดหมู่ (ปี พ.ศ. {selectedYear + 543})</h3>
+          <div className="flex-1 min-h-[250px] sm:min-h-[300px] flex items-center justify-center relative w-full">
             {pieData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={pieData} innerRadius={80} outerRadius={120} paddingAngle={2} dataKey="value">
+                  <Pie data={pieData} innerRadius="50%" outerRadius="80%" paddingAngle={2} dataKey="value">
                     {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                   </Pie>
                   <RechartsTooltip 
@@ -200,21 +197,22 @@ export default function AdminDashboardHome() {
                       return [`${Number(value || 0).toLocaleString()} บาท (${percent}%)`, 'ยอดเงิน'];
                     }} 
                   />
-                  <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '13px', fontWeight: 'bold' }} />
+                  <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', fontWeight: 'bold' }} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <p className="text-gray-400 font-bold">ยังไม่มีข้อมูลรายจ่ายในปีนี้</p>
+              <p className="text-gray-400 font-bold text-sm text-center">ยังไม่มีข้อมูลรายจ่ายในปีนี้</p>
             )}
           </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
-        <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-gray-50/50 space-y-3 sm:space-y-0">
-          <h3 className="font-bold text-gray-800 flex items-center"><FileText className="mr-2 text-[#1A534B]" size={20}/> ประวัติรายการบัญชีทั้งหมดของปีนี้</h3>
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col w-full">
+        {/* 🌟 ปรับให้ Dropdown จำนวนแถวตัดขึ้นบรรทัดใหม่ได้ถ้าหน้าจอแคบ */}
+        <div className="p-4 sm:p-6 border-b border-gray-100 flex flex-col lg:flex-row justify-between items-start lg:items-center bg-gray-50/50 gap-3">
+          <h3 className="font-bold text-gray-800 flex items-center text-sm sm:text-base"><FileText className="mr-2 text-[#1A534B] shrink-0" size={20}/> ประวัติรายการบัญชีทั้งหมดของปีนี้</h3>
           
-          <div className="flex items-center space-x-3 text-sm">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs sm:text-sm w-full lg:w-auto">
             <span className="text-gray-500 font-medium">แสดง:</span>
             <select 
               value={rowsPerPage} 
@@ -226,27 +224,28 @@ export default function AdminDashboardHome() {
               <option value={50}>50 รายการ</option>
               <option value={100}>100 รายการ</option>
             </select>
-            <span className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full font-bold">รวม {transactions.length} รายการ</span>
+            <span className="text-gray-500 bg-gray-100 px-2 sm:px-3 py-1 rounded-full font-bold whitespace-nowrap">รวม {transactions.length} รายการ</span>
           </div>
         </div>
         
-        <div className="overflow-x-auto custom-scrollbar flex-1">
-          <table className="w-full text-sm text-left relative">
+        {/* 🌟 ตารางรองรับการเลื่อนซ้ายขวาบนมือถือ */}
+        <div className="overflow-x-auto custom-scrollbar flex-1 w-full">
+          <table className="w-full text-sm text-left relative min-w-[700px]">
             <thead className="bg-white text-gray-500 sticky top-0 z-10 border-b border-gray-100">
               <tr>
-                <th className="px-6 py-4 font-bold whitespace-nowrap cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => requestSort('date')}>
+                <th className="px-4 sm:px-6 py-4 font-bold whitespace-nowrap cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => requestSort('date')}>
                   <div className="flex items-center space-x-1"><span>วันที่</span><ArrowUpDown size={14} className={sortConfig?.key === 'date' ? 'text-[#1A534B]' : ''} /></div>
                 </th>
-                <th className="px-6 py-4 font-bold whitespace-nowrap cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => requestSort('title')}>
+                <th className="px-4 sm:px-6 py-4 font-bold whitespace-nowrap cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => requestSort('title')}>
                   <div className="flex items-center space-x-1"><span>รายการ</span><ArrowUpDown size={14} className={sortConfig?.key === 'title' ? 'text-[#1A534B]' : ''} /></div>
                 </th>
-                <th className="px-6 py-4 font-bold whitespace-nowrap cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => requestSort('category')}>
+                <th className="px-4 sm:px-6 py-4 font-bold whitespace-nowrap cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => requestSort('category')}>
                   <div className="flex items-center space-x-1"><span>หมวดหมู่</span><ArrowUpDown size={14} className={sortConfig?.key === 'category' ? 'text-[#1A534B]' : ''} /></div>
                 </th>
-                <th className="px-6 py-4 font-bold whitespace-nowrap text-center cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => requestSort('type')}>
+                <th className="px-4 sm:px-6 py-4 font-bold whitespace-nowrap text-center cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => requestSort('type')}>
                   <div className="flex items-center justify-center space-x-1"><span>ประเภท</span><ArrowUpDown size={14} className={sortConfig?.key === 'type' ? 'text-[#1A534B]' : ''} /></div>
                 </th>
-                <th className="px-6 py-4 font-bold whitespace-nowrap text-right cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => requestSort('amount')}>
+                <th className="px-4 sm:px-6 py-4 font-bold whitespace-nowrap text-right cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => requestSort('amount')}>
                   <div className="flex items-center justify-end space-x-1"><span>จำนวนเงิน</span><ArrowUpDown size={14} className={sortConfig?.key === 'amount' ? 'text-[#1A534B]' : ''} /></div>
                 </th>
               </tr>
@@ -255,8 +254,8 @@ export default function AdminDashboardHome() {
               {paginatedTransactions.length > 0 ? (
                 paginatedTransactions.map((tx, idx) => (
                   <tr key={idx} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 text-gray-600 font-medium whitespace-nowrap">{new Date(tx.date).toLocaleDateString('th-TH')}</td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 sm:px-6 py-4 text-gray-600 font-medium whitespace-nowrap">{new Date(tx.date).toLocaleDateString('th-TH')}</td>
+                    <td className="px-4 sm:px-6 py-4">
                       <div className="flex items-center space-x-2">
                         <p className="font-bold text-gray-800">{tx.title}</p>
                         {tx.receiptUrl && (
@@ -265,15 +264,15 @@ export default function AdminDashboardHome() {
                           </a>
                         )}
                       </div>
-                      {tx.isAuto && <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded text-[10px] font-bold bg-[#1A534B]/10 text-[#1A534B]">ดึงอัตโนมัติจากบิลค่าส่วนกลาง</span>}
+                      {tx.isAuto && <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded text-[10px] font-bold bg-[#1A534B]/10 text-[#1A534B] whitespace-nowrap">ดึงอัตโนมัติจากบิลค่าส่วนกลาง</span>}
                     </td>
-                    <td className="px-6 py-4 text-gray-600 font-medium whitespace-nowrap">{tx.category?.name}</td>
-                    <td className="px-6 py-4 text-center whitespace-nowrap">
+                    <td className="px-4 sm:px-6 py-4 text-gray-600 font-medium whitespace-nowrap">{tx.category?.name}</td>
+                    <td className="px-4 sm:px-6 py-4 text-center whitespace-nowrap">
                       <span className={`px-2.5 py-1 rounded-md text-[11px] font-bold ${tx.type === 'INCOME' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
                         {tx.type === 'INCOME' ? 'รายรับ' : 'รายจ่าย'}
                       </span>
                     </td>
-                    <td className={`px-6 py-4 text-right font-bold whitespace-nowrap ${tx.type === 'INCOME' ? 'text-emerald-500' : 'text-red-500'}`}>
+                    <td className={`px-4 sm:px-6 py-4 text-right font-bold whitespace-nowrap ${tx.type === 'INCOME' ? 'text-emerald-500' : 'text-red-500'}`}>
                       {tx.type === 'INCOME' ? '+' : '-'}{tx.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </td>
                   </tr>
@@ -285,8 +284,8 @@ export default function AdminDashboardHome() {
           </table>
         </div>
 
-        {/* 🌟 บังคับแสดง Pagination ให้เห็นชัดๆ ตลอดเวลา */}
-        <div className="p-4 border-t border-gray-100 flex items-center justify-between bg-white rounded-b-2xl">
+        {/* 🌟 Pagination */}
+        <div className="p-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between bg-white rounded-b-2xl gap-3 sm:gap-0">
           <span className="text-sm text-gray-500 font-medium">
             หน้า <span className="font-bold text-gray-800">{currentPage}</span> จาก <span className="font-bold text-gray-800">{totalPages}</span>
           </span>

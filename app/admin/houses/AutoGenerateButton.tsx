@@ -21,15 +21,15 @@ export default function AutoGenerateButton({ autoGenerateAction }: { autoGenerat
       html: `
         <div class="flex flex-col items-center mt-2 mb-4">
           <img src="https://img.icons8.com/fluency-systems-filled/48/f59e0b/magic-wand.png" style="width: 48px; height: 48px; margin-bottom: 12px;" />
-          <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight">รันข้อมูลอัตโนมัติ</h2>
+          <h2 class="text-xl sm:text-2xl font-extrabold text-slate-800 tracking-tight">รันข้อมูลอัตโนมัติ</h2>
         </div>
         
-        <div class="text-left text-sm text-slate-500 mb-6 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+        <div class="text-left text-xs sm:text-sm text-slate-500 mb-6 bg-slate-50 p-3 sm:p-4 rounded-2xl border border-slate-100">
           ระบบจะสร้างข้อมูลให้เรียงตามตัวเลขที่กำหนดให้อัตโนมัติ<br/>
-          <span class="text-xs text-amber-600 font-bold mt-1.5 inline-block">ตัวอย่าง: นำหน้า "99/" เริ่ม "1" ถึง "50" (จะได้ 99/1 ถึง 99/50)</span>
+          <span class="text-[11px] sm:text-xs text-amber-600 font-bold mt-1.5 inline-block">ตัวอย่าง: นำหน้า "99/" เริ่ม "1" ถึง "50" (จะได้ 99/1 ถึง 99/50)</span>
         </div>
         
-        <div class="grid grid-cols-3 gap-3 mb-5">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-5">
           <div class="col-span-1">
             <div class="text-left text-[11px] font-bold text-slate-700 mb-1 uppercase tracking-wide">คำนำหน้า (ถ้ามี)</div>
             <input id="auto-prefix" class="swal2-input !m-0 !w-full !rounded-xl !text-sm border-slate-200 focus:border-amber-500" placeholder="เช่น 99/">
@@ -45,10 +45,10 @@ export default function AutoGenerateButton({ autoGenerateAction }: { autoGenerat
         </div>
 
         <div class="text-left text-[11px] font-bold text-slate-700 mb-1 uppercase tracking-wide">ขนาดพื้นที่ *ใช้ค่าเดียวกันทุกหลัง</div>
-        <input id="auto-size" class="swal2-input !m-0 !w-full !rounded-xl !text-sm mb-5 border-slate-200 focus:border-amber-500" type="number" step="0.1" placeholder="เช่น 50">
+        <input id="auto-size" class="swal2-input !m-0 !w-full !rounded-xl !text-sm mb-4 sm:mb-5 border-slate-200 focus:border-amber-500" type="number" step="0.1" placeholder="เช่น 50">
 
         <div class="text-left text-[11px] font-bold text-slate-700 mb-1 uppercase tracking-wide">รูปแบบการคิดเงิน</div>
-        <select id="auto-fee-type" class="swal2-select !m-0 !w-full !rounded-xl !text-sm !bg-white mb-5 border-slate-200 focus:border-amber-500 text-slate-700">
+        <select id="auto-fee-type" class="swal2-select !m-0 !w-full !rounded-xl !text-sm !bg-white mb-4 sm:mb-5 border-slate-200 focus:border-amber-500 text-slate-700">
           <option value="CALCULATED">คำนวณตามพื้นที่</option>
           <option value="FIXED" selected>เหมาจ่ายเป็นรายเดือน</option>
         </select>
@@ -62,7 +62,11 @@ export default function AutoGenerateButton({ autoGenerateAction }: { autoGenerat
       cancelButtonText: 'ยกเลิก',
       confirmButtonColor: '#F59E0B', 
       cancelButtonColor: '#94a3b8',
-      customClass: { popup: 'rounded-[2rem]' },
+      customClass: { 
+        popup: 'rounded-[2rem]', 
+        confirmButton: 'rounded-xl font-bold px-6 py-2.5', 
+        cancelButton: 'rounded-xl font-bold px-6 py-2.5' 
+      },
       preConfirm: () => {
         const prefix = (document.getElementById('auto-prefix') as HTMLInputElement).value;
         const startNum = parseInt((document.getElementById('auto-start') as HTMLInputElement).value);
@@ -104,7 +108,7 @@ export default function AutoGenerateButton({ autoGenerateAction }: { autoGenerat
             title: 'เสร็จสิ้น!', 
             text: 'สร้างข้อมูลบ้านอัตโนมัติเรียบร้อยแล้ว',
             confirmButtonColor: '#3b82f6',
-            customClass: { popup: 'rounded-[2rem]' },
+            customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl font-bold px-6 py-2.5' },
             timer: 3000,
             timerProgressBar: true
           }).then(() => {
@@ -116,7 +120,7 @@ export default function AutoGenerateButton({ autoGenerateAction }: { autoGenerat
             title: 'เกิดข้อผิดพลาด',
             text: 'ไม่สามารถสร้างข้อมูลได้ โปรดลองอีกครั้ง',
             confirmButtonColor: '#ef4444',
-            customClass: { popup: 'rounded-[2rem]' }
+            customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl font-bold px-6 py-2.5' }
           });
         }
       }
@@ -127,10 +131,11 @@ export default function AutoGenerateButton({ autoGenerateAction }: { autoGenerat
     <button 
       type="button" 
       onClick={handleAutoGenerate}
-      // 🌟 ย่อขนาดปุ่มให้พอดีกับแถบด้านบน
-      className="flex items-center justify-center gap-2 px-5 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-600 font-bold rounded-xl transition-all border border-amber-200 shadow-sm text-sm active:scale-[0.98]">
-      <Wand2 size={18} strokeWidth={2.5} />
-      <span>รันเลขที่อัตโนมัติ</span>
+      // 🌟 เติม w-full sm:w-auto ให้ปุ่มกางเต็มจอบนมือถือ
+      className="flex items-center justify-center gap-2 px-5 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-600 font-bold rounded-xl transition-all border border-amber-200 shadow-sm text-sm active:scale-[0.98] w-full sm:w-auto"
+    >
+      <Wand2 size={18} strokeWidth={2.5} className="shrink-0" />
+      <span className="truncate">รันเลขที่อัตโนมัติ</span>
     </button>
   );
 }
