@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 
 const fullThaiMonths = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
 
-// 🌟 Helper ตัดทศนิยมทิ้ง
+// Helper ตัดทศนิยมทิ้ง
 const truncateDecimals = (val: number): number => Math.floor(Math.round(val * 10000) / 100) / 100;
 
 function createInvoiceFlexMessage(data: any) {
@@ -16,19 +16,20 @@ function createInvoiceFlexMessage(data: any) {
     tableContents.push({
       type: "box", layout: "horizontal", margin: "md",
       contents: [
-        { type: "text", text: data.currentInvoiceItem.label, size: "sm", color: "#059669" }, // เอาตัวหนาออก
-        { type: "text", text: `${data.currentInvoiceItem.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#059669", align: "end" } // เอาตัวหนาออก
+        { type: "text", text: data.currentInvoiceItem.label, size: "sm", color: "#059669" },
+        { type: "text", text: `${data.currentInvoiceItem.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#059669", align: "end" }
       ]
     });
   }
 
   if (data.pastMonthItems && data.pastMonthItems.length > 0) {
+    // เรียงจากเดือนเก่าที่สุดไปเดือนใหม่ล่าสุด
     [...data.pastMonthItems].reverse().forEach((item: any) => {
       tableContents.push({
         type: "box", layout: "horizontal", margin: "md",
         contents: [
-          { type: "text", text: item.label, size: "sm", color: "#EF4444" }, // เอาตัวหนาออก
-          { type: "text", text: `${item.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end" } // เอาตัวหนาออก
+          { type: "text", text: item.label, size: "sm", color: "#EF4444" },
+          { type: "text", text: `${item.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end" }
         ]
       });
     });
@@ -42,8 +43,8 @@ function createInvoiceFlexMessage(data: any) {
         tableContents.push({
           type: "box", layout: "horizontal", margin: "md",
           contents: [
-            { type: "text", text: `ยอดค้างชำระปี ${yearNum + 543}`, size: "sm", color: "#EF4444" }, // เอาตัวหนาออก
-            { type: "text", text: `${data.pastYearTotals[yearNum].toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end" } // เอาตัวหนาออก
+            { type: "text", text: `ยอดค้างชำระปี ${yearNum + 543}`, size: "sm", color: "#EF4444" },
+            { type: "text", text: `${data.pastYearTotals[yearNum].toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end" }
           ]
         });
       });
@@ -53,8 +54,8 @@ function createInvoiceFlexMessage(data: any) {
     tableContents.push({
       type: "box", layout: "horizontal", margin: "md",
       contents: [
-        { type: "text", text: `ค่าปรับ`, size: "sm", color: "#EA580C" }, // เอาตัวหนาออก
-        { type: "text", text: `${data.totalPenalty.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EA580C", align: "end" } // เอาตัวหนาออก
+        { type: "text", text: `ค่าปรับ`, size: "sm", color: "#EA580C" },
+        { type: "text", text: `${data.totalPenalty.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EA580C", align: "end" }
       ]
     });
   }
@@ -121,9 +122,7 @@ function createInvoiceFlexMessage(data: any) {
                 {
                   type: "box", layout: "vertical", margin: "md",
                   contents: [
-                    // 🌟 1. ปรับ "กรุณาชำระภายในวันที่" ให้ใหญ่ขึ้น (size: "sm")
                     { type: "text", text: "กรุณาชำระภายในวันที่", size: "sm", color: "#4B5563", weight: "bold" },
-                    // 🌟 2. ปรับวันที่ให้เล็กลง (size: "xs") และเอาตัวหนาออก (weight: "regular")
                     { type: "text", text: data.dueDateText, size: "xs", color: "#EF4444", weight: "regular", margin: "xs" }
                   ]
                 }
@@ -140,20 +139,13 @@ function createInvoiceFlexMessage(data: any) {
           type: "button", style: "primary", color: "#376B64", height: "sm",
           action: { type: "uri", label: "ดูประวัติและชำระเงิน", uri: `https://liff.line.me/${process.env.NEXT_PUBLIC_LIFF_ID}/invoices` }
         },
-        {
+        ...(data.invoiceNo ? [{
           type: "box", layout: "horizontal", margin: "md",
           contents: [
             { type: "text", text: "PAYMENT ID", size: "xxs", color: "#6B7280", flex: 0 },
-            {
-              type: "text",
-              text: data.invoiceNo || "N/A", 
-              size: "xxs",
-              color: "#6B7280", 
-              align: "end",
-              flex: 1
-            }
+            { type: "text", text: data.invoiceNo, size: "xxs", color: "#6B7280", align: "end", flex: 1 }
           ]
-        }
+        }] : [])
       ]
     }
   };
@@ -180,19 +172,37 @@ async function handleRemindCronJob(request: Request) {
     const config = await prisma.systemConfig.findFirst();
     if (!config) return NextResponse.json({ success: false, message: 'ไม่พบการตั้งค่าระบบ' });
 
-    const currentDay = new Date().getDate();
+    // 🌟 1. แปลงเวลาของเซิร์ฟเวอร์ (UTC) ให้เป็นเวลาไทย (Asia/Bangkok)
+    const now = new Date();
+    const bkkTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Bangkok" }));
+    
+    const currentDay = bkkTime.getDate();
+    const currentHour = String(bkkTime.getHours()).padStart(2, '0');
+    const currentMinute = String(bkkTime.getMinutes()).padStart(2, '0');
+    const currentTimeStr = `${currentHour}:${currentMinute}`;
+    
+    // ดึงเวลาเปิดระบบทวงจากหน้าบ้าน (ถ้าไม่เจอก็ใช้ค่าเริ่มต้น 08:00)
+    const targetTimeStr = config.invoiceGenerateTime || "08:00";
+
+    // 🌟 2. ล็อกเวลาไทยตรงเป๊ะนาทีเดียวจบ สกัดปัญหาสแปมส่งทุกนาทีตอน 7 โมงเช้า
+    if (currentTimeStr !== targetTimeStr) {
+      return NextResponse.json({ 
+        success: true, 
+        message: `ยังไม่ถึงเวลาทวงยอดที่กำหนดไว้ (${targetTimeStr} น.) เวลาไทยปัจจุบันคือ ${currentTimeStr} น.` 
+      });
+    }
+
     let reminderType: 'NONE' | 'REMINDER' | 'OVERDUE' = 'NONE';
     
-    // 🌟 หุ่นยนต์จะทำงานส่งบิลสีส้ม/แดง เฉพาะวันที่กำหนด
     if (currentDay === config.secondReminderDay) reminderType = 'REMINDER';
     else if (currentDay === config.penaltyStartDay || currentDay === 15) reminderType = 'OVERDUE';
 
     if (reminderType === 'NONE') return NextResponse.json({ success: true, message: 'วันนี้ไม่ใช่วันส่งทวงยอดค้างครับ' });
 
-    // ดึงบิลที่ค้างอยู่ทั้งหมด (เพิ่ม PARTIAL)
+    // ดึงบิลที่ค้างอยู่ทั้งหมดขยายครบทุกสถานะค้าง
     const pendingInvoices = await prisma.invoice.findMany({
       where: { 
-        status: { in: ['PENDING', 'PARTIAL'] as any },
+        status: { in: ['PENDING', 'PARTIAL', 'OVERDUE', 'REJECTED'] as any },
         billingYear: { not: 9999 } 
       },
       include: { house: { include: { residents: true } } }
@@ -202,10 +212,9 @@ async function handleRemindCronJob(request: Request) {
     const penaltyRatePerMonth = config?.penaltyRatePerDay ? Number(config.penaltyRatePerDay) : 100;
     let stats = { lineSent: 0, updatedInvoices: 0 };
 
-    for (const inv of pendingInvoices) {
-      let currentPenalty = truncateDecimals(Number(inv.penaltyAmount || 0));
-
-      if (reminderType === 'OVERDUE') {
+    // 🌟 3. รันอัปเดตค่าปรับลงระบบฐานข้อมูลรายบิลก่อน
+    if (reminderType === 'OVERDUE') {
+      for (const inv of pendingInvoices) {
         const dueDate = new Date(inv.dueDate); dueDate.setHours(0, 0, 0, 0);
         const todayNoTime = new Date(); todayNoTime.setHours(0, 0, 0, 0);
 
@@ -214,94 +223,106 @@ async function handleRemindCronJob(request: Request) {
           const overdueDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
           const overdueMonths = Math.ceil(overdueDays / 30);
 
-          currentPenalty = truncateDecimals(overdueMonths * penaltyRatePerMonth);
+          const currentPenalty = truncateDecimals(overdueMonths * penaltyRatePerMonth);
 
           await prisma.invoice.update({
             where: { id: inv.id },
             data: {
               penaltyAmount: currentPenalty,
               totalAmount: truncateDecimals(Number(inv.baseAmount) + currentPenalty),
-              status: inv.status === 'PARTIAL' ? 'PARTIAL' : 'OVERDUE' // รักษาสถานะ PARTIAL
+              status: inv.status === 'PARTIAL' ? 'PARTIAL' : 'OVERDUE'
             }
           });
         }
       }
+    }
+
+    // 🌟 4. รวบรวมและจัดกลุ่มหนี้ค้างตามรายบ้าน (Unique House Map) ป้องกันสแปมส่งเบิ้ลหลายใบ
+    const uniqueHouseMap = new Map<string, any[]>();
+    pendingInvoices.forEach(inv => {
+      const list = uniqueHouseMap.get(inv.residentHouseId) || [];
+      list.push(inv);
+      uniqueHouseMap.set(inv.residentHouseId, list);
+    });
+
+    // 🌟 5. เริ่มลูปสรุปยอดและจัดส่ง LINE หาแต่ละบ้าน บ้านละ 1 ข้อความเท่านั้น
+    for (const [houseId, invList] of uniqueHouseMap.entries()) {
+      const sampleInv = invList[0];
 
       const allUnpaidForThisHouse = await prisma.invoice.findMany({
         where: { 
-          residentHouseId: inv.residentHouseId, 
+          residentHouseId: houseId, 
           status: { in: ['PENDING', 'OVERDUE', 'REJECTED', 'PARTIAL'] as any },
           billingYear: { not: 9999 }
         },
-        orderBy: [{ billingYear: 'asc' }, { billingMonth: 'asc' }]
+        orderBy: [{ billingYear: 'desc' }, { billingMonth: 'desc' }] // เอาใบใหม่ล่าสุดขึ้นก่อน
       });
 
+      if (allUnpaidForThisHouse.length === 0) continue;
+
+      const latestInv = allUnpaidForThisHouse[0];
+      
       let currentInvoiceItem: any = null;
       let pastYearTotals: Record<number, number> = {};
       let pastMonthItems: { label: string, amount: number }[] = [];
       let totalPenalty = 0;
       let grandTotalBase = 0;
-      const targetYear = inv.billingYear;
-      const targetMonth = inv.billingMonth;
+      const targetYear = latestInv.billingYear;
+      const targetMonth = latestInv.billingMonth;
 
       allUnpaidForThisHouse.forEach(uInv => {
-        // 🌟 ดักหนี้อนาคต: ดึงเฉพาะบิลปัจจุบันและบิลที่เก่ากว่า
-        const isTargetInvoice = uInv.id === inv.id;
-        const isOlderInvoice = uInv.billingYear < targetYear || (uInv.billingYear === targetYear && uInv.billingMonth < targetMonth);
+        let paid = truncateDecimals(Number(uInv.paidAmount || 0));
+        let penalty = truncateDecimals(Number(uInv.penaltyAmount || 0));
+        let base = truncateDecimals(Number(uInv.baseAmount || 0));
 
-        if (isTargetInvoice || isOlderInvoice) {
-          let paid = truncateDecimals(Number(uInv.paidAmount || 0));
-          let penalty = isTargetInvoice ? currentPenalty : truncateDecimals(Number(uInv.penaltyAmount || 0));
-          let base = truncateDecimals(Number(uInv.baseAmount || 0));
-
-          // 🌟 Logic หักเงินจ่ายบางส่วน
-          if (paid > 0) {
-            if (paid >= penalty) {
-              base = truncateDecimals(base - (paid - penalty));
-              penalty = 0;
-            } else {
-              penalty = truncateDecimals(penalty - paid);
-            }
+        if (paid > 0) {
+          if (paid >= penalty) {
+            base = truncateDecimals(base - (paid - penalty));
+            penalty = 0;
+          } else {
+            penalty = truncateDecimals(penalty - paid);
           }
+        }
 
-          if (base > 0 || penalty > 0) {
-            grandTotalBase += base;
-            totalPenalty += penalty;
-            const label = `${fullThaiMonths[uInv.billingMonth]} ${uInv.billingYear + 543}`;
-            
-            if (isTargetInvoice) {
-              currentInvoiceItem = { label, amount: base };
+        if (base > 0 || penalty > 0) {
+          grandTotalBase += base;
+          totalPenalty += penalty;
+          const label = `${fullThaiMonths[uInv.billingMonth]} ${uInv.billingYear + 543}`;
+          
+          if (uInv.id === latestInv.id) {
+            currentInvoiceItem = { label, amount: base };
+          } else {
+            if (uInv.billingYear < targetYear) {
+              pastYearTotals[uInv.billingYear] = truncateDecimals((pastYearTotals[uInv.billingYear] || 0) + base);
             } else {
-              if (uInv.billingYear < targetYear) pastYearTotals[uInv.billingYear] = truncateDecimals((pastYearTotals[uInv.billingYear] || 0) + base);
-              else pastMonthItems.push({ label, amount: base });
+              pastMonthItems.push({ label, amount: base });
             }
           }
         }
       });
 
       const finalGrandTotal = truncateDecimals(grandTotalBase + totalPenalty);
-      const isOverdue = reminderType === 'OVERDUE' || currentPenalty > 0;
-      const due = new Date(inv.dueDate);
+      const isOverdue = reminderType === 'OVERDUE' || totalPenalty > 0;
+      const due = new Date(latestInv.dueDate);
       
-      // 🌟 นำเครื่องหมาย / ออก และใช้เว้นวรรคแทน
       const dueDateText = `${String(due.getDate()).padStart(2, '0')} ${fullThaiMonths[due.getMonth() + 1]} ${due.getFullYear() + 543}`;
-      
-      const headerBillingMonthText = `${fullThaiMonths[inv.billingMonth]} ${inv.billingYear + 543}`;
+      const headerBillingMonthText = `${fullThaiMonths[latestInv.billingMonth]} ${latestInv.billingYear + 543}`;
 
-      for (const resident of inv.house.residents) {
+      for (const resident of sampleInv.house.residents) {
         if (resident.lineId) {
           const flexMsg = createInvoiceFlexMessage({
-            type: reminderType, houseNo: inv.house.houseNo, headerBillingMonthText,
+            type: reminderType, houseNo: sampleInv.house.houseNo, headerBillingMonthText,
             currentInvoiceItem, pastYearTotals, pastMonthItems, totalPenalty,
             finalGrandTotal, isOverdue, dueDateText, 
-            invoiceNo: inv.invoiceNo || inv.id
+            invoiceNo: latestInv.invoiceNo || latestInv.id
           });
           await sendAutoLineMessage(resident.lineId, flexMsg);
           stats.lineSent++;
         }
       }
-      stats.updatedInvoices++;
+      stats.updatedInvoices += invList.length;
     }
+
     return NextResponse.json({ success: true, message: 'ส่งแจ้งเตือนสำเร็จ', stats });
   } catch (error) {
     console.error(error);
