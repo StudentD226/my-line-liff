@@ -27,7 +27,10 @@ export default function AdminInvoiceReview() {
     } catch (error) {
       console.error("Fetch Invoices Error:", error);
       Swal.fire({ 
-        icon: 'error', title: 'ดึงข้อมูลล้มเหลว', text: 'ไม่สามารถโหลดข้อมูลสลิปได้', customClass: { popup: 'rounded-3xl' } 
+        icon: 'error', 
+        title: 'ดึงข้อมูลล้มเหลว', 
+        text: 'ไม่สามารถโหลดข้อมูลสลิปได้', 
+        customClass: { popup: 'rounded-[2rem] w-auto max-w-[90vw]' } 
       });
     } finally {
       setLoading(false);
@@ -57,7 +60,13 @@ export default function AdminInvoiceReview() {
         cancelButtonColor: '#9ca3af',
         confirmButtonText: 'ยืนยันการปฏิเสธ',
         cancelButtonText: 'ยกเลิก',
-        customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl font-bold px-6', cancelButton: 'rounded-xl font-bold px-6' }
+        customClass: { 
+          popup: 'rounded-[2rem] w-auto max-w-[90vw]', 
+          input: 'rounded-xl border-slate-200 focus:ring-rose-500 focus:border-rose-500 text-sm sm:text-base w-full',
+          confirmButton: 'rounded-xl px-4 sm:px-6 py-2.5 font-bold w-full sm:w-auto mb-2 sm:mb-0', 
+          cancelButton: 'rounded-xl px-4 sm:px-6 py-2.5 font-bold w-full sm:w-auto',
+          actions: 'flex flex-col sm:flex-row w-full gap-2 px-4'
+        }
       });
 
       if (!isConfirmed) return;
@@ -72,7 +81,12 @@ export default function AdminInvoiceReview() {
         cancelButtonColor: '#9ca3af',
         confirmButtonText: 'ใช่, ยืนยันยอดนี้',
         cancelButtonText: 'ยกเลิก',
-        customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl font-bold px-6', cancelButton: 'rounded-xl font-bold px-6' }
+        customClass: { 
+          popup: 'rounded-[2rem] w-auto max-w-[90vw]', 
+          confirmButton: 'rounded-xl px-4 sm:px-6 py-2.5 font-bold w-full sm:w-auto mb-2 sm:mb-0', 
+          cancelButton: 'rounded-xl px-4 sm:px-6 py-2.5 font-bold w-full sm:w-auto',
+          actions: 'flex flex-col sm:flex-row w-full gap-2 px-4'
+        }
       });
 
       if (!isConfirmed) return;
@@ -90,14 +104,14 @@ export default function AdminInvoiceReview() {
       if (data.success) {
         Swal.fire({
           icon: 'success', title: 'อัปเดตสำเร็จ', text: newStatus === 'PAID' ? 'ยืนยันการชำระเงินเรียบร้อยแล้ว' : 'ปฏิเสธสลิปเรียบร้อยแล้ว',
-          timer: 2000, showConfirmButton: false, customClass: { popup: 'rounded-[2rem]' }
+          timer: 2000, showConfirmButton: false, customClass: { popup: 'rounded-[2rem] w-auto max-w-[90vw]' }
         });
         fetchPendingInvoices(); 
       } else {
-        Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: data.error, customClass: { popup: 'rounded-[2rem]' } });
+        Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: data.error, customClass: { popup: 'rounded-[2rem] w-auto max-w-[90vw]' } });
       }
     } catch (error) {
-      Swal.fire({ icon: 'error', title: 'ระบบขัดข้อง', text: 'กรุณาลองใหม่อีกครั้ง', customClass: { popup: 'rounded-[2rem]' } });
+      Swal.fire({ icon: 'error', title: 'ระบบขัดข้อง', text: 'กรุณาลองใหม่อีกครั้ง', customClass: { popup: 'rounded-[2rem] w-auto max-w-[90vw]' } });
     } finally {
       setProcessingId(null);
     }

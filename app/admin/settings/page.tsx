@@ -52,11 +52,11 @@ const CustomDayPicker = ({
       <div className="flex items-center gap-1.5 mb-2">
         <label className="block text-sm font-semibold text-gray-700">{label}</label>
         {tooltipText && (
-          <div className="group relative flex items-center justify-center cursor-help">
+          <div className="group relative flex items-center justify-center cursor-help shrink-0">
             <Info size={16} className="text-gray-400 hover:text-[#376B64] transition-colors" />
-            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-[250px] sm:w-56 max-w-[90vw] p-2.5 bg-gray-800 text-white text-xs font-medium rounded-lg shadow-xl z-50 text-center leading-relaxed">
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 sm:left-auto sm:right-0 md:left-1/2 md:-translate-x-1/2 mb-2 hidden group-hover:block w-[250px] sm:w-56 max-w-[90vw] p-2.5 bg-gray-800 text-white text-xs font-medium rounded-lg shadow-xl z-50 text-center leading-relaxed">
               {tooltipText}
-              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+              <div className="absolute top-full left-1/2 -translate-x-1/2 sm:left-auto sm:right-2 md:left-1/2 md:-translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
             </div>
           </div>
         )}
@@ -81,7 +81,7 @@ const CustomDayPicker = ({
         {isOpen && (
           <>
             <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)}></div>
-            <div className="absolute top-full left-0 sm:left-auto sm:right-0 md:left-0 z-50 mt-2 w-64 p-4 bg-white border border-gray-100 shadow-2xl rounded-2xl transform origin-top animate-fadeIn">
+            <div className="absolute top-full left-0 sm:left-auto sm:right-0 md:left-0 z-50 mt-2 w-[280px] sm:w-64 p-4 bg-white border border-gray-100 shadow-2xl rounded-2xl transform origin-top animate-fadeIn">
               <div className="text-xs font-bold text-gray-400 mb-3 text-center uppercase tracking-wider">เลือกวันที่ของเดือน</div>
               <div className="grid grid-cols-7 gap-1">
                 {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
@@ -196,7 +196,12 @@ export default function AdminSettingsPage() {
       cancelButtonColor: '#9ca3af',
       confirmButtonText: 'ใช่, บันทึกเลย',
       cancelButtonText: 'ยกเลิก',
-      customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl px-6 py-2.5 font-bold', cancelButton: 'rounded-xl px-6 py-2.5 font-bold' }
+      customClass: { 
+        popup: 'rounded-[2rem] w-auto max-w-[90vw]', 
+        confirmButton: 'rounded-xl px-4 sm:px-6 py-2.5 font-bold w-full sm:w-auto mb-2 sm:mb-0', 
+        cancelButton: 'rounded-xl px-4 sm:px-6 py-2.5 font-bold w-full sm:w-auto',
+        actions: 'flex flex-col sm:flex-row w-full gap-2 px-4'
+      }
     }).then(async (result) => {
       if (result.isConfirmed) {
         setSavingGlobal(true);
@@ -224,16 +229,16 @@ export default function AdminSettingsPage() {
           const data = await res.json();
           
           if (data.success) {
-            Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ!', text: 'บันทึกการตั้งค่าระบบเรียบร้อยแล้ว', showCloseButton: true, confirmButtonColor: '#376B64', customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl px-8 py-3 font-bold' } });
+            Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ!', text: 'บันทึกการตั้งค่าระบบเรียบร้อยแล้ว', showCloseButton: true, confirmButtonColor: '#376B64', customClass: { popup: 'rounded-[2rem] w-auto max-w-[90vw]', confirmButton: 'rounded-xl px-8 py-3 font-bold' } });
             if (applyToAllHouses) {
                fetchHouses(); 
                setApplyToAllHouses(false); 
             }
           } else {
-            Swal.fire({ icon: 'error', title: 'บันทึกไม่สำเร็จ', text: data.error || 'เกิดข้อผิดพลาด', showCloseButton: true, confirmButtonColor: '#e11d48', customClass: { popup: 'rounded-[2rem]' } });
+            Swal.fire({ icon: 'error', title: 'บันทึกไม่สำเร็จ', text: data.error || 'เกิดข้อผิดพลาด', showCloseButton: true, confirmButtonColor: '#e11d48', customClass: { popup: 'rounded-[2rem] w-auto max-w-[90vw]' } });
           }
         } catch (err) {
-          Swal.fire({ icon: 'error', title: 'เซิร์ฟเวอร์มีปัญหา', text: 'ไม่สามารถเชื่อมต่อได้', showCloseButton: true, confirmButtonColor: '#e11d48', customClass: { popup: 'rounded-[2rem]' } });
+          Swal.fire({ icon: 'error', title: 'เซิร์ฟเวอร์มีปัญหา', text: 'ไม่สามารถเชื่อมต่อได้', showCloseButton: true, confirmButtonColor: '#e11d48', customClass: { popup: 'rounded-[2rem] w-auto max-w-[90vw]' } });
         } finally {
           setSavingGlobal(false);
         }
@@ -308,16 +313,16 @@ export default function AdminSettingsPage() {
           text: isBulkMode ? `อัปเดตเรียบร้อย ${idsToUpdate.length} รายการ` : 'อัปเดตเรทราคาเรียบร้อย',
           showCloseButton: true,
           confirmButtonColor: '#376B64',
-          customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl px-8 py-3 font-bold' }
+          customClass: { popup: 'rounded-[2rem] w-auto max-w-[90vw]', confirmButton: 'rounded-xl px-8 py-3 font-bold' }
         });
         setIsPopupOpen(false);
         if (isBulkMode) setSelectedHouses([]); 
         fetchHouses();
       } else {
-        Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: data.message, showCloseButton: true, confirmButtonColor: '#e11d48', customClass: { popup: 'rounded-[2rem]' } });
+        Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: data.message, showCloseButton: true, confirmButtonColor: '#e11d48', customClass: { popup: 'rounded-[2rem] w-auto max-w-[90vw]' } });
       }
     } catch (err) {
-      Swal.fire({ icon: 'error', title: 'เซิร์ฟเวอร์มีปัญหา', text: 'ไม่สามารถอัปเดตได้', showCloseButton: true, confirmButtonColor: '#e11d48', customClass: { popup: 'rounded-[2rem]' } });
+      Swal.fire({ icon: 'error', title: 'เซิร์ฟเวอร์มีปัญหา', text: 'ไม่สามารถอัปเดตได้', showCloseButton: true, confirmButtonColor: '#e11d48', customClass: { popup: 'rounded-[2rem] w-auto max-w-[90vw]' } });
     } finally {
       setSavingHouse(false);
     }
@@ -331,8 +336,8 @@ export default function AdminSettingsPage() {
   );
 
   return (
-    <div className="p-4 md:p-8 bg-gray-50 min-h-screen font-sans text-gray-800 relative w-full overflow-x-hidden">
-      <div className="max-w-6xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 md:p-8 bg-gray-50 min-h-screen font-sans text-gray-800 relative w-full overflow-x-hidden">
+      <div className="max-w-6xl mx-auto space-y-6 w-full">
         
         <div className="mb-2">
           <Link 
@@ -346,13 +351,13 @@ export default function AdminSettingsPage() {
 
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">ตั้งค่าระบบ & ค่าส่วนกลาง</h1>
-          <p className="text-sm sm:text-base text-gray-500 mt-2">จัดการรูปแบบโครงการ เรทราคาพื้นฐาน และกำหนดค่าส่วนกลางราย{projectType === 'CONDO' ? 'ห้อง' : 'บ้าน'}</p>
+          <p className="text-xs sm:text-sm text-gray-500 mt-2">จัดการรูปแบบโครงการ เรทราคาพื้นฐาน และกำหนดค่าส่วนกลางราย{projectType === 'CONDO' ? 'ห้อง' : 'บ้าน'}</p>
         </div>
         
-        <section className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
+        <section className="bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
           <div className="p-5 sm:p-6 md:p-8">
             <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-              <span className="p-2 bg-[#376B64]/10 text-[#376B64] rounded-lg"><SettingsIcon size={20} /></span> การตั้งค่าระบบส่วนกลาง (Global Settings)
+              <span className="p-2 bg-[#376B64]/10 text-[#376B64] rounded-lg shrink-0"><SettingsIcon size={20} /></span> <span className="truncate">การตั้งค่าระบบส่วนกลาง (Global Settings)</span>
             </h2>
             <form onSubmit={handleSaveGlobal} className="space-y-6">
               
@@ -363,7 +368,7 @@ export default function AdminSettingsPage() {
                   <select 
                     value={projectType} 
                     onChange={(e) => setProjectType(e.target.value)}
-                    className="w-full border border-gray-200 rounded-xl p-3.5 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#376B64]/50 focus:border-[#376B64] outline-none transition-all shadow-sm"
+                    className="w-full border border-gray-200 rounded-xl p-3 sm:p-3.5 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#376B64]/50 focus:border-[#376B64] outline-none transition-all shadow-sm cursor-pointer"
                   >
                     <option value="HOUSING_ESTATE">หมู่บ้านจัดสรร</option>
                     <option value="CONDO">คอนโดมิเนียม</option>
@@ -376,7 +381,7 @@ export default function AdminSettingsPage() {
                     type="number" 
                     value={flatRateAmount} 
                     onChange={(e) => setFlatRateAmount(Number(e.target.value))}
-                    className="w-full border border-gray-200 rounded-xl p-3.5 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#376B64]/50 focus:border-[#376B64] outline-none transition-all shadow-sm font-medium"
+                    className="w-full border border-gray-200 rounded-xl p-3 sm:p-3.5 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#376B64]/50 focus:border-[#376B64] outline-none transition-all shadow-sm font-medium"
                   />
                 </div>
 
@@ -386,7 +391,7 @@ export default function AdminSettingsPage() {
                     type="number" 
                     value={penaltyRatePerDay} 
                     onChange={(e) => setPenaltyRatePerDay(Number(e.target.value))}
-                    className="w-full border border-gray-200 rounded-xl p-3.5 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#376B64]/50 focus:border-[#376B64] outline-none transition-all shadow-sm font-medium"
+                    className="w-full border border-gray-200 rounded-xl p-3 sm:p-3.5 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#376B64]/50 focus:border-[#376B64] outline-none transition-all shadow-sm font-medium"
                   />
                 </div>
               </div>
@@ -397,18 +402,18 @@ export default function AdminSettingsPage() {
                   id="applyAll"
                   checked={applyToAllHouses}
                   onChange={(e) => setApplyToAllHouses(e.target.checked)}
-                  className="mt-1 shrink-0 w-5 h-5 text-orange-600 rounded border-gray-300 focus:ring-orange-500 cursor-pointer"
+                  className="mt-0.5 sm:mt-1 shrink-0 w-4 h-4 sm:w-5 sm:h-5 text-orange-600 rounded border-gray-300 focus:ring-orange-500 cursor-pointer"
                 />
                 <label htmlFor="applyAll" className="cursor-pointer flex-1">
-                  <span className="block font-bold text-orange-800 text-sm">อัปเดตเรทมาตรฐานนี้ ทับราคาของ{projectType === 'CONDO' ? 'ห้อง' : 'บ้าน'}ทุกหลังทันที</span>
-                  <span className="block text-xs text-orange-600 mt-1">หากเลือกตัวเลือกนี้ ระบบจะปรับเปลี่ยนรูปแบบการคิดเงินของทุกคนเป็น "เหมาจ่าย (FIXED)" และใช้ราคา {flatRateAmount} บาทโดยอัตโนมัติเมื่อกดบันทึก</span>
+                  <span className="block font-bold text-orange-800 text-xs sm:text-sm leading-tight">อัปเดตเรทมาตรฐานนี้ ทับราคาของ{projectType === 'CONDO' ? 'ห้อง' : 'บ้าน'}ทุกหลังทันที</span>
+                  <span className="block text-[10px] sm:text-xs text-orange-600 mt-1">หากเลือกตัวเลือกนี้ ระบบจะปรับเปลี่ยนรูปแบบการคิดเงินของทุกคนเป็น "เหมาจ่าย (FIXED)" และใช้ราคา {flatRateAmount} บาทโดยอัตโนมัติเมื่อกดบันทึก</span>
                 </label>
               </div>
 
               {/* 🌟 บัญชีธนาคารรับเงิน */}
               <div className="mt-8 pt-8 border-t border-gray-100">
                 <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
-                  <span className="text-2xl">🏦</span> บัญชีธนาคารรับเงิน (สำหรับลูกบ้านโอนชำระ)
+                  <span className="text-2xl shrink-0">🏦</span> <span className="truncate">บัญชีธนาคารรับเงิน (สำหรับลูกบ้านโอนชำระ)</span>
                 </h3>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
@@ -420,20 +425,20 @@ export default function AdminSettingsPage() {
                       onClick={() => setIsBankDropdownOpen(!isBankDropdownOpen)}
                       className={`w-full flex items-center justify-between border rounded-xl p-3 transition-all shadow-sm outline-none ${isBankDropdownOpen ? 'bg-white border-[#376B64] ring-2 ring-[#376B64]/20' : 'bg-gray-50 border-gray-200 hover:bg-white hover:border-[#376B64]/50'}`}
                     >
-                      <div className="flex items-center space-x-3 truncate">
+                      <div className="flex items-center space-x-2 sm:space-x-3 truncate">
                         {!imageError ? (
                           <img 
                             src={bankLogoUrl || BANK_OPTIONS[3].url} 
                             alt="Bank Logo" 
                             onError={() => setImageError(true)}
-                            className="w-7 h-7 shrink-0 object-contain bg-white rounded-full p-0.5 shadow-sm border border-gray-100" 
+                            className="w-6 h-6 sm:w-7 sm:h-7 shrink-0 object-contain bg-white rounded-full p-0.5 shadow-sm border border-gray-100" 
                           />
                         ) : (
-                          <div className="w-7 h-7 shrink-0 bg-white rounded-full shadow-sm border border-gray-100 flex items-center justify-center text-[#376B64]">
+                          <div className="w-6 h-6 sm:w-7 sm:h-7 shrink-0 bg-white rounded-full shadow-sm border border-gray-100 flex items-center justify-center text-[#376B64]">
                             <Landmark size={14} />
                           </div>
                         )}
-                        <span className="text-[14px] sm:text-[15px] font-semibold text-gray-700 truncate">{bankName}</span>
+                        <span className="text-[13px] sm:text-[15px] font-semibold text-gray-700 truncate">{bankName}</span>
                       </div>
                       <ChevronDown size={18} className={`text-[#376B64] shrink-0 transition-transform ${isBankDropdownOpen ? 'rotate-180' : ''}`} />
                     </button>
@@ -459,9 +464,9 @@ export default function AdminSettingsPage() {
                                 <img 
                                   src={bank.url} 
                                   alt={bank.name} 
-                                  className="w-7 h-7 shrink-0 object-contain bg-white rounded-full p-0.5 shadow-sm border border-gray-100" 
+                                  className="w-6 h-6 sm:w-7 sm:h-7 shrink-0 object-contain bg-white rounded-full p-0.5 shadow-sm border border-gray-100" 
                                 />
-                                <span className={`text-[14px] sm:text-[15px] truncate ${bankName === bank.name ? 'font-bold' : 'font-medium'}`}>{bank.name}</span>
+                                <span className={`text-[13px] sm:text-[15px] truncate ${bankName === bank.name ? 'font-bold' : 'font-medium'}`}>{bank.name}</span>
                               </button>
                             ))}
                           </div>
@@ -479,7 +484,7 @@ export default function AdminSettingsPage() {
                       value={bankAccountName}
                       onChange={(e) => setBankAccountName(e.target.value)}
                       placeholder="เช่น นิติบุคคลหมู่บ้าน..."
-                      className="w-full border border-gray-200 rounded-xl p-3.5 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#376B64]/50 focus:border-[#376B64] outline-none transition-all shadow-sm font-medium"
+                      className="w-full border border-gray-200 rounded-xl p-3 sm:p-3.5 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#376B64]/50 focus:border-[#376B64] outline-none transition-all shadow-sm font-medium text-sm sm:text-base"
                     />
                   </div>
 
@@ -492,7 +497,7 @@ export default function AdminSettingsPage() {
                       value={bankAccountNo}
                       onChange={(e) => setBankAccountNo(e.target.value)}
                       placeholder="เช่น 123-4-56789-0"
-                      className="w-full border border-gray-200 rounded-xl p-3.5 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#376B64]/50 focus:border-[#376B64] outline-none transition-all shadow-sm font-mono tracking-wider"
+                      className="w-full border border-gray-200 rounded-xl p-3 sm:p-3.5 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#376B64]/50 focus:border-[#376B64] outline-none transition-all shadow-sm font-mono tracking-wider text-sm sm:text-base"
                     />
                   </div>
                 </div>
@@ -501,7 +506,7 @@ export default function AdminSettingsPage() {
               {/* ส่วนที่ 2: รอบบิลอัตโนมัติ */}
               <div className="mt-8 pt-8 border-t border-gray-100">
                 <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
-                  <span className="p-2 bg-[#376B64]/10 text-[#376B64] rounded-lg"><CalendarDays size={20} /></span> รอบบิลอัตโนมัติ (Automated Billing)
+                  <span className="p-2 bg-[#376B64]/10 text-[#376B64] rounded-lg shrink-0"><CalendarDays size={20} /></span> <span className="truncate">รอบบิลอัตโนมัติ (Automated Billing)</span>
                 </h3>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
@@ -533,11 +538,11 @@ export default function AdminSettingsPage() {
                   <div className="flex flex-col h-full">
                     <div className="flex items-center gap-1.5 mb-2">
                       <label className="block text-sm font-semibold text-gray-700">เวลาจัดส่งบิล</label>
-                      <div className="group relative flex items-center justify-center cursor-help">
+                      <div className="group relative flex items-center justify-center cursor-help shrink-0">
                         <Info size={16} className="text-gray-400 hover:text-[#376B64] transition-colors" />
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 sm:left-auto sm:right-0 md:left-1/2 md:-translate-x-1/2 mb-2 hidden group-hover:block w-[250px] sm:w-56 max-w-[90vw] p-2.5 bg-gray-800 text-white text-xs font-medium rounded-lg shadow-xl z-50 text-center leading-relaxed">
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 sm:left-auto sm:right-0 md:left-1/2 md:-translate-x-1/2 mb-2 hidden group-hover:block w-[220px] sm:w-56 max-w-[90vw] p-2.5 bg-gray-800 text-white text-xs font-medium rounded-lg shadow-xl z-50 text-center leading-relaxed">
                           เวลาที่ระบบจะส่งแจ้งเตือนบิลใหม่เข้า LINE ลูกบ้าน
-                          <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                          <div className="absolute top-full left-1/2 -translate-x-1/2 sm:left-auto sm:right-2 md:left-1/2 md:-translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
                         </div>
                       </div>
                     </div>
@@ -547,22 +552,21 @@ export default function AdminSettingsPage() {
                         type="time"
                         value={invoiceGenerateTime}
                         onChange={(e) => setInvoiceGenerateTime(e.target.value)}
-                        className="w-full border border-gray-200 bg-gray-50 hover:bg-white hover:border-[#376B64]/40 focus:bg-white focus:border-[#376B64] focus:ring-2 focus:ring-[#376B64]/20 rounded-xl p-3.5 outline-none transition-all text-left shadow-sm font-medium text-[15px] text-gray-900 appearance-none [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer z-10"
+                        className="w-full border border-gray-200 bg-gray-50 hover:bg-white hover:border-[#376B64]/40 focus:bg-white focus:border-[#376B64] focus:ring-2 focus:ring-[#376B64]/20 rounded-xl p-3 sm:p-3.5 outline-none transition-all text-left shadow-sm font-medium text-sm sm:text-[15px] text-gray-900 appearance-none [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer z-10"
                       />
-                      <Clock size={20} className="absolute right-3.5 text-[#376B64] z-0" />
+                      <Clock size={20} className="absolute right-3.5 text-[#376B64] z-0 shrink-0" />
                     </div>
                     
                   </div>
                 </div>
               </div>
 
-              {/* 🌟 ปรับปุ่มเซฟให้เต็มจอเมื่อเปิดบนมือถือ */}
               <div className="flex justify-end pt-6 border-t border-gray-50">
                 <button 
                   type="submit" disabled={savingGlobal}
                   className={`w-full sm:w-auto px-8 py-3.5 rounded-xl font-bold text-white shadow-lg transition-all flex items-center justify-center gap-2 ${savingGlobal ? 'bg-gray-400' : 'bg-[#376B64] hover:bg-[#2A524C] hover:-translate-y-0.5 active:scale-[0.98]'}`}
                 >
-                  <Save size={18} />
+                  <Save size={18} className="shrink-0" />
                   {savingGlobal ? 'กำลังบันทึก...' : 'บันทึกการตั้งค่าส่วนกลาง'}
                 </button>
               </div>
@@ -570,14 +574,14 @@ export default function AdminSettingsPage() {
           </div>
 
           {/* ส่วนที่ 3: จัดการบ้าน */}
-          <div className="border-t-[8px] border-gray-50">
+          <div className="border-t-[8px] border-gray-50 w-full">
             <div className="p-5 sm:p-6 md:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-gray-100">
               <h2 className="text-lg sm:text-xl font-bold text-gray-800 flex items-center gap-2">
-                <span className="p-2 bg-[#376B64]/10 text-[#376B64] rounded-lg"><CreditCard size={20} /></span> จัดการเรทราคาแยกราย{projectType === 'CONDO' ? 'ห้อง' : 'บ้าน'}
+                <span className="p-2 bg-[#376B64]/10 text-[#376B64] rounded-lg shrink-0"><CreditCard size={20} /></span> <span className="truncate">จัดการเรทราคาแยกราย{projectType === 'CONDO' ? 'ห้อง' : 'บ้าน'}</span>
                 
-                <div className="group relative flex items-center justify-center cursor-help ml-1">
+                <div className="group relative flex items-center justify-center cursor-help ml-1 shrink-0">
                   <Info size={18} className="text-gray-400 hover:text-[#376B64] transition-colors" />
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 sm:left-0 sm:translate-x-0 md:left-1/2 md:-translate-x-1/2 mb-2 hidden group-hover:block w-[280px] sm:w-72 max-w-[90vw] p-3 bg-gray-800 text-white text-xs font-medium rounded-lg shadow-xl z-50 text-center sm:text-left md:text-center leading-relaxed">
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 sm:left-0 sm:translate-x-0 md:left-1/2 md:-translate-x-1/2 mb-2 hidden group-hover:block w-[260px] sm:w-72 max-w-[90vw] p-3 bg-gray-800 text-white text-xs font-medium rounded-lg shadow-xl z-50 text-center sm:text-left md:text-center leading-relaxed">
                     💡 <b>วิธีใช้งาน:</b><br/>คุณสามารถติ๊กถูกหน้าบ้านเลขที่เพื่อตั้งค่ารูปแบบการคิดเงิน (เหมาจ่าย/คำนวณตามพื้นที่) พร้อมกันทีละหลายหลัง หรือกดปุ่ม "ตั้งค่า" ด้านหลังเพื่อปรับราคาทีละหลังก็ได้ครับ
                     <div className="absolute top-full left-1/2 -translate-x-1/2 sm:left-6 sm:-translate-x-0 md:left-1/2 md:-translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
                   </div>
@@ -594,7 +598,6 @@ export default function AdminSettingsPage() {
               )}
             </div>
             
-            {/* 🌟 เพิ่ม min-w-[800px] และ overflow-x-auto ให้ตารางเลื่อนซ้าย-ขวาได้แบบสวยงาม */}
             <div className="overflow-x-auto bg-white pb-6 w-full custom-scrollbar">
               <table className="w-full text-left border-collapse min-w-[800px]">
                 <thead>
@@ -661,7 +664,6 @@ export default function AdminSettingsPage() {
         </section>
       </div>
 
-      {/* 🌟 Modal Popup: ลด Padding เวลาจอเล็ก */}
       {isPopupOpen && editHouse && (
         <div className="fixed inset-0 z-50 flex justify-center items-center p-4 animate-fadeIn">
           
@@ -670,54 +672,58 @@ export default function AdminSettingsPage() {
             onClick={() => setIsPopupOpen(false)}
           ></div>
 
-          <div className="bg-white rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-8 w-full max-w-md shadow-2xl relative z-10 transform transition-all scale-100 border border-gray-100 max-h-[90vh] overflow-y-auto custom-scrollbar">
-            <button onClick={() => setIsPopupOpen(false)} className="absolute top-4 sm:top-6 right-4 sm:right-6 text-gray-400 hover:text-rose-500 bg-gray-100 hover:bg-rose-50 rounded-full p-2 sm:p-2.5 transition-colors">
+          <div className="bg-white rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-8 w-full max-w-md shadow-2xl relative z-10 transform transition-all scale-100 border border-gray-100 max-h-[90vh] overflow-y-auto custom-scrollbar flex flex-col">
+            <button onClick={() => setIsPopupOpen(false)} className="absolute top-4 sm:top-6 right-4 sm:right-6 text-gray-400 hover:text-rose-500 bg-gray-100 hover:bg-rose-50 rounded-full p-2 sm:p-2.5 transition-colors shrink-0 z-10">
               <X size={20} />
             </button>
 
-            <h3 className="text-xl sm:text-2xl font-black text-gray-800 mb-2 mt-2 sm:mt-0 pr-8">
-              {isBulkMode ? 'ตั้งค่าเรทราคาหลายรายการ' : 'ตั้งค่าเรทราคา'}
-            </h3>
-            <p className="text-gray-500 text-sm mb-6 leading-relaxed bg-gray-50 inline-block px-3 py-1.5 rounded-lg border border-gray-200">
-              {projectType === 'CONDO' ? 'ห้องเลขที่' : 'บ้านเลขที่'} <span className="font-bold text-[#376B64] text-base ml-1">{editHouse.houseNo}</span>
-            </p>
+            <div className="shrink-0 mb-4 sm:mb-6 mt-2 sm:mt-0 pr-8">
+              <h3 className="text-xl sm:text-2xl font-black text-gray-800 mb-2 truncate">
+                {isBulkMode ? 'ตั้งค่าเรทราคาหลายรายการ' : 'ตั้งค่าเรทราคา'}
+              </h3>
+              <p className="text-gray-500 text-sm leading-relaxed bg-gray-50 inline-block px-3 py-1.5 rounded-lg border border-gray-200">
+                {projectType === 'CONDO' ? 'ห้องเลขที่' : 'บ้านเลขที่'} <span className="font-bold text-[#376B64] text-base ml-1">{editHouse.houseNo}</span>
+              </p>
+            </div>
             
-            <form onSubmit={handleSaveHouseFee} className="space-y-6">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-3">รูปแบบการคิดเงิน (Fee Type)</label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button type="button" onClick={() => setEditHouse({...editHouse, feeType: 'CALCULATED'})} className={`py-3.5 border-2 rounded-2xl font-bold text-sm transition-all ${editHouse.feeType === 'CALCULATED' ? 'border-orange-500 bg-orange-50 text-orange-700 shadow-inner' : 'border-gray-100 bg-white text-gray-400 hover:border-gray-200 hover:bg-gray-50'}`}>
-                    คำนวณตามพื้นที่
-                  </button>
-                  <button type="button" onClick={() => setEditHouse({...editHouse, feeType: 'FIXED'})} className={`py-3.5 border-2 rounded-2xl font-bold text-sm transition-all ${editHouse.feeType === 'FIXED' ? 'border-[#376B64] bg-[#376B64]/10 text-[#376B64] shadow-inner' : 'border-gray-100 bg-white text-gray-400 hover:border-gray-200 hover:bg-gray-50'}`}>
-                    เหมาจ่าย
+            <div className="flex-1 overflow-y-auto custom-scrollbar pr-1">
+              <form onSubmit={handleSaveHouseFee} className="space-y-5 sm:space-y-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2 sm:mb-3">รูปแบบการคิดเงิน (Fee Type)</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <button type="button" onClick={() => setEditHouse({...editHouse, feeType: 'CALCULATED'})} className={`py-3 sm:py-3.5 border-2 rounded-xl sm:rounded-2xl font-bold text-sm transition-all ${editHouse.feeType === 'CALCULATED' ? 'border-orange-500 bg-orange-50 text-orange-700 shadow-inner' : 'border-gray-100 bg-white text-gray-400 hover:border-gray-200 hover:bg-gray-50'}`}>
+                      คำนวณตามพื้นที่
+                    </button>
+                    <button type="button" onClick={() => setEditHouse({...editHouse, feeType: 'FIXED'})} className={`py-3 sm:py-3.5 border-2 rounded-xl sm:rounded-2xl font-bold text-sm transition-all ${editHouse.feeType === 'FIXED' ? 'border-[#376B64] bg-[#376B64]/10 text-[#376B64] shadow-inner' : 'border-gray-100 bg-white text-gray-400 hover:border-gray-200 hover:bg-gray-50'}`}>
+                      เหมาจ่าย
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    อัตราเรทราคา <span className="text-gray-400 font-normal">{editHouse.feeType === 'FIXED' ? '(บาท/เดือน)' : '(บาท/หน่วย)'}</span>
+                  </label>
+                  <input 
+                    type="number" required
+                    value={editHouse.feeRate === 0 ? '' : editHouse.feeRate}
+                    onChange={(e) => setEditHouse({...editHouse, feeRate: Number(e.target.value)})}
+                    className="w-full border-2 border-gray-200 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-lg sm:text-xl font-bold text-gray-800 focus:border-[#376B64] focus:ring-0 outline-none transition-all bg-gray-50 focus:bg-white shadow-inner"
+                    placeholder={editHouse.feeType === 'FIXED' ? 'เช่น 850' : 'เช่น 15'}
+                  />
+                </div>
+
+                <div className="pt-2 pb-2">
+                  <button 
+                    type="submit" disabled={savingHouse}
+                    className={`w-full py-3.5 sm:py-4 rounded-xl sm:rounded-2xl font-bold text-white shadow-lg transition-all flex items-center justify-center gap-2 ${savingHouse ? 'bg-gray-400' : 'bg-[#376B64] hover:bg-[#2A524C] active:scale-[0.98]'}`}
+                  >
+                    <Save size={18} className="shrink-0" />
+                    {savingHouse ? 'กำลังอัปเดต...' : (isBulkMode ? 'บันทึกพร้อมกันทั้งหมด' : 'บันทึกการตั้งค่า')}
                   </button>
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  อัตราเรทราคา <span className="text-gray-400 font-normal">{editHouse.feeType === 'FIXED' ? '(บาท/เดือน)' : '(บาท/หน่วย)'}</span>
-                </label>
-                <input 
-                  type="number" required
-                  value={editHouse.feeRate === 0 ? '' : editHouse.feeRate}
-                  onChange={(e) => setEditHouse({...editHouse, feeRate: Number(e.target.value)})}
-                  className="w-full border-2 border-gray-200 rounded-2xl p-4 text-xl font-bold text-gray-800 focus:border-[#376B64] focus:ring-0 outline-none transition-all bg-gray-50 focus:bg-white shadow-inner"
-                  placeholder={editHouse.feeType === 'FIXED' ? 'เช่น 850' : 'เช่น 15'}
-                />
-              </div>
-
-              <div className="pt-2">
-                <button 
-                  type="submit" disabled={savingHouse}
-                  className={`w-full py-4 rounded-2xl font-bold text-white shadow-lg transition-all flex items-center justify-center gap-2 ${savingHouse ? 'bg-gray-400' : 'bg-[#376B64] hover:bg-[#2A524C] active:scale-[0.98]'}`}
-                >
-                  <Save size={18} />
-                  {savingHouse ? 'กำลังอัปเดต...' : (isBulkMode ? 'บันทึกพร้อมกันทั้งหมด' : 'บันทึกการตั้งค่า')}
-                </button>
-              </div>
-            </form>
+              </form>
+            </div>
           </div>
         </div>
       )}

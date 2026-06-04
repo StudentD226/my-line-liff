@@ -1,7 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { 
   Plus, MapPin, Home, Maximize2, Pencil, Trash2, 
-  X, UserMinus, Calculator, Coins, Search, ListChecks, Phone 
+  X, UserMinus, Calculator, Coins, Search, Phone 
 } from 'lucide-react';
 import Link from "next/link";
 import { addHouse, updateHouse, autoGenerateHouses } from './actions';
@@ -91,7 +91,6 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
   };
 
   return (
-    /* 🌟 ปรับหน้าจอหลักให้ไม่ให้เกิดแถบเลื่อนแนวนอนทะลุ */
     <div className="min-h-screen bg-slate-50 font-sans p-4 sm:p-6 md:p-8 w-full overflow-x-hidden">
       <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-500 pb-20 w-full">
         
@@ -106,12 +105,13 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
             <p className="text-xs sm:text-sm text-slate-500 mt-2">เพิ่ม แก้ไข ลบข้อมูล และจัดการสมาชิกลูกบ้านทั้งหมดในโครงการ</p>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto mt-2 md:mt-0">
+          {/* 🌟 ปรับปุ่มให้กางเต็มจอบนมือถือ */}
+          <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 w-full md:w-auto mt-2 md:mt-0">
             <Link 
               href="/admin/houses?add=true" 
-              className="flex items-center justify-center w-full sm:w-auto px-6 py-2.5 bg-[#376B64] hover:bg-[#2A524C] text-white rounded-xl font-bold text-sm shadow-md transition-all active:scale-[0.98]"
+              className="flex items-center justify-center w-full sm:w-auto px-6 py-3 sm:py-2.5 bg-[#376B64] hover:bg-[#2A524C] text-white rounded-xl font-bold text-sm shadow-md transition-all active:scale-[0.98]"
             >
-              <Plus size={18} className="mr-1 shrink-0" /> เพิ่ม{unitLabel}ใหม่
+              <Plus size={18} className="mr-1 shrink-0" /> <span className="whitespace-nowrap">เพิ่ม{unitLabel}ใหม่</span>
             </Link>
             <div className="w-full sm:w-auto">
               <AutoGenerateButton autoGenerateAction={autoGenerateHouses} />
@@ -122,7 +122,7 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
         {/* 🌟 Search & Filter Section */}
         <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col md:flex-row gap-4 items-center">
           <form method="GET" className="relative w-full md:w-1/3 flex items-center">
-            <Search className="absolute left-4 text-slate-400" size={18} />
+            <Search className="absolute left-4 text-slate-400 shrink-0" size={18} />
             <input 
               type="text" 
               name="q" 
@@ -133,7 +133,7 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
             />
             {searchQuery && (
               <Link href="/admin/houses" className="absolute right-3 p-1.5 bg-slate-200 hover:bg-rose-200 text-slate-500 hover:text-rose-600 rounded-full transition-colors">
-                <X size={14} strokeWidth={3} />
+                <X size={14} strokeWidth={3} className="shrink-0" />
               </Link>
             )}
           </form>
@@ -142,6 +142,7 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
         {/* 🌟 Table Card */}
         <form action={deleteMultipleHouses} className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden relative w-full">
           
+          {/* Bulk Action Bar */}
           <div id="bulkActionBar" className="hidden bg-slate-900 text-white px-4 sm:px-6 py-4 flex-col sm:flex-row justify-between items-start sm:items-center gap-4 animate-in slide-in-from-top duration-300 z-10 relative">
             <span className="text-sm font-bold flex items-center gap-2 whitespace-nowrap">
               <span id="selectedCount" className="flex items-center justify-center bg-[#376B64] text-white w-6 h-6 rounded-full text-xs shadow-sm font-black shrink-0">0</span> รายการที่เลือก
@@ -154,6 +155,7 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
             </div>
           </div>
 
+          {/* 🌟 Table Container */}
           <div className="overflow-x-auto w-full custom-scrollbar">
             <table className="w-full border-collapse min-w-[900px]">
               <thead>
@@ -165,7 +167,6 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
                       className="rounded border-slate-300 text-[#376B64] focus:ring-[#376B64] w-5 h-5 cursor-pointer"
                     />
                   </th>
-                  {/* 🌟 เติม whitespace-nowrap ให้หัวตารางทุกช่อง */}
                   <th className="py-4 px-2 text-sm font-bold tracking-wide text-center whitespace-nowrap">{unitLabel}</th>
                   <th className="py-4 px-2 text-sm font-bold tracking-wide text-center whitespace-nowrap">ขนาดพื้นที่</th>
                   <th className="py-4 px-2 text-sm font-bold tracking-wide text-center whitespace-nowrap">รูปแบบการคิดเงิน</th>
@@ -178,7 +179,7 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
                 {houses.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="py-24 text-center">
-                      <Search className="mx-auto text-slate-300 mb-4" size={48} />
+                      <Search className="mx-auto text-slate-300 mb-4 shrink-0" size={48} />
                       <h3 className="text-lg font-bold text-slate-700 mb-1">ไม่พบข้อมูล</h3>
                       <p className="text-slate-500 text-sm">ไม่พบ{unitLabel} {searchQuery && `"${searchQuery}"`} ในระบบ</p>
                     </td>
@@ -211,10 +212,10 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
                         <span className="text-slate-900 font-bold text-base">{Number(house.feeRate).toLocaleString('th-TH')} ฿</span>
                       </td>
                       
-                      <td className="py-4 px-4 border-l border-slate-50">
+                      <td className="py-4 px-4 border-l border-slate-50 whitespace-nowrap">
                         {house.residents && house.residents.length > 0 ? (
                           <div className="flex flex-col items-center">
-                            <div className="flex flex-wrap items-center justify-center gap-1.5 max-w-[220px] min-w-[150px]">
+                            <div className="flex flex-nowrap items-center justify-center gap-1.5">
                               <span className="text-sm font-bold text-slate-800 text-center leading-tight">
                                 {house.residents[0].name || 'ไม่ได้ระบุชื่อ'}
                               </span>
@@ -265,121 +266,122 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
       </div>
 
       {/* =======================================================
-          🌟 ระบบ POPUP (MODAL)
+          🌟 ระบบ POPUP (MODAL) - ยืดหยุ่นบนมือถือ
           ======================================================= */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
-          {/* 🌟 ปรับขอบ Modal และความสูงเพื่อป้องกันการล้นจอบนมือถือ */}
-          <div className="bg-white p-5 sm:p-6 md:p-8 rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-md border border-slate-100 animate-in zoom-in-95 duration-200 relative my-4 sm:my-8 max-h-[90vh] overflow-y-auto custom-scrollbar">
+          <div className="bg-white p-5 sm:p-6 md:p-8 rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-md border border-slate-100 animate-in zoom-in-95 duration-200 relative my-4 sm:my-8 max-h-[90vh] overflow-y-auto custom-scrollbar flex flex-col">
             
             <Link 
               href="/admin/houses" 
-              className="absolute top-4 sm:top-6 right-4 sm:right-6 text-slate-400 hover:text-slate-600 bg-slate-50 hover:bg-slate-100 p-2 sm:p-2.5 rounded-full transition-colors z-10"
+              className="absolute top-4 sm:top-6 right-4 sm:right-6 text-slate-400 hover:text-slate-600 bg-slate-50 hover:bg-slate-100 p-2 sm:p-2.5 rounded-full transition-colors z-10 shrink-0"
             >
-              <X size={20} />
+              <X size={20} className="shrink-0" />
             </Link>
 
-            <div className="mb-6 mt-2 pr-8 sm:pr-0">
+            <div className="mb-6 mt-2 pr-8 sm:pr-0 shrink-0">
               <h2 className="text-lg sm:text-xl font-bold text-slate-800 flex items-center gap-2 sm:gap-3">
                 {editHouse ? (
-                  <><div className="p-2 sm:p-2.5 bg-[#376B64]/10 text-[#376B64] rounded-xl sm:rounded-2xl shrink-0"><Pencil size={20} /></div> <span className="truncate">แก้ไขข้อมูลยูนิต</span></>
+                  <><div className="p-2 sm:p-2.5 bg-[#376B64]/10 text-[#376B64] rounded-xl sm:rounded-2xl shrink-0"><Pencil size={20} className="shrink-0" /></div> <span className="truncate">แก้ไขข้อมูลยูนิต</span></>
                 ) : (
-                  <><div className="p-2 sm:p-2.5 bg-[#376B64]/10 text-[#376B64] rounded-xl sm:rounded-2xl shrink-0"><Plus size={20} /></div> <span className="truncate">เพิ่มยูนิตใหม่</span></>
+                  <><div className="p-2 sm:p-2.5 bg-[#376B64]/10 text-[#376B64] rounded-xl sm:rounded-2xl shrink-0"><Plus size={20} className="shrink-0" /></div> <span className="truncate">เพิ่มยูนิตใหม่</span></>
                 )}
               </h2>
             </div>
 
-            <form action={editHouse ? handleUpdateHouse : handleAddHouse} className="space-y-4 sm:space-y-5">
-              {editHouse && <input type="hidden" name="id" value={editHouse.id} />}
-              
-              <div>
-                <label className="block text-xs sm:text-[13px] font-bold text-slate-700 mb-1 sm:mb-1.5 tracking-wide">
-                  {unitLabel} {editHouse && <span className="text-rose-500 ml-1 lowercase font-medium tracking-normal">(เปลี่ยนไม่ได้)</span>}
-                </label>
-                <div className="relative">
-                  <MapPin className={`absolute left-4 top-3 sm:top-3.5 ${editHouse ? 'text-slate-300' : 'text-slate-400'}`} size={18} />
-                  <input suppressHydrationWarning name="houseNo" type="text" defaultValue={editHouse?.houseNo || ""} placeholder="เช่น 99/1" required readOnly={!!editHouse} className={`w-full pl-11 pr-4 py-2.5 sm:py-3 border border-slate-200 rounded-2xl outline-none transition-all font-medium text-sm sm:text-base ${editHouse ? 'bg-slate-50 text-slate-400 cursor-not-allowed border-dashed' : 'bg-white focus:border-[#376B64] focus:ring-4 focus:ring-[#376B64]/10'}`} />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs sm:text-[13px] font-bold text-slate-700 mb-1 sm:mb-1.5 tracking-wide">ขนาดพื้นที่ ({sizeLabel})</label>
-                <div className="relative">
-                  <Maximize2 className="absolute left-4 top-3 sm:top-3.5 text-slate-400" size={18} />
-                  <input suppressHydrationWarning name="houseSize" type="number" step="0.1" defaultValue={editHouse?.houseSize || ""} placeholder="เช่น 50.0" required className="w-full pl-11 pr-4 py-2.5 sm:py-3 bg-white border border-slate-200 rounded-2xl outline-none transition-all font-medium text-sm sm:text-base focus:border-[#376B64] focus:ring-4 focus:ring-[#376B64]/10" />
-                </div>
-              </div>
-
-              <div className="p-3 sm:p-4 bg-[#F8FAFC] rounded-2xl sm:rounded-[1.5rem] space-y-3 sm:space-y-4">
+            <div className="flex-1 overflow-y-auto custom-scrollbar pr-1">
+              <form action={editHouse ? handleUpdateHouse : handleAddHouse} className="space-y-4 sm:space-y-5">
+                {editHouse && <input type="hidden" name="id" value={editHouse.id} />}
+                
                 <div>
-                  <label className="block text-xs sm:text-[13px] font-bold text-slate-700 mb-1 sm:mb-1.5 tracking-wide">รูปแบบการคิดเงิน</label>
+                  <label className="block text-xs sm:text-[13px] font-bold text-slate-700 mb-1 sm:mb-1.5 tracking-wide">
+                    {unitLabel} {editHouse && <span className="text-rose-500 ml-1 lowercase font-medium tracking-normal">(เปลี่ยนไม่ได้)</span>}
+                  </label>
                   <div className="relative">
-                    <Calculator className="absolute left-4 top-3 sm:top-3.5 text-slate-400" size={18} />
-                    <select name="feeType" defaultValue={editHouse?.feeType || "CALCULATED"} className="w-full pl-11 pr-4 py-2.5 sm:py-3 bg-white border border-slate-200 rounded-2xl outline-none transition-all font-medium text-sm sm:text-base focus:border-[#376B64] focus:ring-4 focus:ring-[#376B64]/10 appearance-none">
-                      <option value="CALCULATED">คำนวณตามพื้นที่</option>
-                      <option value="FIXED">เหมาจ่ายเป็นรายเดือน</option>
-                    </select>
+                    <MapPin className={`absolute left-4 top-3 sm:top-3.5 shrink-0 ${editHouse ? 'text-slate-300' : 'text-slate-400'}`} size={18} />
+                    <input suppressHydrationWarning name="houseNo" type="text" defaultValue={editHouse?.houseNo || ""} placeholder="เช่น 99/1" required readOnly={!!editHouse} className={`w-full pl-11 pr-4 py-2.5 sm:py-3 border border-slate-200 rounded-2xl outline-none transition-all font-medium text-sm sm:text-base ${editHouse ? 'bg-slate-50 text-slate-400 cursor-not-allowed border-dashed' : 'bg-white focus:border-[#376B64] focus:ring-4 focus:ring-[#376B64]/10'}`} />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs sm:text-[13px] font-bold text-slate-700 mb-1 sm:mb-1.5 tracking-wide">อัตราเรทราคา</label>
+                  <label className="block text-xs sm:text-[13px] font-bold text-slate-700 mb-1 sm:mb-1.5 tracking-wide">ขนาดพื้นที่ ({sizeLabel})</label>
                   <div className="relative">
-                    <Coins className="absolute left-4 top-3 sm:top-3.5 text-slate-400" size={18} />
-                    <input 
-                      suppressHydrationWarning 
-                      name="feeRate" 
-                      type="number" 
-                      step="0.01" 
-                      defaultValue={editHouse?.feeRate || globalFlatRate} 
-                      required 
-                      className="w-full pl-11 pr-4 py-2.5 sm:py-3 bg-white border border-slate-200 rounded-2xl outline-none transition-all font-bold text-sm sm:text-base text-slate-800 focus:border-[#376B64] focus:ring-4 focus:ring-[#376B64]/10" 
-                    />
+                    <Maximize2 className="absolute left-4 top-3 sm:top-3.5 text-slate-400 shrink-0" size={18} />
+                    <input suppressHydrationWarning name="houseSize" type="number" step="0.1" defaultValue={editHouse?.houseSize || ""} placeholder="เช่น 50.0" required className="w-full pl-11 pr-4 py-2.5 sm:py-3 bg-white border border-slate-200 rounded-2xl outline-none transition-all font-medium text-sm sm:text-base focus:border-[#376B64] focus:ring-4 focus:ring-[#376B64]/10" />
                   </div>
                 </div>
-              </div>
-              
-              <button suppressHydrationWarning type="submit" className={`w-full text-white font-bold py-3 sm:py-3.5 rounded-2xl transition-all shadow-md active:scale-[0.98] bg-[#376B64] hover:bg-[#2A524C] text-sm sm:text-base mt-2`}>
-                {editHouse ? 'บันทึกการแก้ไข' : 'บันทึกข้อมูลยูนิต'}
-              </button>
-            </form>
 
-            {/* ส่วนของสมาชิกจะโชว์เฉพาะตอนเปิด Popup แก้ไข */}
-            {editHouse && (
-              <div className="mt-5 sm:mt-6 pt-5 sm:pt-6 border-t border-slate-100">
-                <h3 className="text-xs sm:text-[14px] font-bold text-slate-800 mb-3 sm:mb-4 flex items-center justify-between">
-                  <span>สมาชิกลูกบ้าน</span>
-                  <span className="bg-[#376B64]/10 text-[#376B64] px-2.5 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold">{editHouse.residents.length} คน</span>
-                </h3>
-                {editHouse.residents.length === 0 ? (
-                  <div className="text-center py-5 sm:py-6 bg-slate-50 rounded-2xl border-2 border-slate-100 border-dashed">
-                    <p className="text-xs sm:text-sm font-medium text-slate-400">ยังไม่มีลูกบ้านลงทะเบียน</p>
+                <div className="p-3 sm:p-4 bg-[#F8FAFC] rounded-2xl sm:rounded-[1.5rem] space-y-3 sm:space-y-4">
+                  <div>
+                    <label className="block text-xs sm:text-[13px] font-bold text-slate-700 mb-1 sm:mb-1.5 tracking-wide">รูปแบบการคิดเงิน</label>
+                    <div className="relative">
+                      <Calculator className="absolute left-4 top-3 sm:top-3.5 text-slate-400 shrink-0" size={18} />
+                      <select name="feeType" defaultValue={editHouse?.feeType || "CALCULATED"} className="w-full pl-11 pr-4 py-2.5 sm:py-3 bg-white border border-slate-200 rounded-2xl outline-none transition-all font-medium text-sm sm:text-base focus:border-[#376B64] focus:ring-4 focus:ring-[#376B64]/10 appearance-none">
+                        <option value="CALCULATED">คำนวณตามพื้นที่</option>
+                        <option value="FIXED">เหมาจ่ายเป็นรายเดือน</option>
+                      </select>
+                    </div>
                   </div>
-                ) : (
-                  <ul className="space-y-2.5 max-h-32 sm:max-h-40 overflow-y-auto pr-2 custom-scrollbar">
-                    {editHouse.residents.map((user) => (
-                      <li key={user.id} className="flex justify-between items-center bg-white border border-slate-100 p-2.5 sm:p-3 rounded-2xl shadow-sm">
-                        <div className="flex flex-col pr-2 min-w-0">
-                          <span className="text-xs sm:text-sm font-bold text-slate-700 whitespace-normal break-words leading-tight">{user.name || 'ไม่ได้ตั้งชื่อ'}</span>
-                          <span className="text-[10px] sm:text-[11px] text-slate-400 flex items-center gap-1 mt-0.5 truncate">
-                            <Phone size={10} className="shrink-0" /> {(user as any).phone || 'ไม่มีเบอร์โทร'}
-                          </span>
-                        </div>
-                        <form action={handleRemoveResident} className="shrink-0">
-                          <input type="hidden" name="userId" value={user.id} />
-                          <div className="relative">
-                            <button type="button" className="delete-btn p-1.5 sm:p-2 text-rose-400 hover:text-white hover:bg-rose-500 rounded-xl transition-colors">
-                              <UserMinus size={16} />
-                            </button>
-                            <button type="submit" className="hidden hidden-submit" />
+
+                  <div>
+                    <label className="block text-xs sm:text-[13px] font-bold text-slate-700 mb-1 sm:mb-1.5 tracking-wide">อัตราเรทราคา</label>
+                    <div className="relative">
+                      <Coins className="absolute left-4 top-3 sm:top-3.5 text-slate-400 shrink-0" size={18} />
+                      <input 
+                        suppressHydrationWarning 
+                        name="feeRate" 
+                        type="number" 
+                        step="0.01" 
+                        defaultValue={editHouse?.feeRate || globalFlatRate} 
+                        required 
+                        className="w-full pl-11 pr-4 py-2.5 sm:py-3 bg-white border border-slate-200 rounded-2xl outline-none transition-all font-bold text-sm sm:text-base text-slate-800 focus:border-[#376B64] focus:ring-4 focus:ring-[#376B64]/10" 
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                <button suppressHydrationWarning type="submit" className={`w-full text-white font-bold py-3 sm:py-3.5 rounded-2xl transition-all shadow-md active:scale-[0.98] bg-[#376B64] hover:bg-[#2A524C] text-sm sm:text-base mt-2 shrink-0`}>
+                  {editHouse ? 'บันทึกการแก้ไข' : 'บันทึกข้อมูลยูนิต'}
+                </button>
+              </form>
+
+              {/* ส่วนของสมาชิกจะโชว์เฉพาะตอนเปิด Popup แก้ไข */}
+              {editHouse && (
+                <div className="mt-5 sm:mt-6 pt-5 sm:pt-6 border-t border-slate-100 shrink-0">
+                  <h3 className="text-xs sm:text-[14px] font-bold text-slate-800 mb-3 sm:mb-4 flex items-center justify-between">
+                    <span>สมาชิกลูกบ้าน</span>
+                    <span className="bg-[#376B64]/10 text-[#376B64] px-2.5 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold">{editHouse.residents.length} คน</span>
+                  </h3>
+                  {editHouse.residents.length === 0 ? (
+                    <div className="text-center py-5 sm:py-6 bg-slate-50 rounded-2xl border-2 border-slate-100 border-dashed">
+                      <p className="text-xs sm:text-sm font-medium text-slate-400">ยังไม่มีลูกบ้านลงทะเบียน</p>
+                    </div>
+                  ) : (
+                    <ul className="space-y-2.5 max-h-32 sm:max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+                      {editHouse.residents.map((user) => (
+                        <li key={user.id} className="flex justify-between items-center bg-white border border-slate-100 p-2.5 sm:p-3 rounded-2xl shadow-sm">
+                          <div className="flex flex-col pr-2 min-w-0">
+                            <span className="text-xs sm:text-sm font-bold text-slate-700 whitespace-normal break-words leading-tight">{user.name || 'ไม่ได้ตั้งชื่อ'}</span>
+                            <span className="text-[10px] sm:text-[11px] text-slate-400 flex items-center gap-1 mt-0.5 truncate">
+                              <Phone size={10} className="shrink-0" /> {(user as any).phone || 'ไม่มีเบอร์โทร'}
+                            </span>
                           </div>
-                        </form>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
+                          <form action={handleRemoveResident} className="shrink-0">
+                            <input type="hidden" name="userId" value={user.id} />
+                            <div className="relative">
+                              <button type="button" className="delete-btn p-1.5 sm:p-2 text-rose-400 hover:text-white hover:bg-rose-500 rounded-xl transition-colors">
+                                <UserMinus size={16} className="shrink-0" />
+                              </button>
+                              <button type="submit" className="hidden hidden-submit" />
+                            </div>
+                          </form>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

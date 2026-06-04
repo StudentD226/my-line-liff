@@ -125,10 +125,11 @@ export default function AdminInvoicesPage() {
       denyButtonColor: '#2A524C',
       cancelButtonColor: '#9ca3af',
       customClass: {
-        popup: 'rounded-[2rem]',
-        confirmButton: 'rounded-xl px-6 py-2.5 font-bold',
-        denyButton: 'rounded-xl px-6 py-2.5 font-bold',
-        cancelButton: 'rounded-xl px-6 py-2.5 font-bold',
+        popup: 'rounded-[2rem] w-auto max-w-[90vw]',
+        confirmButton: 'rounded-xl px-4 sm:px-6 py-2.5 font-bold w-full sm:w-auto mb-2 sm:mb-0',
+        denyButton: 'rounded-xl px-4 sm:px-6 py-2.5 font-bold w-full sm:w-auto mb-2 sm:mb-0',
+        cancelButton: 'rounded-xl px-4 sm:px-6 py-2.5 font-bold w-full sm:w-auto',
+        actions: 'flex flex-col sm:flex-row w-full gap-2 px-4'
       },
     }).then((result) => {
       if (result.isConfirmed) {
@@ -146,10 +147,11 @@ export default function AdminInvoicesPage() {
           confirmButtonColor: '#376B64',
           cancelButtonColor: '#9ca3af',
           customClass: {
-            popup: 'rounded-[2rem]',
+            popup: 'rounded-[2rem] w-auto max-w-[90vw]',
             input: 'rounded-xl border-gray-200 focus:ring-[#376B64] focus:border-[#376B64]',
-            confirmButton: 'rounded-xl px-6 py-2.5 font-bold',
-            cancelButton: 'rounded-xl px-6 py-2.5 font-bold',
+            confirmButton: 'rounded-xl px-4 sm:px-6 py-2.5 font-bold w-full sm:w-auto mb-2 sm:mb-0',
+            cancelButton: 'rounded-xl px-4 sm:px-6 py-2.5 font-bold w-full sm:w-auto',
+            actions: 'flex flex-col sm:flex-row w-full gap-2 px-4'
           },
           inputValidator: (value) => { if (!value) return 'กรุณาระบุบ้านเลขที่!'; return null; },
         }).then((res) => {
@@ -189,7 +191,7 @@ export default function AdminInvoicesPage() {
           showCloseButton: true,
           confirmButtonColor: '#376B64',
           confirmButtonText: 'ตกลง',
-          customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl px-8 py-3 font-bold' },
+          customClass: { popup: 'rounded-[2rem] w-auto max-w-[90vw]', confirmButton: 'rounded-xl px-8 py-3 font-bold' },
         });
         fetchInvoices();
       } else {
@@ -200,7 +202,7 @@ export default function AdminInvoicesPage() {
           showCloseButton: true,
           confirmButtonColor: '#e11d48',
           confirmButtonText: 'ปิด',
-          customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl px-8 py-3 font-bold' },
+          customClass: { popup: 'rounded-[2rem] w-auto max-w-[90vw]', confirmButton: 'rounded-xl px-8 py-3 font-bold' },
         });
       }
     } catch {
@@ -211,7 +213,7 @@ export default function AdminInvoicesPage() {
         showCloseButton: true,
         confirmButtonColor: '#e11d48',
         confirmButtonText: 'ปิด',
-        customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl px-8 py-3 font-bold' },
+        customClass: { popup: 'rounded-[2rem] w-auto max-w-[90vw]', confirmButton: 'rounded-xl px-8 py-3 font-bold' },
       });
     }
   };
@@ -234,9 +236,10 @@ export default function AdminInvoicesPage() {
       confirmButtonText: 'ใช่, ลบเลย!',
       cancelButtonText: 'ยกเลิก',
       customClass: {
-        popup: 'rounded-[2rem]',
-        confirmButton: 'rounded-xl px-6 py-2.5 font-bold',
-        cancelButton: 'rounded-xl px-6 py-2.5 font-bold',
+        popup: 'rounded-[2rem] w-auto max-w-[90vw]',
+        confirmButton: 'rounded-xl px-4 sm:px-6 py-2.5 font-bold w-full sm:w-auto mb-2 sm:mb-0',
+        cancelButton: 'rounded-xl px-4 sm:px-6 py-2.5 font-bold w-full sm:w-auto',
+        actions: 'flex flex-col sm:flex-row w-full gap-2 px-4'
       },
     }).then((result) => {
       if (result.isConfirmed) {
@@ -278,7 +281,12 @@ export default function AdminInvoicesPage() {
       cancelButtonColor: '#9ca3af',
       confirmButtonText: 'ใช่, ส่งเลย!',
       cancelButtonText: 'ยกเลิก',
-      customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl px-6 py-2.5 font-bold', cancelButton: 'rounded-xl px-6 py-2.5 font-bold' },
+      customClass: { 
+        popup: 'rounded-[2rem] w-auto max-w-[90vw]', 
+        confirmButton: 'rounded-xl px-4 sm:px-6 py-2.5 font-bold w-full sm:w-auto mb-2 sm:mb-0', 
+        cancelButton: 'rounded-xl px-4 sm:px-6 py-2.5 font-bold w-full sm:w-auto',
+        actions: 'flex flex-col sm:flex-row w-full gap-2 px-4'
+      },
     }).then((result) => {
       if (result.isConfirmed) {
         Swal.fire({ title: 'กำลังส่ง...', allowOutsideClick: false, didOpen: () => Swal.showLoading(), customClass: { popup: 'rounded-[2rem]' } });
@@ -292,7 +300,7 @@ export default function AdminInvoicesPage() {
               Toast.fire({ icon: 'success', title: 'แจ้งเตือนเข้า LINE เรียบร้อย!' });
               if (type === 'OVERDUE') fetchInvoices();
             } else {
-              Swal.fire({ icon: 'info', title: 'ระบบยังไม่พร้อม', text: 'ฟังก์ชันส่ง LINE แจ้งเตือนยังไม่ได้เชื่อมต่อระบบหลังบ้านครับ', showCloseButton: true, confirmButtonColor: '#376B64', customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl px-6 py-2.5 font-bold' } });
+              Swal.fire({ icon: 'info', title: 'ระบบยังไม่พร้อม', text: 'ฟังก์ชันส่ง LINE แจ้งเตือนยังไม่ได้เชื่อมต่อระบบหลังบ้านครับ', showCloseButton: true, confirmButtonColor: '#376B64', customClass: { popup: 'rounded-[2rem] w-auto max-w-[90vw]', confirmButton: 'rounded-xl px-6 py-2.5 font-bold' } });
             }
           });
         } catch {
@@ -319,7 +327,12 @@ export default function AdminInvoicesPage() {
       cancelButtonColor: '#9CA3AF',
       confirmButtonText: 'ใช่, ส่งเลย!',
       cancelButtonText: 'ยกเลิก',
-      customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl px-6 py-2.5 font-bold', cancelButton: 'rounded-xl px-6 py-2.5 font-bold' },
+      customClass: { 
+        popup: 'rounded-[2rem] w-auto max-w-[90vw]', 
+        confirmButton: 'rounded-xl px-4 sm:px-6 py-2.5 font-bold w-full sm:w-auto mb-2 sm:mb-0', 
+        cancelButton: 'rounded-xl px-4 sm:px-6 py-2.5 font-bold w-full sm:w-auto',
+        actions: 'flex flex-col sm:flex-row w-full gap-2 px-4'
+      },
     }).then(async (result) => {
       if (result.isConfirmed) {
         Swal.fire({ title: 'กำลังส่งแจ้งเตือน...', html: 'โปรดรอสักครู่ ห้ามปิดหน้านี้', allowOutsideClick: false, didOpen: () => Swal.showLoading(), customClass: { popup: 'rounded-[2rem]' } });
@@ -339,11 +352,11 @@ export default function AdminInvoicesPage() {
             text: `แจ้งเตือนเข้า LINE จำนวน ${selectedInvoices.length} รายการเรียบร้อย!`,
             showCloseButton: true,
             confirmButtonColor: '#376B64',
-            customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl px-8 py-3 font-bold' },
+            customClass: { popup: 'rounded-[2rem] w-auto max-w-[90vw]', confirmButton: 'rounded-xl px-8 py-3 font-bold' },
           });
           if (type === 'OVERDUE') fetchInvoices();
         } catch {
-          Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'ไม่สามารถส่งข้อความได้ครบทุกรายการ', showCloseButton: true, confirmButtonColor: '#e11d48', customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl px-6 py-2.5 font-bold' } });
+          Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'ไม่สามารถส่งข้อความได้ครบทุกรายการ', showCloseButton: true, confirmButtonColor: '#e11d48', customClass: { popup: 'rounded-[2rem] w-auto max-w-[90vw]', confirmButton: 'rounded-xl px-6 py-2.5 font-bold' } });
         }
       }
     });
@@ -368,9 +381,10 @@ export default function AdminInvoicesPage() {
       confirmButtonColor: '#376B64',
       cancelButtonColor: '#9ca3af',
       customClass: {
-        popup: 'rounded-[2rem]',
-        confirmButton: 'rounded-xl px-6 py-2.5 font-bold',
-        cancelButton: 'rounded-xl px-6 py-2.5 font-bold',
+        popup: 'rounded-[2rem] w-auto max-w-[90vw]',
+        confirmButton: 'rounded-xl px-4 sm:px-6 py-2.5 font-bold w-full sm:w-auto mb-2 sm:mb-0',
+        cancelButton: 'rounded-xl px-4 sm:px-6 py-2.5 font-bold w-full sm:w-auto',
+        actions: 'flex flex-col sm:flex-row w-full gap-2 px-4'
       },
       preConfirm: () => ({
         base:    (document.getElementById('swal-input1') as HTMLInputElement).value,
@@ -420,10 +434,11 @@ export default function AdminInvoicesPage() {
       confirmButtonText: 'บันทึกสถานะ',
       cancelButtonText: 'ยกเลิก',
       customClass: {
-        popup: 'rounded-[2rem]',
-        input: 'rounded-xl border-gray-200 py-3 cursor-pointer',
-        confirmButton: 'rounded-xl px-6 py-2.5 font-bold',
-        cancelButton: 'rounded-xl px-6 py-2.5 font-bold',
+        popup: 'rounded-[2rem] w-auto max-w-[90vw]',
+        input: 'rounded-xl border-gray-200 py-3 cursor-pointer w-full text-sm sm:text-base',
+        confirmButton: 'rounded-xl px-4 sm:px-6 py-2.5 font-bold w-full sm:w-auto mb-2 sm:mb-0',
+        cancelButton: 'rounded-xl px-4 sm:px-6 py-2.5 font-bold w-full sm:w-auto',
+        actions: 'flex flex-col sm:flex-row w-full gap-2 px-4'
       },
       inputValidator: (value) => new Promise((resolve) => {
         if (value) resolve(null); else resolve('กรุณาเลือกสถานะ!');

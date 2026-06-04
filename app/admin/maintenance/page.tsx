@@ -35,7 +35,13 @@ export default function AdminMaintenanceManager() {
       confirmButtonText: 'อัปเดตสถานะ',
       cancelButtonText: 'ยกเลิก',
       confirmButtonColor: '#0f766e',
-      customClass: { popup: 'rounded-3xl', confirmButton: 'rounded-xl', cancelButton: 'rounded-xl' }
+      customClass: { 
+        popup: 'rounded-3xl w-auto max-w-[90vw]', 
+        input: 'rounded-xl border-slate-200 focus:ring-teal-600 focus:border-teal-600',
+        confirmButton: 'rounded-xl px-4 sm:px-6 py-2.5 font-bold w-full sm:w-auto mb-2 sm:mb-0', 
+        cancelButton: 'rounded-xl px-4 sm:px-6 py-2.5 font-bold w-full sm:w-auto',
+        actions: 'flex flex-col sm:flex-row w-full gap-2 px-4'
+      }
     });
 
     if (isConfirmed) {
@@ -48,11 +54,23 @@ export default function AdminMaintenanceManager() {
         });
         
         if (res.ok) {
-          Swal.fire({ icon: 'success', title: 'อัปเดตสำเร็จ', text: 'แจ้งเตือนลูกบ้านเข้า LINE เรียบร้อย', showConfirmButton: false, timer: 1500, customClass: { popup: 'rounded-3xl' } });
+          Swal.fire({ 
+            icon: 'success', 
+            title: 'อัปเดตสำเร็จ', 
+            text: 'แจ้งเตือนลูกบ้านเข้า LINE เรียบร้อย', 
+            showConfirmButton: false, 
+            timer: 1500, 
+            customClass: { popup: 'rounded-3xl w-auto max-w-[90vw]' } 
+          });
           fetchRequests(); // โหลดข้อมูลใหม่ทันทีหลังอัปเดตเสร็จ
         }
       } catch (err) {
-        Swal.fire('Error', 'เกิดข้อผิดพลาด', 'error');
+        Swal.fire({
+          icon: 'error',
+          title: 'เกิดข้อผิดพลาด',
+          text: 'ไม่สามารถอัปเดตสถานะได้',
+          customClass: { popup: 'rounded-3xl w-auto max-w-[90vw]', confirmButton: 'rounded-xl font-bold px-6 py-2.5' }
+        });
       }
     }
   };
@@ -67,31 +85,31 @@ export default function AdminMaintenanceManager() {
   return (
     /* 🌟 ปรับ Padding ให้ลดลงบนมือถือ */
     <div className="p-4 sm:p-6 md:p-10 bg-slate-50 min-h-screen font-sans w-full overflow-x-hidden">
-      <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8">
+      <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8 w-full">
         
         <h1 className="text-2xl sm:text-3xl font-black text-slate-800 flex items-center gap-2 sm:gap-3">
           <ShieldAlert className="text-teal-600 shrink-0" size={32} /> จัดการศูนย์รับเรื่อง
         </h1>
 
-        <div className="grid gap-4 sm:gap-5">
+        <div className="grid gap-4 sm:gap-5 w-full">
           {requests.length === 0 && (
-            <div className="bg-white p-8 sm:p-10 rounded-[2rem] text-center border border-slate-100 shadow-sm">
+            <div className="bg-white p-8 sm:p-10 rounded-[2rem] text-center border border-slate-100 shadow-sm w-full">
               <p className="text-slate-500 font-bold text-base sm:text-lg">ยังไม่มีรายการรับเรื่อง</p>
             </div>
           )}
           {requests.map((item) => (
-            <div key={item.id} className="bg-white p-5 sm:p-6 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col md:flex-row justify-between md:items-center gap-5 sm:gap-6 hover:shadow-lg transition-all">
+            <div key={item.id} className="bg-white p-5 sm:p-6 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col md:flex-row justify-between md:items-center gap-5 sm:gap-6 hover:shadow-lg transition-all w-full">
               
               <div className="space-y-4 flex-1 min-w-0">
                 <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                   <span className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest flex items-center gap-1.5 whitespace-nowrap ${item.type === 'REPAIR' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
-                    {item.type === 'REPAIR' ? <Wrench size={14}/> : <Info size={14}/>} 
+                    {item.type === 'REPAIR' ? <Wrench size={14} className="shrink-0" /> : <Info size={14} className="shrink-0" />} 
                     {item.type === 'REPAIR' ? 'แจ้งซ่อม' : 'แจ้งเพื่อทราบ'}
                   </span>
                   <span className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest whitespace-nowrap ${item.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' : item.status === 'IN_PROGRESS' ? 'bg-orange-100 text-orange-700' : item.status === 'CANCELED' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'}`}>
                     {item.status === 'PENDING' ? 'รอตรวจสอบ' : item.status === 'IN_PROGRESS' ? 'กำลังดำเนินการ' : item.status === 'COMPLETED' ? 'แก้ไขเสร็จสิ้น' : 'ยกเลิก'}
                   </span>
-                  <span className="text-[10px] sm:text-xs font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-lg">#{item.ticketNo}</span>
+                  <span className="text-[10px] sm:text-xs font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-lg shrink-0">#{item.ticketNo}</span>
                 </div>
                 
                 <div>
@@ -99,7 +117,7 @@ export default function AdminMaintenanceManager() {
                   <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm font-semibold text-slate-500">
                     <span className="flex items-center gap-1 whitespace-nowrap"><Home size={16} className="text-teal-600 shrink-0"/> บ้านเลขที่ {item.house?.houseNo || '-'}</span>
                     <span className="text-slate-300 hidden sm:inline">|</span>
-                    <span className="break-all">📍 {item.location}</span>
+                    <span className="break-words">📍 {item.location}</span>
                   </div>
                 </div>
                 

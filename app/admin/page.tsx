@@ -157,7 +157,7 @@ export default function AdminDashboardHome() {
           <div className="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-gray-100 flex-1 flex flex-col justify-center">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-gray-500 text-sm font-bold flex items-center">รายรับรวมทั้งหมด</h3>
-              <div className="p-2 bg-emerald-50 rounded-lg"><TrendingUp className="text-emerald-500" size={20} /></div>
+              <div className="p-2 bg-emerald-50 rounded-lg"><TrendingUp className="text-emerald-500 shrink-0" size={20} /></div>
             </div>
             <p className="text-2xl sm:text-3xl font-extrabold text-gray-800 truncate">{summary.totalIncome.toLocaleString()} <span className="text-xs sm:text-sm text-gray-500 font-normal">บาท</span></p>
           </div>
@@ -165,7 +165,7 @@ export default function AdminDashboardHome() {
           <div className="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-gray-100 flex-1 flex flex-col justify-center">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-gray-500 text-sm font-bold flex items-center">รายจ่ายรวมทั้งหมด</h3>
-              <div className="p-2 bg-red-50 rounded-lg"><TrendingDown className="text-red-500" size={20} /></div>
+              <div className="p-2 bg-red-50 rounded-lg"><TrendingDown className="text-red-500 shrink-0" size={20} /></div>
             </div>
             <p className="text-2xl sm:text-3xl font-extrabold text-gray-800 truncate">{summary.totalExpense.toLocaleString()} <span className="text-xs sm:text-sm text-gray-500 font-normal">บาท</span></p>
           </div>
@@ -173,7 +173,7 @@ export default function AdminDashboardHome() {
           <div className="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-gray-100 flex-1 flex flex-col justify-center">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-gray-500 text-sm font-bold flex items-center">ยอดคงเหลือสุทธิ</h3>
-              <div className="p-2 bg-[#1A534B]/10 rounded-lg"><Wallet className="text-[#1A534B]" size={20} /></div>
+              <div className="p-2 bg-[#1A534B]/10 rounded-lg"><Wallet className="text-[#1A534B] shrink-0" size={20} /></div>
             </div>
             <p className={`text-3xl sm:text-4xl font-extrabold truncate ${summary.remaining >= 0 ? 'text-[#1A534B]' : 'text-red-500'}`}>
               {summary.remaining.toLocaleString()} <span className="text-sm sm:text-base text-gray-500 font-normal">บาท</span>
@@ -188,7 +188,7 @@ export default function AdminDashboardHome() {
             {pieData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={pieData} innerRadius="50%" outerRadius="80%" paddingAngle={2} dataKey="value">
+                  <Pie data={pieData} innerRadius="40%" outerRadius="75%" paddingAngle={2} dataKey="value">
                     {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                   </Pie>
                   <RechartsTooltip 
@@ -196,8 +196,9 @@ export default function AdminDashboardHome() {
                       const percent = ((Number(value) / totalExpenseForPie) * 100).toFixed(1);
                       return [`${Number(value || 0).toLocaleString()} บาท (${percent}%)`, 'ยอดเงิน'];
                     }} 
+                    wrapperStyle={{ fontSize: '12px' }}
                   />
-                  <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', fontWeight: 'bold' }} />
+                  <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '11px', fontWeight: 'bold' }} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
@@ -207,13 +208,13 @@ export default function AdminDashboardHome() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col w-full">
+      <div className="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden flex flex-col w-full">
         {/* 🌟 ปรับให้ Dropdown จำนวนแถวตัดขึ้นบรรทัดใหม่ได้ถ้าหน้าจอแคบ */}
         <div className="p-4 sm:p-6 border-b border-gray-100 flex flex-col lg:flex-row justify-between items-start lg:items-center bg-gray-50/50 gap-3">
           <h3 className="font-bold text-gray-800 flex items-center text-sm sm:text-base"><FileText className="mr-2 text-[#1A534B] shrink-0" size={20}/> ประวัติรายการบัญชีทั้งหมดของปีนี้</h3>
           
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs sm:text-sm w-full lg:w-auto">
-            <span className="text-gray-500 font-medium">แสดง:</span>
+            <span className="text-gray-500 font-medium shrink-0">แสดง:</span>
             <select 
               value={rowsPerPage} 
               onChange={(e) => { setRowsPerPage(Number(e.target.value)); setCurrentPage(1); }}
@@ -230,23 +231,23 @@ export default function AdminDashboardHome() {
         
         {/* 🌟 ตารางรองรับการเลื่อนซ้ายขวาบนมือถือ */}
         <div className="overflow-x-auto custom-scrollbar flex-1 w-full">
-          <table className="w-full text-sm text-left relative min-w-[700px]">
+          <table className="w-full text-sm text-left relative min-w-[800px]">
             <thead className="bg-white text-gray-500 sticky top-0 z-10 border-b border-gray-100">
               <tr>
                 <th className="px-4 sm:px-6 py-4 font-bold whitespace-nowrap cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => requestSort('date')}>
-                  <div className="flex items-center space-x-1"><span>วันที่</span><ArrowUpDown size={14} className={sortConfig?.key === 'date' ? 'text-[#1A534B]' : ''} /></div>
+                  <div className="flex items-center space-x-1"><span>วันที่</span><ArrowUpDown size={14} className={`shrink-0 ${sortConfig?.key === 'date' ? 'text-[#1A534B]' : ''}`} /></div>
                 </th>
                 <th className="px-4 sm:px-6 py-4 font-bold whitespace-nowrap cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => requestSort('title')}>
-                  <div className="flex items-center space-x-1"><span>รายการ</span><ArrowUpDown size={14} className={sortConfig?.key === 'title' ? 'text-[#1A534B]' : ''} /></div>
+                  <div className="flex items-center space-x-1"><span>รายการ</span><ArrowUpDown size={14} className={`shrink-0 ${sortConfig?.key === 'title' ? 'text-[#1A534B]' : ''}`} /></div>
                 </th>
                 <th className="px-4 sm:px-6 py-4 font-bold whitespace-nowrap cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => requestSort('category')}>
-                  <div className="flex items-center space-x-1"><span>หมวดหมู่</span><ArrowUpDown size={14} className={sortConfig?.key === 'category' ? 'text-[#1A534B]' : ''} /></div>
+                  <div className="flex items-center space-x-1"><span>หมวดหมู่</span><ArrowUpDown size={14} className={`shrink-0 ${sortConfig?.key === 'category' ? 'text-[#1A534B]' : ''}`} /></div>
                 </th>
                 <th className="px-4 sm:px-6 py-4 font-bold whitespace-nowrap text-center cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => requestSort('type')}>
-                  <div className="flex items-center justify-center space-x-1"><span>ประเภท</span><ArrowUpDown size={14} className={sortConfig?.key === 'type' ? 'text-[#1A534B]' : ''} /></div>
+                  <div className="flex items-center justify-center space-x-1"><span>ประเภท</span><ArrowUpDown size={14} className={`shrink-0 ${sortConfig?.key === 'type' ? 'text-[#1A534B]' : ''}`} /></div>
                 </th>
                 <th className="px-4 sm:px-6 py-4 font-bold whitespace-nowrap text-right cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => requestSort('amount')}>
-                  <div className="flex items-center justify-end space-x-1"><span>จำนวนเงิน</span><ArrowUpDown size={14} className={sortConfig?.key === 'amount' ? 'text-[#1A534B]' : ''} /></div>
+                  <div className="flex items-center justify-end space-x-1"><span>จำนวนเงิน</span><ArrowUpDown size={14} className={`shrink-0 ${sortConfig?.key === 'amount' ? 'text-[#1A534B]' : ''}`} /></div>
                 </th>
               </tr>
             </thead>
@@ -257,14 +258,14 @@ export default function AdminDashboardHome() {
                     <td className="px-4 sm:px-6 py-4 text-gray-600 font-medium whitespace-nowrap">{new Date(tx.date).toLocaleDateString('th-TH')}</td>
                     <td className="px-4 sm:px-6 py-4">
                       <div className="flex items-center space-x-2">
-                        <p className="font-bold text-gray-800">{tx.title}</p>
+                        <p className="font-bold text-gray-800 whitespace-nowrap">{tx.title}</p>
                         {tx.receiptUrl && (
-                          <a href={tx.receiptUrl} target="_blank" rel="noreferrer" title="ดูหลักฐาน" className="text-blue-500 hover:text-blue-700 bg-blue-50 p-1 rounded transition-colors">
-                            <FileText size={14} />
+                          <a href={tx.receiptUrl} target="_blank" rel="noreferrer" title="ดูหลักฐาน" className="text-blue-500 hover:text-blue-700 bg-blue-50 p-1.5 rounded-lg transition-colors shrink-0">
+                            <FileText size={14} className="shrink-0" />
                           </a>
                         )}
                       </div>
-                      {tx.isAuto && <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded text-[10px] font-bold bg-[#1A534B]/10 text-[#1A534B] whitespace-nowrap">ดึงอัตโนมัติจากบิลค่าส่วนกลาง</span>}
+                      {tx.isAuto && <span className="inline-flex items-center mt-1.5 px-2 py-0.5 rounded text-[10px] font-bold bg-[#1A534B]/10 text-[#1A534B] whitespace-nowrap">ดึงอัตโนมัติจากบิลค่าส่วนกลาง</span>}
                     </td>
                     <td className="px-4 sm:px-6 py-4 text-gray-600 font-medium whitespace-nowrap">{tx.category?.name}</td>
                     <td className="px-4 sm:px-6 py-4 text-center whitespace-nowrap">
@@ -285,27 +286,29 @@ export default function AdminDashboardHome() {
         </div>
 
         {/* 🌟 Pagination */}
-        <div className="p-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between bg-white rounded-b-2xl gap-3 sm:gap-0">
-          <span className="text-sm text-gray-500 font-medium">
-            หน้า <span className="font-bold text-gray-800">{currentPage}</span> จาก <span className="font-bold text-gray-800">{totalPages}</span>
-          </span>
-          <div className="flex space-x-2">
-            <button 
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              className={`p-2 rounded-lg flex items-center transition-colors ${currentPage === 1 ? 'text-gray-300 cursor-not-allowed bg-gray-50' : 'text-gray-600 hover:bg-gray-100 hover:text-[#1A534B]'}`}
-            >
-              <ChevronLeft size={20} />
-            </button>
-            <button 
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-              disabled={currentPage >= totalPages}
-              className={`p-2 rounded-lg flex items-center transition-colors ${currentPage >= totalPages ? 'text-gray-300 cursor-not-allowed bg-gray-50' : 'text-gray-600 hover:bg-gray-100 hover:text-[#1A534B]'}`}
-            >
-              <ChevronRight size={20} />
-            </button>
+        {totalPages > 1 && (
+          <div className="p-4 border-t border-gray-100 flex flex-wrap items-center justify-between bg-white rounded-b-2xl gap-3">
+            <span className="text-sm text-gray-500 font-medium whitespace-nowrap">
+              หน้า <span className="font-bold text-gray-800">{currentPage}</span> จาก <span className="font-bold text-gray-800">{totalPages}</span>
+            </span>
+            <div className="flex space-x-2 shrink-0">
+              <button 
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className={`p-2 rounded-xl flex items-center transition-colors ${currentPage === 1 ? 'text-gray-300 cursor-not-allowed bg-gray-50' : 'text-gray-600 hover:bg-gray-100 hover:text-[#1A534B]'}`}
+              >
+                <ChevronLeft size={20} className="shrink-0" />
+              </button>
+              <button 
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage >= totalPages}
+                className={`p-2 rounded-xl flex items-center transition-colors ${currentPage >= totalPages ? 'text-gray-300 cursor-not-allowed bg-gray-50' : 'text-gray-600 hover:bg-gray-100 hover:text-[#1A534B]'}`}
+              >
+                <ChevronRight size={20} className="shrink-0" />
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       <style jsx>{`

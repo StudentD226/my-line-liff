@@ -19,10 +19,10 @@ const fullThaiMonths = ['', 'มกราคม', 'กุมภาพันธ�
 
 const InfoTooltip = ({ text }: { text: string }) => (
   <div className="relative flex items-center group cursor-help ml-2 shrink-0">
-    <Info size={16} className="text-gray-400 hover:text-[#1A534B] transition-colors" />
-    <div className="absolute bottom-full left-1/2 -translate-x-1/2 sm:left-1/2 sm:-translate-x-1/2 mb-2 hidden group-hover:block w-[200px] sm:w-64 p-2 bg-gray-800 text-white text-xs rounded-lg shadow-lg z-50 text-center">
+    <Info size={16} className="text-gray-400 hover:text-[#1A534B] transition-colors shrink-0" />
+    <div className="absolute bottom-full right-0 sm:left-1/2 sm:-translate-x-1/2 mb-2 hidden group-hover:block w-[220px] sm:w-64 p-2.5 bg-gray-800 text-white text-xs rounded-xl shadow-xl z-50 text-center leading-relaxed">
       {text}
-      <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-800"></div>
+      <div className="absolute top-full right-2 sm:left-1/2 sm:-translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-800"></div>
     </div>
   </div>
 );
@@ -336,12 +336,13 @@ export default function FinancialDashboard() {
   return (
     <div className="p-4 sm:p-6 lg:p-10 max-w-7xl mx-auto bg-[#F8FAFC] min-h-screen font-sans w-full overflow-x-hidden">
       
-      <div className={`fixed top-6 right-6 z-[100] transition-all duration-300 transform ${alert.show ? 'translate-x-0 opacity-100' : 'translate-x-[150%] opacity-0'} max-w-[90vw]`}>
+      {/* Alert System */}
+      <div className={`fixed top-6 right-4 sm:right-6 z-[100] transition-all duration-300 transform ${alert.show ? 'translate-x-0 opacity-100' : 'translate-x-[150%] opacity-0'} max-w-[90vw] sm:max-w-md w-full`}>
         <div className={`flex items-center space-x-3 p-4 rounded-xl shadow-xl border-l-4 ${alert.type === 'success' ? 'bg-white border-emerald-500 text-gray-800' : alert.type === 'error' ? 'bg-white border-red-500 text-gray-800' : 'bg-white border-orange-500 text-gray-800'}`}>
           {alert.type === 'success' && <CheckCircle className="text-emerald-500 shrink-0" size={24} />}
           {alert.type === 'error' && <X className="text-red-500 shrink-0" size={24} />}
           {alert.type === 'warning' && <AlertCircle className="text-orange-500 shrink-0" size={24} />}
-          <span className="font-bold text-sm">{alert.message}</span>
+          <span className="font-bold text-sm leading-snug">{alert.message}</span>
         </div>
       </div>
 
@@ -350,7 +351,7 @@ export default function FinancialDashboard() {
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-fade-in-down p-6 text-center">
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <AlertTriangle className="text-red-500" size={32} />
+              <AlertTriangle className="text-red-500 shrink-0" size={32} />
             </div>
             <h2 className="font-bold text-xl text-gray-800 mb-2">ยืนยันการลบรายการ?</h2>
             <p className="text-gray-500 text-sm mb-6">คุณกำลังจะลบรายการบัญชีนี้ ข้อมูลยอดเงินจะถูกคำนวณใหม่ และไม่สามารถกู้คืนได้</p>
@@ -369,7 +370,7 @@ export default function FinancialDashboard() {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in-down p-6 text-center">
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <AlertTriangle className="text-red-500" size={32} />
+              <AlertTriangle className="text-red-500 shrink-0" size={32} />
             </div>
             <h2 className="font-bold text-xl text-gray-800 mb-2">ยืนยันการลบหมวดหมู่?</h2>
             <p className="text-gray-500 text-sm mb-6">หากหมวดหมู่นี้ถูกนำไปใช้บันทึกบัญชีแล้ว จะไม่สามารถลบได้ครับ</p>
@@ -386,37 +387,37 @@ export default function FinancialDashboard() {
       {/* Category Manager Modal */}
       {isCategoryManagerOpen && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-fade-in-down max-h-[90vh] flex flex-col">
+          <div className="bg-white rounded-[2rem] shadow-xl w-full max-w-md overflow-hidden animate-fade-in-down max-h-[90vh] flex flex-col">
             <div className="flex justify-between items-center p-5 sm:p-6 border-b border-gray-100 shrink-0">
-              <h2 className="font-bold text-lg sm:text-xl text-gray-800">จัดการหมวดหมู่ ({formData.type === 'INCOME' ? 'รายรับ' : 'รายจ่าย'})</h2>
-              <button onClick={() => setIsCategoryManagerOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors"><X size={24} /></button>
+              <h2 className="font-bold text-lg sm:text-xl text-gray-800 truncate">จัดการหมวดหมู่ ({formData.type === 'INCOME' ? 'รายรับ' : 'รายจ่าย'})</h2>
+              <button onClick={() => setIsCategoryManagerOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors shrink-0 ml-2"><X size={24} /></button>
             </div>
             
             <div className="p-5 sm:p-6 overflow-y-auto custom-scrollbar flex-1">
               <div className="space-y-3">
                 {categories.filter(c => c.type === formData.type).map(cat => (
-                  <div key={cat.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                  <div key={cat.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100">
                     {editingCategory?.id === cat.id ? (
-                      <div className="flex-1 flex items-center space-x-2 mr-2">
+                      <div className="flex-1 flex items-center space-x-2 w-full">
                         <input 
                           type="text" 
                           value={editingCategory?.name || ""} 
                           onChange={(e) => setEditingCategory(prev => prev ? { ...prev, name: e.target.value } : null)}
-                          className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:border-[#1A534B] w-full"
+                          className="flex-1 w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-medium focus:outline-none focus:border-[#1A534B] min-w-0"
                           autoFocus
                         />
-                        <button onClick={handleSaveCategoryEdit} className="p-1.5 bg-emerald-100 text-emerald-600 rounded hover:bg-emerald-200 shrink-0" title="บันทึก"><Save size={16} /></button>
-                        <button onClick={() => setEditingCategory(null)} className="p-1.5 bg-gray-200 text-gray-600 rounded hover:bg-gray-300 shrink-0" title="ยกเลิก"><X size={16} /></button>
+                        <button onClick={handleSaveCategoryEdit} className="p-2 bg-emerald-100 text-emerald-600 rounded-lg hover:bg-emerald-200 shrink-0" title="บันทึก"><Save size={16} className="shrink-0" /></button>
+                        <button onClick={() => setEditingCategory(null)} className="p-2 bg-gray-200 text-gray-600 rounded-lg hover:bg-gray-300 shrink-0" title="ยกเลิก"><X size={16} className="shrink-0" /></button>
                       </div>
                     ) : (
                       <>
-                        <span className="font-medium text-gray-700 truncate mr-2">{cat.name}</span>
-                        <div className="flex items-center space-x-1 shrink-0">
-                          <button onClick={() => setEditingCategory({ id: cat.id, name: cat.name })} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded transition-colors" title="แก้ไข">
-                            <Edit size={16} />
+                        <span className="font-medium text-gray-700 truncate pr-2">{cat.name}</span>
+                        <div className="flex items-center space-x-1.5 shrink-0">
+                          <button onClick={() => setEditingCategory({ id: cat.id, name: cat.name })} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors" title="แก้ไข">
+                            <Edit size={16} className="shrink-0" />
                           </button>
-                          <button onClick={() => setCategoryToDelete(cat.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors" title="ลบ">
-                            <Trash2 size={16} />
+                          <button onClick={() => setCategoryToDelete(cat.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="ลบ">
+                            <Trash2 size={16} className="shrink-0" />
                           </button>
                         </div>
                       </>
@@ -424,7 +425,7 @@ export default function FinancialDashboard() {
                   </div>
                 ))}
                 {categories.filter(c => c.type === formData.type).length === 0 && (
-                  <p className="text-center text-gray-400 font-bold py-4">ไม่มีหมวดหมู่</p>
+                  <p className="text-center text-gray-400 font-bold py-6 bg-gray-50 rounded-xl border border-dashed border-gray-200">ไม่มีหมวดหมู่</p>
                 )}
               </div>
             </div>
@@ -435,14 +436,14 @@ export default function FinancialDashboard() {
       {/* Add/Edit Transaction Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-fade-in-down max-h-[90vh] flex flex-col">
-            <div className="flex justify-between items-center p-4 sm:p-6 border-b border-gray-100 shrink-0">
+          <div className="bg-white rounded-[2rem] shadow-xl w-full max-w-lg overflow-hidden animate-fade-in-down max-h-[90vh] flex flex-col">
+            <div className="flex justify-between items-center p-5 sm:p-6 border-b border-gray-100 shrink-0">
               <h2 className="font-bold text-lg sm:text-xl text-gray-800">{editingId ? 'แก้ไขรายการบัญชี' : 'เพิ่มรายการบัญชี'}</h2>
-              <button onClick={resetAndCloseModal} className="text-gray-400 hover:text-gray-600 transition-colors"><X size={24} /></button>
+              <button onClick={resetAndCloseModal} className="text-gray-400 hover:text-gray-600 transition-colors shrink-0 ml-2"><X size={24} /></button>
             </div>
             
             <div className="overflow-y-auto custom-scrollbar flex-1">
-              <form onSubmit={handleSubmitTransaction} className="p-4 sm:p-6 space-y-4 sm:space-y-5">
+              <form onSubmit={handleSubmitTransaction} className="p-5 sm:p-6 space-y-5">
                 <div className="flex p-1 bg-gray-100 rounded-xl">
                   <button type="button" onClick={() => setFormData({...formData, type: 'INCOME', categoryId: ""})} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${formData.type === 'INCOME' ? 'bg-white text-emerald-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
                     รายรับ
@@ -456,11 +457,12 @@ export default function FinancialDashboard() {
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1">ชื่อรายการ <span className="text-red-500">*</span></label>
                     <div className="relative">
-                      <FileText className="absolute left-3 top-3 text-gray-400" size={18} />
-                      <input type="text" required value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} placeholder="เช่น ซ่อมไฟถนน" className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1A534B] outline-none transition-all" />
+                      <FileText className="absolute left-3 top-3 text-gray-400 shrink-0" size={18} />
+                      <input type="text" required value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} placeholder="เช่น ซ่อมไฟถนน" className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1A534B] outline-none transition-all font-medium" />
                     </div>
                   </div>
 
+                  {/* 🌟 เปลี่ยน Grid ให้สลับเป็นแนวตั้งบนจอมือถือเล็กๆ จะได้ไม่อึดอัด */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-bold text-gray-700 mb-1">จำนวนเงิน (บาท) <span className="text-red-500">*</span></label>
@@ -469,8 +471,8 @@ export default function FinancialDashboard() {
                     <div>
                       <label className="block text-sm font-bold text-gray-700 mb-1">วันที่ <span className="text-red-500">*</span></label>
                       <div className="relative">
-                        <Calendar className="absolute left-3 top-3 text-gray-400" size={18} />
-                        <input type="date" required value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1A534B] outline-none transition-all text-sm" />
+                        <Calendar className="absolute left-3 top-3 text-gray-400 shrink-0" size={18} />
+                        <input type="date" required value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1A534B] outline-none transition-all text-sm font-medium" />
                       </div>
                     </div>
                   </div>
@@ -478,28 +480,28 @@ export default function FinancialDashboard() {
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className="block text-sm font-bold text-gray-700">หมวดหมู่ <span className="text-red-500">*</span></label>
-                      <button type="button" onClick={() => setIsCategoryManagerOpen(true)} className="text-xs font-bold text-[#1A534B] flex items-center hover:underline">
-                        <Settings size={12} className="mr-1" /> จัดการ
+                      <button type="button" onClick={() => setIsCategoryManagerOpen(true)} className="text-xs font-bold text-[#1A534B] flex items-center hover:underline bg-[#1A534B]/5 px-2 py-1 rounded-md">
+                        <Settings size={12} className="mr-1 shrink-0" /> จัดการ
                       </button>
                     </div>
                     <div className="relative mb-2">
-                      <Tag className="absolute left-3 top-3 text-gray-400" size={18} />
-                      <select required value={formData.categoryId} onChange={(e) => setFormData({...formData, categoryId: e.target.value})} className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1A534B] outline-none transition-all text-sm appearance-none bg-white">
+                      <Tag className="absolute left-3 top-3 text-gray-400 shrink-0" size={18} />
+                      <select required value={formData.categoryId} onChange={(e) => setFormData({...formData, categoryId: e.target.value})} className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1A534B] outline-none transition-all text-sm font-medium appearance-none bg-white">
                         <option value="" disabled>เลือกหมวดหมู่</option>
                         {categories.filter(c => c.type === formData.type).map(cat => (
                           <option key={cat.id} value={cat.id}>{cat.name}</option>
                         ))}
-                        <option value="NEW" className="font-bold text-[#1A534B]">+ สร้างหมวดหมู่ใหม่...</option>
+                        <option value="NEW" className="font-bold text-[#1A534B] bg-[#1A534B]/5">+ สร้างหมวดหมู่ใหม่...</option>
                       </select>
                     </div>
                     {formData.categoryId === "NEW" && (
-                      <input type="text" required value={formData.newCategoryName} onChange={(e) => setFormData({...formData, newCategoryName: e.target.value})} placeholder="พิมพ์ชื่อหมวดหมู่ใหม่" className="w-full px-4 py-2 border border-dashed border-[#1A534B] rounded-lg focus:ring-1 focus:ring-[#1A534B] outline-none transition-all text-sm bg-[#1A534B]/5" />
+                      <input type="text" required value={formData.newCategoryName} onChange={(e) => setFormData({...formData, newCategoryName: e.target.value})} placeholder="พิมพ์ชื่อหมวดหมู่ใหม่" className="w-full px-4 py-2 border border-dashed border-[#1A534B] rounded-lg focus:ring-1 focus:ring-[#1A534B] outline-none transition-all text-sm bg-[#1A534B]/5 font-medium" />
                     )}
                   </div>
 
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1">หมายเหตุเพิ่มเติม</label>
-                    <textarea rows={2} value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1A534B] outline-none transition-all text-sm resize-none" placeholder="รายละเอียดอื่นๆ (ถ้ามี)"></textarea>
+                    <textarea rows={2} value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1A534B] outline-none transition-all text-sm resize-none font-medium" placeholder="รายละเอียดอื่นๆ (ถ้ามี)"></textarea>
                   </div>
 
                   <div>
@@ -513,16 +515,16 @@ export default function FinancialDashboard() {
                           className="absolute top-2 right-2 p-1.5 bg-white text-red-500 rounded-full shadow-md hover:bg-red-50 transition-colors"
                           title="ลบรูปนี้"
                         >
-                          <X size={16} />
+                          <X size={16} className="shrink-0" />
                         </button>
                       </div>
                     ) : (
                       <label className={`flex items-center justify-center w-full h-24 px-4 transition bg-gray-50 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer hover:border-[#1A534B] hover:bg-gray-100 ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
                         <div className="flex flex-col items-center space-y-2">
                           {isUploading ? (
-                            <Loader2 className="text-[#1A534B] animate-spin" size={24} />
+                            <Loader2 className="text-[#1A534B] animate-spin shrink-0" size={24} />
                           ) : (
-                            <Upload className="text-gray-400" size={20} />
+                            <Upload className="text-gray-400 shrink-0" size={20} />
                           )}
                           <span className="text-xs text-gray-500 font-medium text-center">
                             {isUploading ? 'กำลังอัปโหลด...' : 'คลิกเพื่ออัปโหลดรูปภาพ (ไม่เกิน 10MB)'}
@@ -534,9 +536,9 @@ export default function FinancialDashboard() {
                   </div>
                 </div>
 
-                <div className="pt-4 flex space-x-3 pb-2">
-                  <button type="button" onClick={resetAndCloseModal} className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 font-bold rounded-lg hover:bg-gray-200 transition-colors">ยกเลิก</button>
-                  <button type="submit" disabled={isSubmitting || isUploading} className={`flex-1 px-4 py-2.5 text-white font-bold rounded-lg transition-colors shadow-md ${(isSubmitting || isUploading) ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#1A534B] hover:bg-[#14423b]'}`}>
+                <div className="pt-2 pb-1 flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
+                  <button type="button" onClick={resetAndCloseModal} className="flex-1 px-4 py-3 sm:py-2.5 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors">ยกเลิก</button>
+                  <button type="submit" disabled={isSubmitting || isUploading} className={`flex-1 px-4 py-3 sm:py-2.5 text-white font-bold rounded-xl transition-colors shadow-md ${(isSubmitting || isUploading) ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#1A534B] hover:bg-[#14423b]'}`}>
                     {isSubmitting ? 'กำลังบันทึก...' : (editingId ? 'บันทึกการแก้ไข' : 'บันทึกข้อมูล')}
                   </button>
                 </div>
@@ -556,30 +558,31 @@ export default function FinancialDashboard() {
           <p className="text-xs sm:text-sm text-gray-500 mt-1">รายละเอียดรายรับ-รายจ่ายของหมู่บ้าน</p>
         </div>
         
+        {/* 🌟 ปรับให้ Dropdown และ Button กางเต็มจอในมือถือ เพื่อกดง่ายขึ้น */}
         <div className="flex flex-col sm:flex-row flex-wrap items-center gap-2 sm:gap-3 w-full md:w-auto">
-          {/* Dropdown เลือกปี */}
-          <select 
-            value={selectedYear} 
-            onChange={(e) => setSelectedYear(Number(e.target.value))} 
-            className="w-full sm:w-auto flex-1 bg-white border border-gray-200 text-gray-700 text-sm rounded-lg focus:ring-[#1A534B] outline-none p-2.5 font-bold shadow-sm cursor-pointer"
-          >
-            {yearOptions.map(year => (
-              <option key={year} value={year}>ปี พ.ศ. {year + 543}</option>
-            ))}
-          </select>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <select 
+              value={selectedYear} 
+              onChange={(e) => setSelectedYear(Number(e.target.value))} 
+              className="w-full sm:w-auto flex-1 bg-white border border-gray-200 text-gray-700 text-sm rounded-xl focus:ring-2 focus:ring-[#1A534B] outline-none p-3 font-bold shadow-sm cursor-pointer"
+            >
+              {yearOptions.map(year => (
+                <option key={year} value={year}>ปี พ.ศ. {year + 543}</option>
+              ))}
+            </select>
 
-          {/* Dropdown เลือกเดือน */}
-          <select 
-            value={selectedMonth} 
-            onChange={(e) => setSelectedMonth(Number(e.target.value))} 
-            className="w-full sm:w-auto flex-1 bg-white border border-gray-200 text-gray-700 text-sm rounded-lg focus:ring-[#1A534B] outline-none p-2.5 font-bold shadow-sm cursor-pointer"
-          >
-            {[...Array(12)].map((_, i) => (
-              <option key={i+1} value={i+1}>รอบบิล {fullThaiMonths[i+1]}</option>
-            ))}
-          </select>
+            <select 
+              value={selectedMonth} 
+              onChange={(e) => setSelectedMonth(Number(e.target.value))} 
+              className="w-full sm:w-auto flex-1 bg-white border border-gray-200 text-gray-700 text-sm rounded-xl focus:ring-2 focus:ring-[#1A534B] outline-none p-3 font-bold shadow-sm cursor-pointer"
+            >
+              {[...Array(12)].map((_, i) => (
+                <option key={i+1} value={i+1}>รอบบิล {fullThaiMonths[i+1]}</option>
+              ))}
+            </select>
+          </div>
 
-          <button onClick={() => setIsModalOpen(true)} className="w-full sm:w-auto justify-center bg-[#1A534B] hover:bg-[#14423b] text-white font-bold py-2.5 px-5 rounded-lg flex items-center space-x-2 shadow-md transition-colors whitespace-nowrap">
+          <button onClick={() => setIsModalOpen(true)} className="w-full sm:w-auto justify-center bg-[#1A534B] hover:bg-[#14423b] text-white font-bold py-3 px-5 rounded-xl flex items-center space-x-2 shadow-md transition-colors whitespace-nowrap active:scale-[0.98]">
             <Plus size={18} className="shrink-0" />
             <span>เพิ่มรายการ</span>
           </button>
@@ -588,26 +591,26 @@ export default function FinancialDashboard() {
 
       {/* 🌟 Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
-        <div className="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-gray-100">
+        <div className="bg-white p-5 sm:p-6 rounded-[1.5rem] shadow-sm border border-gray-100 flex flex-col justify-center">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
             <h3 className="text-gray-500 text-xs sm:text-sm font-bold flex items-center">รายรับรวม <InfoTooltip text="รวมรายรับทั้งหมด (ค่าส่วนกลาง + รายรับอื่นๆ)" /></h3>
-            <div className="p-2 bg-emerald-50 rounded-lg"><TrendingUp className="text-emerald-500" size={18} /></div>
+            <div className="p-2 bg-emerald-50 rounded-xl"><TrendingUp className="text-emerald-500 shrink-0" size={18} /></div>
           </div>
           <p className="text-2xl sm:text-3xl font-extrabold text-gray-800 truncate">{summary.totalIncome.toLocaleString()} <span className="text-xs sm:text-sm text-gray-500 font-normal">บาท</span></p>
         </div>
         
-        <div className="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-gray-100">
+        <div className="bg-white p-5 sm:p-6 rounded-[1.5rem] shadow-sm border border-gray-100 flex flex-col justify-center">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
             <h3 className="text-gray-500 text-xs sm:text-sm font-bold flex items-center">รายจ่ายรวม</h3>
-            <div className="p-2 bg-red-50 rounded-lg"><TrendingDown className="text-red-500" size={18} /></div>
+            <div className="p-2 bg-red-50 rounded-xl"><TrendingDown className="text-red-500 shrink-0" size={18} /></div>
           </div>
           <p className="text-2xl sm:text-3xl font-extrabold text-gray-800 truncate">{summary.totalExpense.toLocaleString()} <span className="text-xs sm:text-sm text-gray-500 font-normal">บาท</span></p>
         </div>
 
-        <div className="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-gray-100 sm:col-span-2 md:col-span-1">
+        <div className="bg-white p-5 sm:p-6 rounded-[1.5rem] shadow-sm border border-gray-100 sm:col-span-2 md:col-span-1 flex flex-col justify-center">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
             <h3 className="text-gray-500 text-xs sm:text-sm font-bold flex items-center">คงเหลือสุทธิ</h3>
-            <div className="p-2 bg-[#1A534B]/10 rounded-lg"><Wallet className="text-[#1A534B]" size={18} /></div>
+            <div className="p-2 bg-[#1A534B]/10 rounded-xl"><Wallet className="text-[#1A534B] shrink-0" size={18} /></div>
           </div>
           <p className={`text-2xl sm:text-3xl font-extrabold truncate ${summary.remaining >= 0 ? 'text-[#1A534B]' : 'text-red-500'}`}>
             {summary.remaining.toLocaleString()} <span className="text-xs sm:text-sm text-gray-500 font-normal">บาท</span>
@@ -617,9 +620,9 @@ export default function FinancialDashboard() {
 
       {/* 🌟 Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
-        <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-white p-4 sm:p-6 rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden flex flex-col">
           <h3 className="font-bold text-gray-800 mb-4 sm:mb-6 flex items-center text-sm sm:text-base">สถิติรายรับ - รายจ่าย รายปี <InfoTooltip text={`ข้อมูลสรุปรวมตั้งแต่ ม.ค. - ธ.ค. ปี พ.ศ. ${selectedYear + 543}`} /></h3>
-          <div className="h-56 sm:h-64 w-full">
+          <div className="h-56 sm:h-64 w-full flex-1">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={yearlyChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
@@ -634,9 +637,9 @@ export default function FinancialDashboard() {
           </div>
         </div>
 
-        <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-white p-4 sm:p-6 rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden flex flex-col">
           <h3 className="font-bold text-gray-800 mb-2 flex items-center text-sm sm:text-base">สัดส่วนรายจ่ายรอบบิลปัจจุบัน <InfoTooltip text={`วิเคราะห์รายจ่ายแยกตามหมวดหมู่ ของรอบบิล ${fullThaiMonths[selectedMonth]} ${selectedYear + 543}`} /></h3>
-          <div className="flex items-center justify-center h-56 sm:h-64 relative w-full">
+          <div className="flex items-center justify-center h-56 sm:h-64 relative w-full flex-1">
             {pieData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -661,7 +664,7 @@ export default function FinancialDashboard() {
       </div>
 
       {/* 🌟 Table Section */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col w-full">
+      <div className="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden flex flex-col w-full">
         <div className="p-4 sm:p-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-gray-50/50 gap-3">
           <h3 className="font-bold text-gray-800 flex items-center text-sm sm:text-base">รายการบัญชีรอบบิลนี้ <InfoTooltip text="กดที่หัวตารางเพื่อจัดเรียงลำดับข้อมูล" /></h3>
           
@@ -670,35 +673,36 @@ export default function FinancialDashboard() {
             <select 
               value={rowsPerPage} 
               onChange={(e) => { setRowsPerPage(Number(e.target.value)); setCurrentPage(1); }}
-              className="border border-gray-200 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-[#1A534B] font-bold text-gray-700 bg-white"
+              className="border border-gray-200 rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-[#1A534B] font-bold text-gray-700 bg-white"
             >
               <option value={10}>10 รายการ</option>
               <option value={20}>20 รายการ</option>
               <option value={50}>50 รายการ</option>
               <option value={100}>100 รายการ</option>
             </select>
-            <span className="text-gray-500 bg-gray-100 px-3 py-1 rounded-full font-bold whitespace-nowrap">รวม {summary.totalTransactions} รายการ</span>
+            <span className="text-gray-500 bg-gray-100 px-3 py-1.5 rounded-full font-bold whitespace-nowrap">รวม {summary.totalTransactions} รายการ</span>
           </div>
         </div>
         
+        {/* 🌟 บังคับตารางไม่ให้บีบตัวจนพัง โดยใช้ min-w-[800px] และ overflow-x-auto */}
         <div className="overflow-x-auto custom-scrollbar flex-1 w-full">
           <table className="w-full text-sm text-left relative min-w-[800px]">
             <thead className="bg-gray-50 text-gray-500 sticky top-0 z-10 shadow-sm">
               <tr>
                 <th className="px-4 sm:px-6 py-4 font-bold cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap" onClick={() => requestSort('date')}>
-                  <div className="flex items-center space-x-1"><span>วันที่</span><ArrowUpDown size={14} className={sortConfig?.key === 'date' ? 'text-[#1A534B]' : ''} /></div>
+                  <div className="flex items-center space-x-1"><span>วันที่</span><ArrowUpDown size={14} className={`shrink-0 ${sortConfig?.key === 'date' ? 'text-[#1A534B]' : ''}`} /></div>
                 </th>
                 <th className="px-4 sm:px-6 py-4 font-bold cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap" onClick={() => requestSort('title')}>
-                  <div className="flex items-center space-x-1"><span>รายการ</span><ArrowUpDown size={14} className={sortConfig?.key === 'title' ? 'text-[#1A534B]' : ''} /></div>
+                  <div className="flex items-center space-x-1"><span>รายการ</span><ArrowUpDown size={14} className={`shrink-0 ${sortConfig?.key === 'title' ? 'text-[#1A534B]' : ''}`} /></div>
                 </th>
                 <th className="px-4 sm:px-6 py-4 font-bold cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap" onClick={() => requestSort('category')}>
-                  <div className="flex items-center space-x-1"><span>หมวดหมู่</span><ArrowUpDown size={14} className={sortConfig?.key === 'category' ? 'text-[#1A534B]' : ''} /></div>
+                  <div className="flex items-center space-x-1"><span>หมวดหมู่</span><ArrowUpDown size={14} className={`shrink-0 ${sortConfig?.key === 'category' ? 'text-[#1A534B]' : ''}`} /></div>
                 </th>
                 <th className="px-4 sm:px-6 py-4 font-bold cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap text-center" onClick={() => requestSort('type')}>
-                  <div className="flex items-center justify-center space-x-1"><span>ประเภท</span><ArrowUpDown size={14} className={sortConfig?.key === 'type' ? 'text-[#1A534B]' : ''} /></div>
+                  <div className="flex items-center justify-center space-x-1"><span>ประเภท</span><ArrowUpDown size={14} className={`shrink-0 ${sortConfig?.key === 'type' ? 'text-[#1A534B]' : ''}`} /></div>
                 </th>
                 <th className="px-4 sm:px-6 py-4 font-bold cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap text-right" onClick={() => requestSort('amount')}>
-                  <div className="flex items-center justify-end space-x-1"><span>จำนวนเงิน</span><ArrowUpDown size={14} className={sortConfig?.key === 'amount' ? 'text-[#1A534B]' : ''} /></div>
+                  <div className="flex items-center justify-end space-x-1"><span>จำนวนเงิน</span><ArrowUpDown size={14} className={`shrink-0 ${sortConfig?.key === 'amount' ? 'text-[#1A534B]' : ''}`} /></div>
                 </th>
                 <th className="px-4 sm:px-6 py-4 font-bold text-center whitespace-nowrap">จัดการ</th>
               </tr>
@@ -712,12 +716,12 @@ export default function FinancialDashboard() {
                       <div className="flex items-center space-x-2">
                         <p className="font-bold text-gray-800 whitespace-nowrap">{tx.title}</p>
                         {tx.receiptUrl && (
-                          <a href={tx.receiptUrl} target="_blank" rel="noreferrer" title="ดูหลักฐานบิล/สลิป" className="text-blue-500 hover:text-blue-700 bg-blue-50 p-1 rounded transition-colors shrink-0">
-                            <FileText size={14} />
+                          <a href={tx.receiptUrl} target="_blank" rel="noreferrer" title="ดูหลักฐานบิล/สลิป" className="text-blue-500 hover:text-blue-700 bg-blue-50 p-1.5 rounded-lg transition-colors shrink-0">
+                            <FileText size={14} className="shrink-0" />
                           </a>
                         )}
                       </div>
-                      {tx.isAuto && <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded text-[10px] font-bold bg-[#1A534B]/10 text-[#1A534B] whitespace-nowrap">ดึงอัตโนมัติจากบิลค่าส่วนกลาง</span>}
+                      {tx.isAuto && <span className="inline-flex items-center mt-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#1A534B]/10 text-[#1A534B] whitespace-nowrap">ดึงอัตโนมัติจากบิลค่าส่วนกลาง</span>}
                     </td>
                     <td className="px-4 sm:px-6 py-4 text-gray-600 font-medium whitespace-nowrap">{tx.category?.name}</td>
                     <td className="px-4 sm:px-6 py-4 text-center whitespace-nowrap">
@@ -731,11 +735,11 @@ export default function FinancialDashboard() {
                     <td className="px-4 sm:px-6 py-4 text-center whitespace-nowrap">
                       {!tx.isAuto ? (
                         <div className="flex items-center justify-center space-x-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => handleEditClick(tx)} className="p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-md transition-colors" title="แก้ไขรายการ">
-                            <Edit size={16} />
+                          <button onClick={() => handleEditClick(tx)} className="p-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors" title="แก้ไขรายการ">
+                            <Edit size={16} className="shrink-0" />
                           </button>
-                          <button onClick={() => { setDeletingId(tx.id); setIsDeleteModalOpen(true); }} className="p-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-md transition-colors" title="ลบรายการ">
-                            <Trash2 size={16} />
+                          <button onClick={() => { setDeletingId(tx.id); setIsDeleteModalOpen(true); }} className="p-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition-colors" title="ลบรายการ">
+                            <Trash2 size={16} className="shrink-0" />
                           </button>
                         </div>
                       ) : (
@@ -745,31 +749,31 @@ export default function FinancialDashboard() {
                   </tr>
                 ))
               ) : (
-                <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-400 font-bold bg-white">ไม่มีรายการบัญชีในรอบบิลนี้</td></tr>
+                <tr><td colSpan={6} className="px-6 py-10 text-center text-gray-400 font-bold bg-white">ไม่มีรายการบัญชีในรอบบิลนี้</td></tr>
               )}
             </tbody>
           </table>
         </div>
 
         {totalPages > 1 && (
-          <div className="p-4 border-t border-gray-100 flex items-center justify-between bg-white gap-3 flex-wrap">
-            <span className="text-sm text-gray-500 font-medium">
+          <div className="p-4 sm:p-5 border-t border-gray-100 flex flex-wrap items-center justify-between bg-white gap-3">
+            <span className="text-sm text-gray-500 font-medium whitespace-nowrap">
               หน้า <span className="font-bold text-gray-800">{currentPage}</span> จาก <span className="font-bold text-gray-800">{totalPages}</span>
             </span>
-            <div className="flex space-x-2">
+            <div className="flex space-x-2 shrink-0">
               <button 
                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className={`p-2 rounded-lg flex items-center transition-colors ${currentPage === 1 ? 'text-gray-300 cursor-not-allowed bg-gray-50' : 'text-gray-600 hover:bg-gray-100 hover:text-[#1A534B]'}`}
+                className={`p-2 rounded-xl flex items-center transition-colors ${currentPage === 1 ? 'text-gray-300 cursor-not-allowed bg-gray-50' : 'text-gray-600 hover:bg-gray-100 hover:text-[#1A534B]'}`}
               >
-                <ChevronLeft size={20} />
+                <ChevronLeft size={20} className="shrink-0" />
               </button>
               <button 
                 onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
-                className={`p-2 rounded-lg flex items-center transition-colors ${currentPage === totalPages ? 'text-gray-300 cursor-not-allowed bg-gray-50' : 'text-gray-600 hover:bg-gray-100 hover:text-[#1A534B]'}`}
+                className={`p-2 rounded-xl flex items-center transition-colors ${currentPage === totalPages ? 'text-gray-300 cursor-not-allowed bg-gray-50' : 'text-gray-600 hover:bg-gray-100 hover:text-[#1A534B]'}`}
               >
-                <ChevronRight size={20} />
+                <ChevronRight size={20} className="shrink-0" />
               </button>
             </div>
           </div>
