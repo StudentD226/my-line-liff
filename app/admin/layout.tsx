@@ -1,12 +1,21 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, FileText, CheckCircle, Users, LayoutDashboard, Wrench, Bell, UserCircle, PieChart, Menu, X } from 'lucide-react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  
+  // 🌟 ตั้งค่าเริ่มต้น: ถ้าจอใหญ่เปิดค้างไว้ ถ้าจอเล็กปิดไว้ก่อน
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  // เช็คขนาดหน้าจอตอนโหลดครั้งแรก (เพื่อซ่อนเมนูอัตโนมัติบนจอเล็ก)
+  useEffect(() => {
+    if (window.innerWidth < 1024) {
+      setIsSidebarOpen(false);
+    }
+  }, []);
 
   const menuItems = [
     { icon: LayoutDashboard, label: 'ภาพรวมระบบ', href: '/admin' },
@@ -29,11 +38,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         />
       )}
 
-      {/* 🌟 แถบเมนูด้านซ้าย (Sidebar) เปลี่ยนมาใช้ lg: เป็นจุดตัด */}
+      {/* 🌟 แถบเมนูด้านซ้าย (Sidebar) ผูกการแสดงผลกับ isSidebarOpen 100% */}
       <aside 
         className={`w-72 bg-white border-r border-slate-200 fixed h-full z-30 shadow-[4px_0_24px_rgba(0,0,0,0.02)] flex flex-col transition-transform duration-300 ease-in-out
-        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
-        lg:translate-x-0`} 
+        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`} 
       >
         <div className="p-7 flex-1 overflow-y-auto custom-scrollbar">
           
@@ -48,7 +56,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </span>
             </div>
             
-            {/* 🌟 ปุ่ม X ปิดเมนู (โชว์เฉพาะจอเล็กกว่า lg) */}
+            {/* 🌟 ปุ่ม X ปิดเมนู (โชว์เฉพาะจอเล็กกว่า lg เพราะจอใหญ่เรามีปุ่ม Hamburger ด้านบนแล้ว) */}
             <button 
               onClick={() => setIsSidebarOpen(false)}
               className="lg:hidden p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-full transition-colors shrink-0"
@@ -69,7 +77,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <Link 
                   key={item.label}
                   href={item.href} 
-                  onClick={() => setIsSidebarOpen(false)} // 🌟 กดปุ๊บ ปิดเมนูปั๊บ (เฉพาะมือถือและแท็บเล็ต)
+                  // 🌟 บนมือถือให้ปิดเมนูอัตโนมัติเมื่อกดเลือกลิงก์
+                  onClick={() => window.innerWidth < 1024 && setIsSidebarOpen(false)} 
                   className={`flex items-center gap-3.5 px-4 py-3.5 rounded-2xl transition-all duration-200 font-bold group
                     ${isActive 
                       ? 'bg-[#376B64] text-white shadow-md shadow-[#376B64]/20 scale-[1.02]' 
@@ -97,16 +106,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       </aside>
 
-      {/* 🌟 พื้นที่แสดงเนื้อหา (Main Content) - เปลี่ยนจาก md: เป็น lg: และยัด w-full overflow-x-hidden */}
-      <main className="flex-1 flex flex-col min-h-screen lg:ml-72 w-full max-w-full overflow-x-hidden">
+      {/* 🌟 พื้นที่แสดงเนื้อหา (Main Content) - ยืดหด margin-left ตามการเปิดปิดของ Sidebar (เฉพาะจอใหญ่) */}
+      <main className={`flex-1 flex flex-col min-h-screen w-full max-w-full overflow-x-hidden transition-all duration-300 ease-in-out ${isSidebarOpen ? 'lg:ml-72' : 'lg:ml-0'}`}>
         
         {/* Header แถบบน */}
         <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-4 sm:px-6 md:px-8 sticky top-0 z-10 w-full shrink-0">
           <div className="flex items-center gap-3">
-            {/* 🌟 ปุ่ม Hamburger (โชว์เมื่อจอเล็กกว่า lg) */}
+            {/* 🌟 ปุ่ม Hamburger (โชว์ตลอดเวลา) ใช้เปิด/ปิด Sidebar */}
             <button 
-              onClick={() => setIsSidebarOpen(true)}
-              className="lg:hidden p-2.5 text-slate-500 hover:bg-[#376B64]/10 hover:text-[#376B64] rounded-xl transition-colors shrink-0"
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="p-2.5 text-slate-500 hover:bg-[#376B64]/10 hover:text-[#376B64] rounded-xl transition-colors shrink-0"
             >
               <Menu size={24} strokeWidth={2.5} />
             </button>
