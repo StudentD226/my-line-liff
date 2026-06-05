@@ -20,19 +20,20 @@ function createInvoiceFlexMessage(data: any) {
     tableContents.push({
       type: "box", layout: "horizontal", margin: "md",
       contents: [
-        { type: "text", text: data.currentInvoiceItem.label, size: "sm", color: "#059669" }, // เอา weight: "bold" ออก
-        { type: "text", text: `${data.currentInvoiceItem.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#059669", align: "end" } // เอา weight: "bold" ออก
+        { type: "text", text: data.currentInvoiceItem.label, size: "sm", color: "#059669" }, 
+        { type: "text", text: `${data.currentInvoiceItem.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#059669", align: "end" } 
       ]
     });
   }
 
   if (data.pastMonthItems && data.pastMonthItems.length > 0) {
-    [...data.pastMonthItems].reverse().forEach((item: any) => {
+    // 🌟 เอา .reverse() ออก เพื่อให้รายการค้างชำระเรียงจาก "เก่า ไป ใหม่" ถูกต้องตามลำดับเวลา
+    data.pastMonthItems.forEach((item: any) => {
       tableContents.push({
         type: "box", layout: "horizontal", margin: "md",
         contents: [
           { type: "text", text: item.label, size: "sm", color: "#EF4444" },
-          { type: "text", text: `${item.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end" } // เอา weight: "bold" ออก
+          { type: "text", text: `${item.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end" } 
         ]
       });
     });
@@ -40,14 +41,14 @@ function createInvoiceFlexMessage(data: any) {
 
   if (data.pastYearTotals) {
     Object.keys(data.pastYearTotals)
-      .sort((a, b) => Number(b) - Number(a))
+      .sort((a, b) => Number(a) - Number(b)) // 🌟 เรียงปีจาก เก่า ไป ใหม่ เช่นกัน
       .forEach(yearStr => {
         const yearNum = parseInt(yearStr);
         tableContents.push({
           type: "box", layout: "horizontal", margin: "md",
           contents: [
             { type: "text", text: `ยอดค้างชำระปี ${yearNum + 543}`, size: "sm", color: "#EF4444" },
-            { type: "text", text: `${data.pastYearTotals[yearNum].toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end" } // เอา weight: "bold" ออก
+            { type: "text", text: `${data.pastYearTotals[yearNum].toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end" } 
           ]
         });
     });
@@ -58,7 +59,7 @@ function createInvoiceFlexMessage(data: any) {
       type: "box", layout: "horizontal", margin: "md",
       contents: [
         { type: "text", text: `ค่าปรับ`, size: "sm", color: "#EA580C" },
-        { type: "text", text: `${data.totalPenalty.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EA580C", align: "end" } // เอา weight: "bold" ออก
+        { type: "text", text: `${data.totalPenalty.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EA580C", align: "end" } 
       ]
     });
   }
@@ -94,7 +95,6 @@ function createInvoiceFlexMessage(data: any) {
           type: "box", layout: "horizontal", margin: "md", backgroundColor: "#D1E7E3", cornerRadius: "20px", paddingAll: "sm", paddingStart: "md", paddingEnd: "md", alignItems: "flex-start",
           contents: [
             { type: "image", url: "https://img.icons8.com/fluency-systems-filled/48/2a524c/info.png", size: "16px", flex: 0, margin: "xs" },
-            // 🌟 แก้ข้อความและเอา weight: "bold" ออก
             { type: "text", text: `ใบแจ้งชำระค่าส่วนกลาง\nประจำเดือน ${data.headerBillingMonthText}`, size: "xs", color: "#2A524C", margin: "sm", wrap: true, flex: 1 }
           ]
         },
@@ -126,9 +126,7 @@ function createInvoiceFlexMessage(data: any) {
                 {
                   type: "box", layout: "vertical", margin: "md",
                   contents: [
-                    // 🌟 1. ขยายให้ใหญ่ขึ้น (size: "sm")
                     { type: "text", text: "กรุณาชำระภายในวันที่", size: "sm", color: "#4B5563", weight: "bold" },
-                    // 🌟 2. ย่อวันที่ (size: "xs") และเป็นตัวธรรมดา (weight: "regular")
                     { type: "text", text: data.dueDateText, size: "xs", color: "#EF4444", weight: "regular", margin: "xs" }
                   ]
                 }
@@ -164,7 +162,6 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     
-    // 🌟 ดักจับทั้ง invoiceId และ id เพื่อแก้บั๊ก id: undefined
     const targetId = body.invoiceId || body.id; 
     const type = body.type;
 
@@ -183,7 +180,6 @@ export async function POST(request: Request) {
     let displayPenalty = 0;
     let penaltyRatePerMonth = config?.penaltyRatePerDay ? Number(config.penaltyRatePerDay) : 100;
 
-    // คำนวณค่าปรับเฉพาะบิลนี้ 
     if (type === 'OVERDUE') {
       const today = new Date(); today.setHours(0, 0, 0, 0);
       const dueDate = new Date(invoice.dueDate); dueDate.setHours(0, 0, 0, 0);
@@ -217,7 +213,7 @@ export async function POST(request: Request) {
     const allUnpaidInvoices = await prisma.invoice.findMany({
       where: {
         residentHouseId: invoice.residentHouseId,
-        status: { in: ['PENDING', 'OVERDUE', 'REJECTED', 'PARTIAL'] as any }, // เพิ่ม PARTIAL
+        status: { in: ['PENDING', 'OVERDUE', 'REJECTED', 'PARTIAL'] as any }, 
         billingYear: { not: 9999 } 
       },
       orderBy: [{ billingYear: 'asc' }, { billingMonth: 'asc' }]
@@ -233,16 +229,19 @@ export async function POST(request: Request) {
     const targetMonth = invoice.billingMonth;
 
     allUnpaidInvoices.forEach(inv => {
-      // 🌟 ดักทางบิลอนาคต: ดึงเฉพาะบิลเป้าหมายและบิลที่เก่ากว่าเท่านั้น
+      // 🌟 ดักทางบิลอนาคต
       const isTargetInvoice = inv.id === invoice.id;
       const isOlderInvoice = inv.billingYear < targetYear || (inv.billingYear === targetYear && inv.billingMonth < targetMonth);
 
       if (isTargetInvoice || isOlderInvoice) {
+        
+        // 🌟🌟 กฎเหล็ก: ดักบิล TR- ตรงนี้เลย! ห้ามเอาบิลทดสอบมารวมยอด (ยกเว้นแอดมินจงใจกดส่งบิล TR- ใบนั้น)
+        if (!isTargetInvoice && inv.invoiceNo && inv.invoiceNo.startsWith('TR-')) return;
+
         let paid = truncateDecimals(Number(inv.paidAmount || 0));
         let penalty = isTargetInvoice ? displayPenalty : truncateDecimals(Number(inv.penaltyAmount || 0));
         let base = truncateDecimals(Number(inv.baseAmount || 0));
 
-        // 🌟 Logic หักเงินจ่ายบางส่วน (Partial)
         if (paid > 0) {
           if (paid >= penalty) {
             base = truncateDecimals(base - (paid - penalty));
@@ -275,7 +274,6 @@ export async function POST(request: Request) {
     const headerBillingMonthText = `${fullThaiMonths[invoice.billingMonth]} ${invoice.billingYear + 543}`;
     const dueDateObj = new Date(invoice.dueDate);
     
-    // 🌟 เปลี่ยน Format วันที่ให้ใช้เว้นวรรค 07 เมษายน 2569
     const dueDateText = `${String(dueDateObj.getDate()).padStart(2, '0')} ${fullThaiMonths[dueDateObj.getMonth() + 1]} ${dueDateObj.getFullYear() + 543}`;
 
     const flexBubble = createInvoiceFlexMessage({
@@ -287,7 +285,7 @@ export async function POST(request: Request) {
       pastMonthItems,
       totalPenalty,
       finalGrandTotal,
-      isOverdue: type === 'OVERDUE',
+      isOverdue: type === 'OVERDUE' || totalPenalty > 0,
       dueDateText,
       invoiceNo: invoice.invoiceNo || invoice.id 
     });

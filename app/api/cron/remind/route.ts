@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 
 const fullThaiMonths = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
 
-// Helper ตัดทศนิยมทิ้ง
+// Helper ตัดทศนิยมทิ้ง ไม่ให้ปัดขึ้น
 const truncateDecimals = (val: number): number => Math.floor(Math.round(val * 10000) / 100) / 100;
 
 function createInvoiceFlexMessage(data: any) {
@@ -23,8 +23,8 @@ function createInvoiceFlexMessage(data: any) {
   }
 
   if (data.pastMonthItems && data.pastMonthItems.length > 0) {
-    // เรียงจากเดือนเก่าที่สุดไปเดือนใหม่ล่าสุด
-    [...data.pastMonthItems].reverse().forEach((item: any) => {
+    // 🌟 เอา .reverse() ออก เรียงจากเดือนเก่าไปเดือนใหม่
+    data.pastMonthItems.forEach((item: any) => {
       tableContents.push({
         type: "box", layout: "horizontal", margin: "md",
         contents: [
@@ -37,7 +37,7 @@ function createInvoiceFlexMessage(data: any) {
 
   if (data.pastYearTotals) {
     Object.keys(data.pastYearTotals)
-      .sort((a, b) => Number(b) - Number(a))
+      .sort((a, b) => Number(a) - Number(b)) // 🌟 เรียงปีจาก เก่า ไป ใหม่ ให้เหมือนระบบอื่น
       .forEach(yearStr => {
         const yearNum = parseInt(yearStr);
         tableContents.push({
@@ -172,7 +172,6 @@ async function handleRemindCronJob(request: Request) {
     const config = await prisma.systemConfig.findFirst();
     if (!config) return NextResponse.json({ success: false, message: 'ไม่พบการตั้งค่าระบบ' });
 
-    // 🌟 1. แปลงเวลาของเซิร์ฟเวอร์ (UTC) ให้เป็นเวลาไทย (Asia/Bangkok)
     const now = new Date();
     const bkkTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Bangkok" }));
     
@@ -181,10 +180,8 @@ async function handleRemindCronJob(request: Request) {
     const currentMinute = String(bkkTime.getMinutes()).padStart(2, '0');
     const currentTimeStr = `${currentHour}:${currentMinute}`;
     
-    // ดึงเวลาเปิดระบบทวงจากหน้าบ้าน (ถ้าไม่เจอก็ใช้ค่าเริ่มต้น 08:00)
     const targetTimeStr = config.invoiceGenerateTime || "08:00";
 
-    // 🌟 2. ล็อกเวลาไทยตรงเป๊ะนาทีเดียวจบ สกัดปัญหาสแปมส่งทุกนาทีตอน 7 โมงเช้า
     if (currentTimeStr !== targetTimeStr) {
       return NextResponse.json({ 
         success: true, 
@@ -199,20 +196,23 @@ async function handleRemindCronJob(request: Request) {
 
     if (reminderType === 'NONE') return NextResponse.json({ success: true, message: 'วันนี้ไม่ใช่วันส่งทวงยอดค้างครับ' });
 
-    // ดึงบิลที่ค้างอยู่ทั้งหมดขยายครบทุกสถานะค้าง
+    // 🌟 1. ดักจับตั้งแต่ใน DB เลยว่าไม่หยิบบิลทดสอบ TR- มารันส่งทวงหนี้
     const pendingInvoices = await prisma.invoice.findMany({
       where: { 
         status: { in: ['PENDING', 'PARTIAL', 'OVERDUE', 'REJECTED'] as any },
-        billingYear: { not: 9999 } 
+        billingYear: { not: 9999 },
+        NOT: {
+          invoiceNo: { startsWith: 'TR-' }
+        }
       },
       include: { house: { include: { residents: true } } }
     });
+    
     if (pendingInvoices.length === 0) return NextResponse.json({ success: true, message: 'ไม่มีบิลค้างชำระที่ต้องทวง' });
 
     const penaltyRatePerMonth = config?.penaltyRatePerDay ? Number(config.penaltyRatePerDay) : 100;
     let stats = { lineSent: 0, updatedInvoices: 0 };
 
-    // 🌟 3. รันอัปเดตค่าปรับลงระบบฐานข้อมูลรายบิลก่อน
     if (reminderType === 'OVERDUE') {
       for (const inv of pendingInvoices) {
         const dueDate = new Date(inv.dueDate); dueDate.setHours(0, 0, 0, 0);
@@ -237,7 +237,6 @@ async function handleRemindCronJob(request: Request) {
       }
     }
 
-    // 🌟 4. รวบรวมและจัดกลุ่มหนี้ค้างตามรายบ้าน (Unique House Map) ป้องกันสแปมส่งเบิ้ลหลายใบ
     const uniqueHouseMap = new Map<string, any[]>();
     pendingInvoices.forEach(inv => {
       const list = uniqueHouseMap.get(inv.residentHouseId) || [];
@@ -245,15 +244,18 @@ async function handleRemindCronJob(request: Request) {
       uniqueHouseMap.set(inv.residentHouseId, list);
     });
 
-    // 🌟 5. เริ่มลูปสรุปยอดและจัดส่ง LINE หาแต่ละบ้าน บ้านละ 1 ข้อความเท่านั้น
     for (const [houseId, invList] of uniqueHouseMap.entries()) {
       const sampleInv = invList[0];
 
+      // 🌟 2. ดักบิล TR- ไม่ให้โผล่เข้ามารวมในหนี้ค้างชำระในอดีตของบ้านหลังนั้นๆ
       const allUnpaidForThisHouse = await prisma.invoice.findMany({
         where: { 
           residentHouseId: houseId, 
           status: { in: ['PENDING', 'OVERDUE', 'REJECTED', 'PARTIAL'] as any },
-          billingYear: { not: 9999 }
+          billingYear: { not: 9999 },
+          NOT: {
+            invoiceNo: { startsWith: 'TR-' }
+          }
         },
         orderBy: [{ billingYear: 'desc' }, { billingMonth: 'desc' }] // เอาใบใหม่ล่าสุดขึ้นก่อน
       });

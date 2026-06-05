@@ -23,7 +23,7 @@ function createInvoiceFlexMessage(data: any) {
   }
 
   if (data.pastMonthItems && data.pastMonthItems.length > 0) {
-    // เรียงลำดับจากเดือนเก่าไปเดือนใหม่
+    // เรียงลำดับจากเดือนเก่าไปเดือนใหม่ด้วย .reverse()
     [...data.pastMonthItems].reverse().forEach((item: any) => {
       tableContents.push({
         type: "box", layout: "horizontal", margin: "md",
@@ -37,7 +37,7 @@ function createInvoiceFlexMessage(data: any) {
 
   if (data.pastYearTotals) {
     Object.keys(data.pastYearTotals)
-      .sort((a, b) => Number(b) - Number(a))
+      .sort((a, b) => Number(a) - Number(b)) // 🌟 เรียงปีจาก เก่า ไป ใหม่ ให้เป็นมาตรฐานเดียวกัน
       .forEach(yearStr => {
         const yearNum = parseInt(yearStr);
         tableContents.push({
@@ -181,7 +181,6 @@ async function handleCronJob(request: Request) {
     const config = await prisma.systemConfig.findFirst();
     if (!config) return NextResponse.json({ success: false, message: 'ไม่พบการตั้งค่าระบบ' });
 
-    // 🌟 1. บังคับแปลงเวลาของเซิร์ฟเวอร์ (UTC) ให้เป็นเวลาไทย (Asia/Bangkok) ก่อนคำนวณเสมอ
     const now = new Date();
     const bkkTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Bangkok" }));
     
@@ -192,7 +191,6 @@ async function handleCronJob(request: Request) {
     
     const generateTimeStr = config.invoiceGenerateTime || "08:00";
 
-    // 🌟 2. ล็อกเวลาอย่างเข้มงวด: ถ้าเวลาไทยปัจจุบัน "ไม่ตรง" กับเวลาตั้งค่าให้เด้งออกทันที ป้องกันการสแปมรายนาที
     if (currentTimeStr !== generateTimeStr) {
       return NextResponse.json({ 
         success: true, 
@@ -200,7 +198,6 @@ async function handleCronJob(request: Request) {
       });
     }
 
-    // 3. สร้างบิลใหม่ถาวรถ้าถึงวันที่กำหนด (จะทำงานแค่นาทีนั้นนาทีเดียว)
     if (currentDay === config.invoiceGenerateDay) {
       let targetMonth = bkkTime.getMonth() + 2; 
       let targetYear = bkkTime.getFullYear();
@@ -247,13 +244,16 @@ async function handleCronJob(request: Request) {
       }
     }
 
-    // 4. ดึงบิลที่ถึงเวลาส่ง
+    // 🌟 จุดที่ 1: ดักจับตั้งแต่ใน DB เลยว่าไม่หยิบบิลทดสอบ TR- มารันส่งออโต้รอบแรก
     const pendingInvoices = await prisma.invoice.findMany({
       where: {
         isNotified: false,
         scheduledSendAt: { lte: now },
         status: { in: ['PENDING', 'OVERDUE', 'PARTIAL'] as any }, 
-        billingYear: { not: 9999 } 
+        billingYear: { not: 9999 },
+        NOT: {
+          invoiceNo: { startsWith: 'TR-' }
+        }
       },
       include: {
         house: { include: { residents: true } }
@@ -267,7 +267,6 @@ async function handleCronJob(request: Request) {
     const penaltyRatePerMonth = config?.penaltyRatePerDay ? Number(config.penaltyRatePerDay) : 100;
     let stats = { lineSent: 0, updatedInvoices: 0 };
 
-    // 🌟 5. ดำเนินการคำนวณและบันทึกค่าปรับลงดีบีก่อนส่งข้อความ
     for (const inv of pendingInvoices) {
       const today = new Date(); today.setHours(0, 0, 0, 0);
       const dueDate = new Date(inv.dueDate); dueDate.setHours(0, 0, 0, 0);
@@ -290,7 +289,6 @@ async function handleCronJob(request: Request) {
       }
     }
 
-    // 🌟 6. จัดกลุ่มบิลค้างตามรายบ้าน (Unique House Map) ป้องกันสแปมส่งซ้ำและแก้ปัญหาฟังก์ชันล่ม
     const uniqueHouseMap = new Map<string, any[]>();
     pendingInvoices.forEach(inv => {
       const list = uniqueHouseMap.get(inv.residentHouseId) || [];
@@ -298,17 +296,20 @@ async function handleCronJob(request: Request) {
       uniqueHouseMap.set(inv.residentHouseId, list);
     });
 
-    // 🌟 7. ลูปส่งไลน์และบันทึกสถานะ "รายบ้าน" ทันที เพื่อป้องกันสแปมหากหลุด Timeout
     for (const [houseId, invList] of uniqueHouseMap.entries()) {
       const sampleInv = invList[0];
 
+      // 🌟 จุดที่ 2: ดักบิล TR- ไม่ให้โผล่เข้ามารวมในหนี้ค้างชำระในอดีตของบ้านหลังนั้นๆ
       const allUnpaidForThisHouse = await prisma.invoice.findMany({
         where: {
           residentHouseId: houseId,
           status: { in: ['PENDING', 'OVERDUE', 'REJECTED', 'PARTIAL'] as any },
-          billingYear: { not: 9999 }
+          billingYear: { not: 9999 },
+          NOT: {
+            invoiceNo: { startsWith: 'TR-' }
+          }
         },
-        orderBy: [{ billingYear: 'desc' }, { billingMonth: 'desc' }] // เอาบิลใหม่ล่าสุดเป็นตัวตั้ง
+        orderBy: [{ billingYear: 'desc' }, { billingMonth: 'desc' }] 
       });
 
       if (allUnpaidForThisHouse.length === 0) continue;
@@ -382,7 +383,6 @@ async function handleCronJob(request: Request) {
         }
       }
 
-      // 🌟 สับสวิตช์เป็น true ทันทีรายกลุ่มยูนิต ป้องกันหุ่นยนต์ตัวถัดไปดึงซ้ำถ้าลูปค้าง
       const invIdsToUpdate = invList.map(i => i.id);
       await prisma.invoice.updateMany({
         where: { id: { in: invIdsToUpdate } },
