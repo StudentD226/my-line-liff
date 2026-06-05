@@ -10,11 +10,13 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
+    "@hello-pangea/dnd": "^18.0.1",
     "@line/bot-sdk": "^11.0.0",
     "@line/liff": "^2.27.3",
     "@prisma/client": "^6.19.2",
     "@prisma/config": "^7.4.2",
     "cloudinary": "^2.9.0",
+    "dayjs": "^1.11.21",
     "dotenv": "^17.3.1",
     "lucide-react": "^1.9.0",
     "next": "16.1.6",
@@ -22,7 +24,8 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "recharts": "^3.8.1",
-    "sweetalert2": "^11.26.24"
+    "sweetalert2": "^11.26.24",
+    "tailwind-scrollbar-hide": "^4.0.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

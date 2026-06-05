@@ -63,17 +63,17 @@ enum Role {
 // 3. ข้อมูลอสังหาริมทรัพย์ (Property Units)
 // ------------------------------------------------------
 model House {
-  id        String    @id @default(cuid())
-  houseNo   String    @unique
-  houseSize Float     @default(0) 
+  id        String   @id @default(cuid())
+  houseNo   String   @unique
+  houseSize Float    @default(0) 
   
-  feeType   FeeType   @default(CALCULATED)
-  feeRate   Float     @default(0) 
+  feeType   FeeType  @default(CALCULATED)
+  feeRate   Float    @default(0) 
   
-  ownerId   String?   
-  owner     User?     @relation("HouseOwner", fields: [ownerId], references: [id])
+  ownerId   String?  
+  owner     User?    @relation("HouseOwner", fields: [ownerId], references: [id])
   
-  residents User[]    @relation("HouseResidents")
+  residents User[]   @relation("HouseResidents")
   
   invoices  Invoice[]
   reports   Report[]
@@ -157,11 +157,17 @@ model Report {
 // 6. ข่าวประกาศ
 // ------------------------------------------------------
 model News {
-  id        Int      @id @default(autoincrement())
-  title     String
-  content   String   @db.Text 
-  imageUrl  String?
-  createdAt DateTime @default(now())
+  id          Int      @id @default(autoincrement())
+  title       String
+  content     String   @db.Text 
+  imageUrl    String?
+  
+  // 🌟 ฟิลด์ที่เพิ่มเข้ามาใหม่ให้รองรับ UI แบบใหม่
+  tag         String   @default("ทั่วไป") 
+  lineStatus  String   @default("DRAFT")  
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt         
 }
 
 // ------------------------------------------------------
@@ -196,7 +202,6 @@ model FinancialTransaction {
   date        DateTime 
   recordedBy  String?  
 
-  // 🌟 เพิ่มฟิลด์สำหรับแนบสลิป/ใบเสร็จ
   receiptUrl  String?  
   
   createdAt   DateTime @default(now())
