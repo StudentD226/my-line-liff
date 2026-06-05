@@ -104,11 +104,11 @@ export default function ResidentExpenseDashboard() {
         <h1 className="text-white text-xl md:text-3xl font-bold text-center mb-1 md:mb-2">รายงานความโปร่งใส</h1>
         <p className="text-white/80 text-xs md:text-sm text-center">ตรวจสอบรายจ่ายส่วนกลางของหมู่บ้าน</p>
         
-        <div className="flex items-center justify-center gap-2 mt-4 md:mt-6">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-2 mt-4 md:mt-6 max-w-sm mx-auto">
           <select 
             value={selectedYear} 
             onChange={(e) => setSelectedYear(Number(e.target.value))} 
-            className="bg-white/10 text-white border border-white/20 text-xs md:text-sm rounded-full outline-none px-4 py-2 font-bold appearance-none text-center cursor-pointer hover:bg-white/20 transition"
+            className="w-full sm:w-auto bg-white/10 text-white border border-white/20 text-xs md:text-sm rounded-full outline-none px-4 py-2.5 sm:py-2 font-bold appearance-none text-center cursor-pointer hover:bg-white/20 transition"
           >
             {yearOptions.map(year => (
               <option key={year} value={year} className="text-gray-800">ปี พ.ศ. {year + 543}</option>
@@ -118,7 +118,7 @@ export default function ResidentExpenseDashboard() {
           <select 
             value={selectedMonth} 
             onChange={(e) => setSelectedMonth(Number(e.target.value))} 
-            className="bg-white/10 text-white border border-white/20 text-xs md:text-sm rounded-full outline-none px-4 py-2 font-bold appearance-none text-center cursor-pointer hover:bg-white/20 transition"
+            className="w-full sm:w-auto bg-white/10 text-white border border-white/20 text-xs md:text-sm rounded-full outline-none px-4 py-2.5 sm:py-2 font-bold appearance-none text-center cursor-pointer hover:bg-white/20 transition"
           >
             {[...Array(12)].map((_, i) => (
               <option key={i+1} value={i+1} className="text-gray-800">รอบบิล {fullThaiMonths[i+1]}</option>
@@ -131,27 +131,29 @@ export default function ResidentExpenseDashboard() {
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
           
+          {/* กล่องยอดรวมรายจ่าย */}
           <div className="bg-gradient-to-br from-red-50 to-white p-6 md:p-10 rounded-2xl shadow-sm border border-red-100 flex flex-col items-center justify-center relative overflow-hidden min-h-[160px] lg:min-h-[300px]">
             <div className="absolute -right-6 -bottom-6 md:-right-10 md:-bottom-10 opacity-5 text-red-500">
               <Wallet size={150} />
             </div>
             <p className="text-red-500 font-bold text-sm md:text-lg mb-2 relative z-10">ยอดรวมรายจ่ายส่วนกลาง</p>
-            <p className="text-4xl md:text-6xl font-extrabold text-red-600 relative z-10 tracking-tight">
+            <p className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-red-600 relative z-10 tracking-tight text-center break-all">
               {totalExpense.toLocaleString(undefined, { minimumFractionDigits: 2 })}
             </p>
             <p className="text-xs md:text-sm text-red-400 mt-2 font-medium relative z-10">บาท</p>
           </div>
 
+          {/* กราฟวงกลม สัดส่วนรายจ่าย */}
           <div className="bg-white p-5 md:p-8 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
             <h3 className="font-bold text-gray-800 text-sm md:text-base mb-4 flex items-center justify-center">
-              <PieChartIcon className="w-4 h-4 mr-2 text-[#1A534B]" /> สัดส่วนรายจ่ายรอบบิลนี้
+              <PieChartIcon className="w-4 h-4 mr-2 text-[#1A534B] shrink-0" /> สัดส่วนรายจ่ายรอบบิลนี้
             </h3>
             {/* 🌟 ล็อกความสูงกราฟวงกลม ห้ามยุบเด็ดขาด */}
-            <div className="h-[220px] md:h-[280px] w-full flex items-center justify-center relative mt-auto">
+            <div className="h-[250px] md:h-[280px] w-full relative">
               {pieData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={pieData} innerRadius="50%" outerRadius="80%" paddingAngle={2} dataKey="value">
+                    <Pie data={pieData} innerRadius="40%" outerRadius="75%" paddingAngle={2} dataKey="value">
                       {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                     </Pie>
                     <RechartsTooltip 
@@ -164,7 +166,9 @@ export default function ResidentExpenseDashboard() {
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="text-gray-400 text-xs md:text-sm font-bold text-center">ไม่มีข้อมูลรายจ่ายในรอบบิลนี้</div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="text-gray-400 text-xs md:text-sm font-bold text-center">ไม่มีข้อมูลรายจ่ายในรอบบิลนี้</div>
+                </div>
               )}
             </div>
           </div>
@@ -172,32 +176,33 @@ export default function ResidentExpenseDashboard() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
           
+          {/* รายการใช้จ่าย */}
           <div className="bg-white p-5 md:p-8 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-bold text-gray-800 text-sm md:text-base flex items-center">
-                <FileText className="w-4 h-4 mr-2 text-[#1A534B]" /> รายการใช้จ่าย
+                <FileText className="w-4 h-4 mr-2 text-[#1A534B] shrink-0" /> รายการใช้จ่าย
               </h3>
-              <span className="text-[10px] md:text-xs font-bold bg-gray-100 text-gray-500 px-3 py-1 rounded-full">{currentMonthData.length} รายการ</span>
+              <span className="text-[10px] md:text-xs font-bold bg-gray-100 text-gray-500 px-3 py-1 rounded-full shrink-0">{currentMonthData.length} รายการ</span>
             </div>
 
-            <div className="space-y-3 max-h-[250px] md:max-h-[350px] overflow-y-auto custom-scrollbar pr-2">
+            <div className="space-y-3 max-h-[300px] md:max-h-[350px] overflow-y-auto custom-scrollbar pr-2">
               {currentMonthData.length > 0 ? (
                 currentMonthData.map((tx, idx) => (
                   <div key={idx} className="flex justify-between items-center p-3 md:p-4 bg-gray-50 rounded-xl border border-gray-100 hover:bg-gray-100 transition-colors">
-                    <div className="flex-1 pr-3 overflow-hidden">
-                      <p className="font-bold text-gray-800 text-sm md:text-base line-clamp-1">{tx.title}</p>
-                      <div className="flex items-center text-[11px] md:text-xs text-gray-500 mt-1 md:mt-1.5 space-x-2">
-                        <span className="flex items-center whitespace-nowrap"><Calendar className="w-3 h-3 mr-1" /> {new Date(tx.date).toLocaleDateString('th-TH', { day: '2-digit', month: 'short' })}</span>
-                        <span className="bg-gray-200 px-2 py-0.5 rounded text-gray-600 font-medium inline-block max-w-[100px] sm:max-w-[150px] truncate align-middle">
+                    <div className="flex-1 pr-2 min-w-0">
+                      <p className="font-bold text-gray-800 text-sm md:text-base truncate">{tx.title}</p>
+                      <div className="flex flex-wrap items-center text-[10px] sm:text-[11px] md:text-xs text-gray-500 mt-1 md:mt-1.5 gap-2">
+                        <span className="flex items-center whitespace-nowrap"><Calendar className="w-3 h-3 mr-1 shrink-0" /> {new Date(tx.date).toLocaleDateString('th-TH', { day: '2-digit', month: 'short' })}</span>
+                        <span className="bg-gray-200 px-2 py-0.5 rounded text-gray-600 font-medium truncate max-w-[120px] sm:max-w-none">
                           {tx.category?.name}
                         </span>
                       </div>
                     </div>
-                    <div className="text-right whitespace-nowrap pl-2">
+                    <div className="text-right whitespace-nowrap shrink-0 pl-2">
                       <p className="font-bold text-red-500 text-sm md:text-base">-฿{tx.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                       {tx.receiptUrl && (
                         <a href={tx.receiptUrl} target="_blank" rel="noreferrer" className="inline-block mt-1 text-[10px] md:text-xs font-bold text-blue-500 hover:underline">
-                          <Receipt className="w-3 h-3 inline mr-1" /> ดูบิล
+                          <Receipt className="w-3 h-3 inline mr-1 shrink-0" /> ดูบิล
                         </a>
                       )}
                     </div>
@@ -211,9 +216,10 @@ export default function ResidentExpenseDashboard() {
             </div>
           </div>
 
+          {/* กราฟแท่ง เทรนด์รายจ่าย */}
           <div className="bg-white p-5 md:p-8 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
             <h3 className="font-bold text-gray-800 text-sm md:text-base mb-4 flex items-center justify-center text-center">
-               <TrendingDown className="w-4 h-4 mr-2 text-[#1A534B]" /> เทรนด์รายจ่าย ปี พ.ศ. {selectedYear + 543}
+               <TrendingDown className="w-4 h-4 mr-2 text-[#1A534B] shrink-0" /> เทรนด์รายจ่าย ปี พ.ศ. {selectedYear + 543}
             </h3>
             {/* 🌟 ล็อกความสูงกราฟแท่งแบบตายตัวที่ 250px ห้ามหดหดหายเด็ดขาด */}
             <div className="h-[250px] md:h-[300px] w-full mt-2">
