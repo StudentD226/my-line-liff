@@ -20,11 +20,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   }, []);
 
-  // 🌟 แยกเมนู ข่าวประกาศ และ แจ้งซ่อม ออกจากกันแล้ว
+  // 🌟 เพิ่มและแยกเมนู "จัดการข่าวประกาศ" กับ "ศูนย์รับเรื่อง/แจ้งซ่อม" ออกจากกัน
   const menuItems = [
     { icon: LayoutDashboard, label: 'ภาพรวมระบบ', href: '/admin' },
     { icon: Megaphone, label: 'จัดการข่าวประกาศ', href: '/admin/news' },
-    { icon: Wrench, label: 'ระบบรับเรื่องแจ้งซ่อม', href: '/admin/maintenance' },
+    { icon: Wrench, label: 'ศูนย์รับเรื่อง/แจ้งซ่อม', href: '/admin/maintenance' }, 
     { icon: Home, label: 'จัดการข้อมูลบ้าน', href: '/admin/houses' },
     { icon: FileText, label: 'จัดการบิล/เรียกเก็บ', href: '/admin/invoices' },
     { icon: CheckCircle, label: 'ตรวจสอบการโอน', href: '/admin/review-slips' },
