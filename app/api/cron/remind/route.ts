@@ -6,25 +6,45 @@ const prisma = new PrismaClient();
 
 const fullThaiMonths = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
 
-// Helper ตัดทศนิยมทิ้ง ไม่ให้ปัดขึ้น
+// Helper ตัดทศนิยมทิ้ง
 const truncateDecimals = (val: number): number => Math.floor(Math.round(val * 10000) / 100) / 100;
 
 function createInvoiceFlexMessage(data: any) {
   const tableContents: any[] = [];
 
+  // 🌟 ตั้งค่า Theme สีเริ่มต้น
+  let boxBgColor = "#EBF5FB"; // ฟ้าอ่อน (บิลใหม่)
+  let mainTextColor = "#111827"; // ดำ (ตัวหนังสือหลัก)
+  let itemTextColor = "#059669"; // เขียว (รายการบิลล่าสุด)
+  let mainTitle = "ยอดที่ต้องชำระ";
+
+  // 🌟 เปลี่ยน Theme สีตามประเภทบิล
+  if (data.type === 'REMINDER') {
+    boxBgColor = "#FFEDD5";     // ส้มอ่อน
+    mainTextColor = "#EA580C";   // ส้มเข้ม
+    itemTextColor = "#EA580C";   // 🌟 รายการบิลล่าสุด เปลี่ยนเป็นสีส้ม
+    mainTitle = "แจ้งเตือนยอดที่ต้องชำระ";
+  } else if (data.type === 'OVERDUE' || data.isOverdue) {
+    boxBgColor = "#FDEBEC";     // แดงอ่อน
+    mainTextColor = "#EF4444";   // แดงเข้ม
+    itemTextColor = "#EF4444";   // 🌟 รายการบิลล่าสุด เปลี่ยนเป็นสีแดง
+    mainTitle = "ยอดค้างชำระ";
+  }
+
+  // 🌟 นำสี itemTextColor มาใช้กับรายการบิลล่าสุด (เดือนล่าสุด)
   if (data.currentInvoiceItem) {
     tableContents.push({
       type: "box", layout: "horizontal", margin: "md",
       contents: [
-        { type: "text", text: data.currentInvoiceItem.label, size: "sm", color: "#059669" },
-        { type: "text", text: `${data.currentInvoiceItem.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#059669", align: "end" }
+        { type: "text", text: data.currentInvoiceItem.label, size: "sm", color: itemTextColor },
+        { type: "text", text: `${data.currentInvoiceItem.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: itemTextColor, align: "end" }
       ]
     });
   }
 
   if (data.pastMonthItems && data.pastMonthItems.length > 0) {
-    // 🌟 เอา .reverse() ออก เรียงจากเดือนเก่าไปเดือนใหม่
-    data.pastMonthItems.forEach((item: any) => {
+    // เรียงจากเดือนเก่าที่สุดไปเดือนใหม่ล่าสุด (คงเป็นสีแดงเสมอ)
+    [...data.pastMonthItems].reverse().forEach((item: any) => {
       tableContents.push({
         type: "box", layout: "horizontal", margin: "md",
         contents: [
@@ -37,7 +57,7 @@ function createInvoiceFlexMessage(data: any) {
 
   if (data.pastYearTotals) {
     Object.keys(data.pastYearTotals)
-      .sort((a, b) => Number(a) - Number(b)) // 🌟 เรียงปีจาก เก่า ไป ใหม่ ให้เหมือนระบบอื่น
+      .sort((a, b) => Number(b) - Number(a))
       .forEach(yearStr => {
         const yearNum = parseInt(yearStr);
         tableContents.push({
@@ -58,20 +78,6 @@ function createInvoiceFlexMessage(data: any) {
         { type: "text", text: `${data.totalPenalty.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EA580C", align: "end" }
       ]
     });
-  }
-
-  let boxBgColor = "#EBF5FB";
-  let mainTextColor = "#111827";
-  let mainTitle = "ยอดที่ต้องชำระ";
-
-  if (data.type === 'REMINDER') {
-    boxBgColor = "#FFEDD5";
-    mainTextColor = "#EA580C";
-    mainTitle = "แจ้งเตือนยอดที่ต้องชำระ";
-  } else if (data.type === 'OVERDUE' || data.isOverdue) {
-    boxBgColor = "#FDEBEC";
-    mainTextColor = "#EF4444";
-    mainTitle = "ยอดค้างชำระ";
   }
 
   return {
@@ -182,6 +188,7 @@ async function handleRemindCronJob(request: Request) {
     
     const targetTimeStr = config.invoiceGenerateTime || "08:00";
 
+    // เช็คเวลา (ชั่วโมง:นาที)
     if (currentTimeStr !== targetTimeStr) {
       return NextResponse.json({ 
         success: true, 
@@ -191,12 +198,19 @@ async function handleRemindCronJob(request: Request) {
 
     let reminderType: 'NONE' | 'REMINDER' | 'OVERDUE' = 'NONE';
     
-    if (currentDay === config.secondReminderDay) reminderType = 'REMINDER';
-    else if (currentDay === config.penaltyStartDay || currentDay === 15) reminderType = 'OVERDUE';
+    // 🌟 บั๊กวันทำงาน: เช็คให้ชัวร์ว่าตรงกับวันที่ใน config หรือวันที่ 15 แน่ๆ
+    if (currentDay === config.secondReminderDay) {
+        reminderType = 'REMINDER';
+    } else if (currentDay === config.penaltyStartDay || currentDay === 15) {
+        reminderType = 'OVERDUE';
+    }
 
-    if (reminderType === 'NONE') return NextResponse.json({ success: true, message: 'วันนี้ไม่ใช่วันส่งทวงยอดค้างครับ' });
+    // 🌟 ถ้าไม่ใช่วันที่กำหนด ให้เด้งออกทันที
+    if (reminderType === 'NONE') {
+        return NextResponse.json({ success: true, message: `วันนี้ (วันที่ ${currentDay}) ไม่ใช่วันส่งทวงยอดค้างครับ` });
+    }
 
-    // 🌟 1. ดักจับตั้งแต่ใน DB เลยว่าไม่หยิบบิลทดสอบ TR- มารันส่งทวงหนี้
+    // 1. ดักจับตั้งแต่ใน DB เลยว่าไม่หยิบบิลทดสอบ TR- มารันส่งทวงหนี้
     const pendingInvoices = await prisma.invoice.findMany({
       where: { 
         status: { in: ['PENDING', 'PARTIAL', 'OVERDUE', 'REJECTED'] as any },
@@ -247,7 +261,7 @@ async function handleRemindCronJob(request: Request) {
     for (const [houseId, invList] of uniqueHouseMap.entries()) {
       const sampleInv = invList[0];
 
-      // 🌟 2. ดักบิล TR- ไม่ให้โผล่เข้ามารวมในหนี้ค้างชำระในอดีตของบ้านหลังนั้นๆ
+      // 2. ดักบิล TR- ไม่ให้โผล่เข้ามารวมในหนี้ค้างชำระในอดีตของบ้านหลังนั้นๆ
       const allUnpaidForThisHouse = await prisma.invoice.findMany({
         where: { 
           residentHouseId: houseId, 

@@ -12,19 +12,39 @@ const truncateDecimals = (val: number): number => Math.floor(Math.round(val * 10
 function createInvoiceFlexMessage(data: any) {
   const tableContents: any[] = [];
 
+  // 🌟 ตั้งค่า Theme สีเริ่มต้น
+  let boxBgColor = "#EBF5FB"; // ฟ้าอ่อน (บิลใหม่)
+  let mainTextColor = "#111827"; // ดำ (ตัวหนังสือหลัก)
+  let itemTextColor = "#059669"; // เขียว (รายการบิลล่าสุด)
+  let mainTitle = "ยอดที่ต้องชำระ";
+
+  // 🌟 เปลี่ยน Theme สีตามประเภทบิล
+  if (data.type === 'REMINDER') {
+    boxBgColor = "#FFEDD5";      // ส้มอ่อน
+    mainTextColor = "#EA580C";   // ส้มเข้ม
+    itemTextColor = "#EA580C";   // 🌟 เปลี่ยนรายการบิลล่าสุดเป็นสีส้ม
+    mainTitle = "แจ้งเตือนยอดที่ต้องชำระ";
+  } else if (data.type === 'OVERDUE' || data.isOverdue) {
+    boxBgColor = "#FDEBEC";      // แดงอ่อน
+    mainTextColor = "#EF4444";   // แดงเข้ม
+    itemTextColor = "#EF4444";   // 🌟 เปลี่ยนรายการบิลล่าสุดเป็นสีแดง
+    mainTitle = "ยอดค้างชำระ";
+  }
+
+  // 🌟 ใช้ itemTextColor กับบิลเดือนล่าสุด
   if (data.currentInvoiceItem) {
     tableContents.push({
       type: "box", layout: "horizontal", margin: "md",
       contents: [
-        { type: "text", text: data.currentInvoiceItem.label, size: "sm", color: "#059669" },
-        { type: "text", text: `${data.currentInvoiceItem.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#059669", align: "end" }
+        { type: "text", text: data.currentInvoiceItem.label, size: "sm", color: itemTextColor },
+        { type: "text", text: `${data.currentInvoiceItem.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: itemTextColor, align: "end" }
       ]
     });
   }
 
   if (data.pastMonthItems && data.pastMonthItems.length > 0) {
-    // เรียงลำดับจากเดือนเก่าไปเดือนใหม่ด้วย .reverse()
-    [...data.pastMonthItems].reverse().forEach((item: any) => {
+    // 🌟 เอา .reverse() ออก เรียงจากเดือนเก่าไปเดือนใหม่เสมอ (คงเป็นสีแดง)
+    data.pastMonthItems.forEach((item: any) => {
       tableContents.push({
         type: "box", layout: "horizontal", margin: "md",
         contents: [
@@ -37,7 +57,7 @@ function createInvoiceFlexMessage(data: any) {
 
   if (data.pastYearTotals) {
     Object.keys(data.pastYearTotals)
-      .sort((a, b) => Number(a) - Number(b)) // 🌟 เรียงปีจาก เก่า ไป ใหม่ ให้เป็นมาตรฐานเดียวกัน
+      .sort((a, b) => Number(a) - Number(b)) // 🌟 เรียงปีจาก เก่า ไป ใหม่
       .forEach(yearStr => {
         const yearNum = parseInt(yearStr);
         tableContents.push({
@@ -58,20 +78,6 @@ function createInvoiceFlexMessage(data: any) {
         { type: "text", text: `${data.totalPenalty.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EA580C", align: "end" }
       ]
     });
-  }
-
-  let boxBgColor = "#EBF5FB";
-  let mainTextColor = "#111827";
-  let mainTitle = "ยอดที่ต้องชำระ";
-
-  if (data.type === 'REMINDER') {
-    boxBgColor = "#FFEDD5";
-    mainTextColor = "#EA580C";
-    mainTitle = "แจ้งเตือนยอดที่ต้องชำระ";
-  } else if (data.type === 'OVERDUE' || data.isOverdue) {
-    boxBgColor = "#FDEBEC";
-    mainTextColor = "#EF4444";
-    mainTitle = "ยอดค้างชำระ";
   }
 
   return {
@@ -244,7 +250,7 @@ async function handleCronJob(request: Request) {
       }
     }
 
-    // 🌟 จุดที่ 1: ดักจับตั้งแต่ใน DB เลยว่าไม่หยิบบิลทดสอบ TR- มารันส่งออโต้รอบแรก
+    // 🌟 1. ดักจับตั้งแต่ใน DB เลยว่าไม่หยิบบิลทดสอบ TR- มารันส่งออโต้รอบแรก
     const pendingInvoices = await prisma.invoice.findMany({
       where: {
         isNotified: false,
@@ -299,7 +305,7 @@ async function handleCronJob(request: Request) {
     for (const [houseId, invList] of uniqueHouseMap.entries()) {
       const sampleInv = invList[0];
 
-      // 🌟 จุดที่ 2: ดักบิล TR- ไม่ให้โผล่เข้ามารวมในหนี้ค้างชำระในอดีตของบ้านหลังนั้นๆ
+      // 🌟 2. ดักบิล TR- ไม่ให้โผล่เข้ามารวมในหนี้ค้างชำระในอดีตของบ้านหลังนั้นๆ
       const allUnpaidForThisHouse = await prisma.invoice.findMany({
         where: {
           residentHouseId: houseId,

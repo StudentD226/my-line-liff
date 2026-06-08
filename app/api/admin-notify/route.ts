@@ -16,18 +16,38 @@ const truncateDecimals = (val: number): number => Math.floor(Math.round(val * 10
 function createInvoiceFlexMessage(data: any) {
   const tableContents: any[] = [];
 
+  // 🌟 ตั้งค่า Theme สีเริ่มต้น (เหมือนไฟล์ cron/billing)
+  let boxBgColor = "#EBF5FB"; 
+  let mainTextColor = "#111827"; 
+  let itemTextColor = "#059669"; // สีเขียวสำหรับรายการบิลปกติ
+  let mainTitle = "ยอดที่ต้องชำระ";
+
+  // 🌟 เปลี่ยน Theme สีตามประเภทบิล
+  if (data.type === 'REMINDER') {
+    boxBgColor = "#FFEDD5";     
+    mainTextColor = "#EA580C";   
+    itemTextColor = "#EA580C";   // เปลี่ยนเป็นสีส้มสำหรับใบเตือน
+    mainTitle = "แจ้งเตือนยอดที่ต้องชำระ";
+  } else if (data.type === 'OVERDUE' || data.isOverdue) {
+    boxBgColor = "#FDEBEC";     
+    mainTextColor = "#EF4444";   
+    itemTextColor = "#EF4444";   // เปลี่ยนเป็นสีแดงสำหรับใบแจ้งหนี้เกินกำหนด
+    mainTitle = "ยอดค้างชำระ";
+  }
+
+  // 🌟 ใช้ itemTextColor ที่กำหนดไว้ตามประเภทบิล
   if (data.currentInvoiceItem) {
     tableContents.push({
       type: "box", layout: "horizontal", margin: "md",
       contents: [
-        { type: "text", text: data.currentInvoiceItem.label, size: "sm", color: "#059669" }, 
-        { type: "text", text: `${data.currentInvoiceItem.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#059669", align: "end" } 
+        { type: "text", text: data.currentInvoiceItem.label, size: "sm", color: itemTextColor }, 
+        { type: "text", text: `${data.currentInvoiceItem.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: itemTextColor, align: "end" } 
       ]
     });
   }
 
   if (data.pastMonthItems && data.pastMonthItems.length > 0) {
-    // 🌟 เอา .reverse() ออก เพื่อให้รายการค้างชำระเรียงจาก "เก่า ไป ใหม่" ถูกต้องตามลำดับเวลา
+    // 🌟 เอา .reverse() ออก เพื่อให้รายการค้างชำระเรียงจาก "เก่า ไป ใหม่"
     data.pastMonthItems.forEach((item: any) => {
       tableContents.push({
         type: "box", layout: "horizontal", margin: "md",
@@ -41,7 +61,7 @@ function createInvoiceFlexMessage(data: any) {
 
   if (data.pastYearTotals) {
     Object.keys(data.pastYearTotals)
-      .sort((a, b) => Number(a) - Number(b)) // 🌟 เรียงปีจาก เก่า ไป ใหม่ เช่นกัน
+      .sort((a, b) => Number(a) - Number(b)) // 🌟 เรียงปีจาก เก่า ไป ใหม่
       .forEach(yearStr => {
         const yearNum = parseInt(yearStr);
         tableContents.push({
@@ -62,20 +82,6 @@ function createInvoiceFlexMessage(data: any) {
         { type: "text", text: `${data.totalPenalty.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EA580C", align: "end" } 
       ]
     });
-  }
-
-  let boxBgColor = "#EBF5FB";   
-  let mainTextColor = "#111827"; 
-  let mainTitle = "ยอดที่ต้องชำระ";
-
-  if (data.type === 'REMINDER') {
-    boxBgColor = "#FFEDD5";     
-    mainTextColor = "#EA580C";   
-    mainTitle = "แจ้งเตือนยอดที่ต้องชำระ";
-  } else if (data.type === 'OVERDUE' || data.isOverdue) {
-    boxBgColor = "#FDEBEC";     
-    mainTextColor = "#EF4444";   
-    mainTitle = "ยอดค้างชำระ";
   }
 
   return {

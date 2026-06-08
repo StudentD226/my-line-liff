@@ -4,11 +4,10 @@ import React, { useState, useEffect } from 'react';
 import { 
   Plus, Search, Edit, Trash2, Image as ImageIcon, 
   Calendar, Eye, MessageCircle, X, Send, AlertCircle, Pin, FileText,
-  CheckCircle, Clock, Save
+  CheckCircle, Clock, Save, Megaphone, Wrench, Home, MoreVertical
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 
-// --- Type สำหรับรับข้อมูลจาก Database ---
 export type NewsItem = {
   id: string;
   title: string;
@@ -22,7 +21,6 @@ export type NewsItem = {
 };
 
 export default function AdminNewsManagement() {
-  // 🌟 State แบบรอรับข้อมูลจาก Database (ค่าเริ่มต้นเป็น Array ว่าง)
   const [news, setNews] = useState<NewsItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -32,25 +30,21 @@ export default function AdminNewsManagement() {
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  
   const [formData, setFormData] = useState({ 
-    title: '', category: 'ทั่วไป', content: '', image: '', sendLine: true, publishNow: true 
+    title: '', category: 'ทั่วไป', content: '', image: '', sendLine: true, publishNow: true, scheduledAt: ''
   });
 
-  // 🌟 ฟังก์ชันจำลองการดึงข้อมูลจาก Database (เตรียมเชื่อม API)
-  const fetchNewsFromDB = async () => {
+ const fetchNewsFromDB = async () => {
     setIsLoading(true);
     try {
-      // 🚧 ตรงนี้เตรียมเปลี่ยนเป็น fetch('/api/admin/news') ของจริง
-      // สมมติว่าดึงข้อมูลมาได้ตามนี้:
-      const dummyData: NewsItem[] = [
-        { id: '1', title: 'ประกาศงดจ่ายน้ำชั่วคราว ประจำเดือนมิถุนายน', category: 'บำรุงรักษา', content: 'ทางหมู่บ้านจะดำเนินการ...', date: '8 มิ.ย. 2567', recipients: 348, status: 'PUBLISHED', views: 312, isPinned: true },
-        { id: '2', title: 'ประกาศเร่งด่วน: ไฟดับซอย 3-5', category: 'ด่วน', content: 'การไฟฟ้าแจ้งดับไฟ...', date: '7 มิ.ย. 2567', recipients: 348, status: 'PUBLISHED', views: 289, isPinned: false },
-        { id: '3', title: 'เชิญร่วมงานลอยกระทง ณ สวนหย่อม', category: 'กิจกรรม', content: 'ขอเชิญลูกบ้าน...', date: '10 มิ.ย. 09:00', recipients: 348, status: 'SCHEDULED', views: 0, isPinned: false },
-        { id: '4', title: 'ระเบียบจอดรถภายในหมู่บ้าน', category: 'ทั่วไป', content: 'ระเบียบการจอด...', date: '-', recipients: 0, status: 'DRAFT', views: 0, isPinned: false },
-      ];
-      setNews(dummyData);
+      const res = await fetch('/api/admin/news');
+      const json = await res.json();
+      if (json.success) {
+        setNews(json.data); // ข้อมูลจาก API จะถูกนำมาโชว์แทนที่ dummyData
+      }
     } catch (error) {
-      console.error(error);
+      console.error("Failed to fetch news", error);
     } finally {
       setIsLoading(false);
     }
@@ -99,42 +93,45 @@ export default function AdminNewsManagement() {
       setEditingId(editData.id);
       setFormData({ 
         title: editData.title, category: editData.category, content: editData.content, 
-        image: '', sendLine: true, publishNow: editData.status === 'PUBLISHED' 
+        image: '', sendLine: true, publishNow: editData.status === 'PUBLISHED', scheduledAt: ''
       });
     } else {
       setEditingId(null);
-      setFormData({ title: '', category: 'ทั่วไป', content: '', image: '', sendLine: true, publishNow: true });
+      setFormData({ title: '', category: 'ทั่วไป', content: '', image: '', sendLine: true, publishNow: true, scheduledAt: '' });
     }
     setIsModalOpen(true);
   };
 
-  // 🌟 ฟังก์ชันจัดการเซฟ (ยิง API)
-  const handleSave = async (statusToSave: string) => {
-    if (!formData.title || !formData.content) {
-      Swal.fire({ icon: 'error', title: 'ข้อมูลไม่ครบ', text: 'กรุณากรอกหัวข้อและเนื้อหาประกาศ', customClass: { popup: 'rounded-[2rem]' } });
-      return;
+ const handleSave = async (statusToSave: string) => {
+    // ... (Validation เดิมของลูกพี่ถูกต้องแล้ว)
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/admin/news', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingId,
+          title: formData.title,
+          category: formData.category,
+          content: formData.content,
+          status: statusToSave,
+          sendLine: formData.sendLine,
+          scheduledAt: formData.scheduledAt
+        })
+      });
+      const json = await res.json();
+      if (json.success) {
+        Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ', timer: 2000 });
+        setIsModalOpen(false);
+        fetchNewsFromDB(); // รีเฟรชหน้าจอ
+      }
+    } catch (error) {
+      Swal.fire({ icon: 'error', title: 'การเชื่อมต่อขัดข้อง' });
+    } finally {
+      setIsLoading(false);
     }
-
-    // 🚧 ตรงนี้เตรียมไว้ใส่โค้ด fetch ยิง POST/PUT ไปที่ Database ของจริง
-    /*
-    const payload = { ...formData, status: statusToSave };
-    await fetch('/api/admin/news', { method: editingId ? 'PUT' : 'POST', body: JSON.stringify(payload) });
-    */
-
-    Swal.fire({
-      icon: 'success',
-      title: statusToSave === 'DRAFT' ? 'บันทึกฉบับร่างแล้ว' : 'เผยแพร่ประกาศแล้ว',
-      text: formData.sendLine && statusToSave === 'PUBLISHED' ? 'ระบบได้ส่งแจ้งเตือนไปยัง LINE ลูกบ้านเรียบร้อยแล้ว' : '',
-      showConfirmButton: false,
-      timer: 2000,
-      customClass: { popup: 'rounded-[2rem]' }
-    });
-    
-    setIsModalOpen(false);
-    fetchNewsFromDB(); // รีเฟรชข้อมูลใหม่
   };
 
-  // 🌟 ฟังก์ชันจัดการลบ (ยิง API)
   const handleDelete = (id: string) => {
     Swal.fire({
       title: 'ยืนยันการลบประกาศ?',
@@ -148,11 +145,22 @@ export default function AdminNewsManagement() {
       customClass: { popup: 'rounded-[2rem]' }
     }).then(async (result) => {
       if (result.isConfirmed) {
-        // 🚧 ตรงนี้เตรียมไว้ใส่โค้ด fetch ยิง DELETE ไป Database
-        // await fetch(`/api/admin/news?id=${id}`, { method: 'DELETE' });
-        
-        setNews(news.filter(n => n.id !== id));
-        Swal.fire({ icon: 'success', title: 'ลบสำเร็จ', showConfirmButton: false, timer: 1500, customClass: { popup: 'rounded-[2rem]' } });
+        setIsLoading(true);
+        try {
+          const res = await fetch(`/api/admin/news?id=${id}`, { method: 'DELETE' });
+          const json = await res.json();
+          
+          if (json.success) {
+            Swal.fire({ icon: 'success', title: 'ลบสำเร็จ', showConfirmButton: false, timer: 1500, customClass: { popup: 'rounded-[2rem]' } });
+            fetchNewsFromDB(); // รีเฟรชหน้าจอหลังลบ
+          } else {
+            Swal.fire({ icon: 'error', title: 'ลบล้มเหลว', text: json.error });
+            setIsLoading(false);
+          }
+        } catch (error) {
+          Swal.fire({ icon: 'error', title: 'การเชื่อมต่อขัดข้อง' });
+          setIsLoading(false);
+        }
       }
     });
   };
@@ -182,7 +190,6 @@ export default function AdminNewsManagement() {
         {/* List Section */}
         <div className="bg-white border border-slate-200 rounded-[1.5rem] shadow-sm overflow-hidden flex flex-col">
           
-          {/* Tabs */}
           <div className="flex overflow-x-auto border-b border-slate-100 custom-scrollbar">
             {TABS.map(tab => (
               <button 
@@ -195,7 +202,6 @@ export default function AdminNewsManagement() {
             ))}
           </div>
 
-          {/* Filters */}
           <div className="p-4 border-b border-slate-100 flex flex-col md:flex-row gap-4 bg-slate-50/50">
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-2.5 text-slate-400" size={18} />
@@ -259,6 +265,7 @@ export default function AdminNewsManagement() {
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-center gap-2">
                         <button onClick={() => handleOpenModal(n)} className="p-2 border border-slate-200 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors bg-white"><Edit size={16} /></button>
+                        <button onClick={() => handleDelete(n.id)} className="p-2 border border-slate-200 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors bg-white"><Trash2 size={16} /></button>
                       </div>
                     </td>
                   </tr>
@@ -279,7 +286,10 @@ export default function AdminNewsManagement() {
                     <span className="flex items-center gap-1"><Calendar size={12} /> {n.date}</span>
                     <span className="flex items-center gap-1"><Send size={12} /> ผู้รับ {n.recipients || '-'}</span>
                   </div>
-                  <button onClick={() => handleOpenModal(n)} className="w-full mt-2 py-2 border border-slate-200 rounded-lg text-slate-600 font-bold text-xs flex items-center justify-center gap-1 bg-white hover:bg-slate-50"><Edit size={14}/> จัดการประกาศ</button>
+                  <div className="flex gap-2 mt-2">
+                    <button onClick={() => handleOpenModal(n)} className="flex-1 py-2 border border-slate-200 rounded-lg text-slate-600 font-bold text-xs flex items-center justify-center gap-1 bg-white hover:bg-slate-50"><Edit size={14}/> แก้ไข</button>
+                    <button onClick={() => handleDelete(n.id)} className="flex-1 py-2 border border-rose-200 bg-rose-50 text-rose-600 font-bold text-xs rounded-lg flex items-center justify-center gap-1 hover:bg-rose-100 transition-colors"><Trash2 size={14}/> ลบ</button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -292,28 +302,22 @@ export default function AdminNewsManagement() {
             )}
           </div>
           
-          {/* Pagination */}
           <div className="p-4 border-t border-slate-100 flex justify-between items-center text-sm font-medium text-slate-500 bg-slate-50/50">
             <span>แสดง {filteredNews.length} จาก {news.length} รายการ</span>
-            <div className="flex gap-1">
-              <button className="px-3 py-1 border border-slate-200 rounded-lg bg-white hover:bg-slate-50 font-bold">1</button>
-            </div>
           </div>
         </div>
       </div>
 
-      {/* ==========================================
-          MODAL: สร้าง/แก้ไขประกาศ (Create/Edit Modal)
-          ========================================== */}
+      {/* MODAL: สร้าง/แก้ไขประกาศ */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex justify-center items-start md:items-center p-4 bg-slate-900/50 backdrop-blur-sm overflow-y-auto custom-scrollbar">
           <div className="bg-white rounded-[2rem] w-full max-w-4xl shadow-2xl my-4 md:my-0 flex flex-col md:flex-row overflow-hidden animate-in fade-in zoom-in-95 duration-200 border border-slate-100">
             
-            {/* Form Section (Left) */}
+            {/* Form Section */}
             <div className="flex-1 p-6 md:p-8 border-r border-slate-100">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
-                  <FileText className="text-slate-500" /> {editingId ? 'แก้ไขประกาศ' : 'เนื้อหาประกาศ'}
+                  <FileText className="text-slate-500" /> {editingId ? 'แก้ไขประกาศ' : 'สร้างประกาศใหม่'}
                 </h2>
                 <button onClick={() => setIsModalOpen(false)} className="md:hidden text-slate-400 p-2"><X size={20}/></button>
               </div>
@@ -350,7 +354,7 @@ export default function AdminNewsManagement() {
               </div>
             </div>
 
-            {/* Settings & Preview Section (Right) */}
+            {/* Settings & Preview Section */}
             <div className="w-full md:w-80 bg-slate-50 p-6 md:p-8 flex flex-col gap-6 relative">
               <button onClick={() => setIsModalOpen(false)} className="hidden md:block absolute top-6 right-6 text-slate-400 hover:text-slate-600 transition-colors"><X size={24}/></button>
 
@@ -358,7 +362,6 @@ export default function AdminNewsManagement() {
                 <h2 className="text-lg font-black text-slate-800">ตั้งค่าการเผยแพร่</h2>
               </div>
 
-              {/* LINE Preview Box */}
               <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm relative mt-2 md:mt-8">
                 <p className="absolute -top-3 left-4 bg-slate-800 text-white text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1"><MessageCircle size={10}/> ตัวอย่าง LINE</p>
                 <div className="mt-2 space-y-2">
@@ -380,6 +383,18 @@ export default function AdminNewsManagement() {
                     <input type="radio" name="publish" checked={!formData.publishNow} onChange={() => setFormData({...formData, publishNow: false})} className="w-4 h-4 text-emerald-600 focus:ring-emerald-600" />
                     <span className="text-sm font-medium text-slate-600">กำหนดเวลาล่วงหน้า</span>
                   </label>
+                  
+                  {!formData.publishNow && (
+                    <div className="mt-3 pt-3 border-t border-slate-100 animate-in fade-in slide-in-from-top-2 duration-200">
+                      <label className="block text-xs font-bold text-slate-500 mb-1.5">เลือกวันและเวลา</label>
+                      <input 
+                        type="datetime-local" 
+                        value={formData.scheduledAt}
+                        onChange={(e) => setFormData({...formData, scheduledAt: e.target.value})}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800 font-medium text-slate-700" 
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
@@ -401,15 +416,12 @@ export default function AdminNewsManagement() {
 
               {/* Actions */}
               <div className="mt-auto pt-4 flex flex-col gap-2">
-                <button onClick={() => handleSave('PUBLISHED')} className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md transition-colors active:scale-95 flex items-center justify-center gap-2">
+                <button onClick={() => handleSave(formData.publishNow ? 'PUBLISHED' : 'SCHEDULED')} className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md transition-colors active:scale-95 flex items-center justify-center gap-2">
                   <Send size={16} /> {formData.publishNow ? 'เผยแพร่และแจ้ง LINE' : 'ตั้งเวลาเผยแพร่'}
                 </button>
                 <div className="flex gap-2">
                   <button onClick={() => setIsModalOpen(false)} className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition-colors">ยกเลิก</button>
                   <button onClick={() => handleSave('DRAFT')} className="flex-1 py-2.5 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-colors flex items-center justify-center gap-1"><Save size={16} /> บันทึกร่าง</button>
-                  {editingId && (
-                    <button onClick={() => handleDelete(editingId)} className="p-2.5 bg-white border border-rose-200 text-rose-500 rounded-xl hover:bg-rose-50 transition-colors shrink-0"><Trash2 size={20} /></button>
-                  )}
                 </div>
               </div>
 
