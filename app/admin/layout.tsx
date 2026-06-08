@@ -2,7 +2,10 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, FileText, CheckCircle, Users, LayoutDashboard, Wrench, Bell, UserCircle, PieChart, Menu, X } from 'lucide-react';
+import { 
+  Home, FileText, CheckCircle, Users, LayoutDashboard, 
+  Wrench, Bell, UserCircle, PieChart, Menu, X, Megaphone 
+} from 'lucide-react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -17,13 +20,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   }, []);
 
+  // 🌟 แยกเมนู ข่าวประกาศ และ แจ้งซ่อม ออกจากกันแล้ว
   const menuItems = [
     { icon: LayoutDashboard, label: 'ภาพรวมระบบ', href: '/admin' },
+    { icon: Megaphone, label: 'จัดการข่าวประกาศ', href: '/admin/news' },
+    { icon: Wrench, label: 'ระบบรับเรื่องแจ้งซ่อม', href: '/admin/maintenance' },
     { icon: Home, label: 'จัดการข้อมูลบ้าน', href: '/admin/houses' },
     { icon: FileText, label: 'จัดการบิล/เรียกเก็บ', href: '/admin/invoices' },
     { icon: CheckCircle, label: 'ตรวจสอบการโอน', href: '/admin/review-slips' },
     { icon: PieChart, label: 'รายงานการเงิน', href: '/admin/financial' },
-    { icon: Wrench, label: 'ศูนย์รับเรื่อง/แจ้งซ่อม', href: '/admin/maintenance' }, 
     { icon: Users, label: 'สมาชิกลูกบ้าน', href: '/admin/users' },
   ];
 
