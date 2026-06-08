@@ -154,17 +154,22 @@ model Report {
 }
 
 // ------------------------------------------------------
-// 6. ข่าวประกาศ
+// 6. ข่าวประกาศ (News) 🌟 (อัปเดตใหม่ให้ตรงกับ UI)
 // ------------------------------------------------------
 model News {
-  id          Int      @id @default(autoincrement())
+  id          String   @id @default(cuid())
   title       String
   content     String   @db.Text 
   imageUrl    String?
   
-  // 🌟 ฟิลด์ที่เพิ่มเข้ามาใหม่ให้รองรับ UI แบบใหม่
-  tag         String   @default("ทั่วไป") 
-  lineStatus  String   @default("DRAFT")  
+  category    String   @default("ทั่วไป")  // เช่น บำรุงรักษา, ด่วน, กิจกรรม, ทั่วไป
+  status      String   @default("DRAFT")   // สถานะ: DRAFT (ร่าง), PUBLISHED (เผยแพร่), SCHEDULED (ตั้งเวลา)
+  
+  views       Int      @default(0)         // ยอดคนดู
+  recipients  Int      @default(0)         // จำนวนลูกบ้านที่ส่ง LINE ไปถึง
+  isPinned    Boolean  @default(false)     // ปักหมุดประกาศหรือไม่
+  
+  scheduledAt DateTime?                    // วันเวลาที่ต้องการให้เผยแพร่อัตโนมัติ (ถ้ามี)
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt         

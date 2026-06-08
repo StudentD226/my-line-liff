@@ -2,353 +2,424 @@
 
 import React, { useState, useEffect } from 'react';
 import { 
-  Megaphone, Wrench, CheckCircle2, Plus, Zap, Droplets, 
-  Send, Clock, Image as ImageIcon, CheckCircle, MoreHorizontal, AlertCircle
+  Plus, Search, Edit, Trash2, Image as ImageIcon, 
+  Calendar, Eye, MessageCircle, X, Send, AlertCircle, Pin, FileText,
+  CheckCircle, Clock, Save
 } from 'lucide-react';
-import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import Swal from 'sweetalert2';
 
-// --- ข้อมูลจำลอง (เดี๋ยวเราค่อยมาเขียนดึงจาก Database ของจริง) ---
-const initialNews = [
-  { id: '1', title: 'การไฟฟ้าจะเข้าซ่อมบำรุงหม้อแปลง เฟส 2', type: 'MAINTENANCE', tag: '⚡ แจ้งซ่อมบำรุง', color: 'text-orange-700 bg-orange-100', date: 'วันนี้ 09:00', lineStatus: 'PUSHED' },
-  { id: '2', title: 'ขอเชิญลูกบ้านร่วมงานทำบุญหมู่บ้านประจำปี', type: 'EVENT', tag: '🎉 กิจกรรม', color: 'text-blue-700 bg-blue-100', date: 'เมื่อวาน 15:30', lineStatus: 'PUBLISHED' },
-  { id: '3', title: 'งดใช้สระว่ายน้ำชั่วคราวเพื่อทำความสะอาด', type: 'MAINTENANCE', tag: '⚡ แจ้งซ่อมบำรุง', color: 'text-orange-700 bg-orange-100', date: '12 ต.ค. 2566', lineStatus: 'DRAFT' },
-];
+// --- Type สำหรับรับข้อมูลจาก Database ---
+export type NewsItem = {
+  id: string;
+  title: string;
+  category: string;
+  content: string;
+  date: string;
+  recipients: number;
+  status: 'PUBLISHED' | 'DRAFT' | 'SCHEDULED';
+  views: number;
+  isPinned: boolean;
+};
 
-const initialTickets = [
-  { id: '101', houseNo: '26', issue: 'ท่อน้ำประปาแตกหน้าบ้าน น้ำไหลนอง', time: '15 นาทีที่แล้ว', status: 'NEW' },
-  { id: '102', houseNo: '88/4', issue: 'ไฟถนนหน้าบ้านกระพริบ', time: '1 ชม. ที่แล้ว', status: 'NEW' },
-  { id: '103', houseNo: '9/1', issue: 'กิ่งไม้ใหญ่ร่วงขวางถนน', time: '2 ชม. ที่แล้ว', status: 'IN_PROGRESS' },
-  { id: '104', houseNo: '45/2', issue: 'เก็บขยะไม่หมด', time: 'เมื่อวาน', status: 'RESOLVED' },
-];
+export default function AdminNewsManagement() {
+  // 🌟 State แบบรอรับข้อมูลจาก Database (ค่าเริ่มต้นเป็น Array ว่าง)
+  const [news, setNews] = useState<NewsItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-export default function MainDashboard() {
-  const [news, setNews] = useState(initialNews);
-  const [tickets, setTickets] = useState(initialTickets);
-  const [isMounted, setIsMounted] = useState(false);
+  const [activeTab, setActiveTab] = useState('ALL');
+  const [activeCategory, setActiveCategory] = useState('ทุกหมวด');
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [formData, setFormData] = useState({ 
+    title: '', category: 'ทั่วไป', content: '', image: '', sendLine: true, publishNow: true 
+  });
 
-  // ป้องกัน Error Hydration ของ Drag & Drop
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  // 🌟 ฟังก์ชันจัดการเวลาลากการ์ดไปวาง
-  const onDragEnd = (result: any) => {
-    if (!result.destination) return;
-    const { source, destination, draggableId } = result;
-
-    if (source.droppableId !== destination.droppableId) {
-      const updatedTickets = tickets.map(t => {
-        if (t.id === draggableId) {
-          return { ...t, status: destination.droppableId };
-        }
-        return t;
-      });
-      
-      setTickets(updatedTickets);
-
-      // จำลองการยิงแจ้งเตือน LINE
-      if (destination.droppableId === 'IN_PROGRESS') {
-        Swal.fire({
-          toast: true, position: 'top-end', icon: 'info',
-          title: 'แจ้งลูกบ้านแล้ว: กำลังดำเนินการซ่อม!',
-          showConfirmButton: false, timer: 3000,
-          customClass: { popup: 'rounded-2xl' }
-        });
-      } else if (destination.droppableId === 'RESOLVED') {
-        Swal.fire({
-          toast: true, position: 'top-end', icon: 'success',
-          title: 'ปิดงาน! แจ้งลูกบ้านเรียบร้อย',
-          showConfirmButton: false, timer: 3000,
-          customClass: { popup: 'rounded-2xl' }
-        });
-      }
+  // 🌟 ฟังก์ชันจำลองการดึงข้อมูลจาก Database (เตรียมเชื่อม API)
+  const fetchNewsFromDB = async () => {
+    setIsLoading(true);
+    try {
+      // 🚧 ตรงนี้เตรียมเปลี่ยนเป็น fetch('/api/admin/news') ของจริง
+      // สมมติว่าดึงข้อมูลมาได้ตามนี้:
+      const dummyData: NewsItem[] = [
+        { id: '1', title: 'ประกาศงดจ่ายน้ำชั่วคราว ประจำเดือนมิถุนายน', category: 'บำรุงรักษา', content: 'ทางหมู่บ้านจะดำเนินการ...', date: '8 มิ.ย. 2567', recipients: 348, status: 'PUBLISHED', views: 312, isPinned: true },
+        { id: '2', title: 'ประกาศเร่งด่วน: ไฟดับซอย 3-5', category: 'ด่วน', content: 'การไฟฟ้าแจ้งดับไฟ...', date: '7 มิ.ย. 2567', recipients: 348, status: 'PUBLISHED', views: 289, isPinned: false },
+        { id: '3', title: 'เชิญร่วมงานลอยกระทง ณ สวนหย่อม', category: 'กิจกรรม', content: 'ขอเชิญลูกบ้าน...', date: '10 มิ.ย. 09:00', recipients: 348, status: 'SCHEDULED', views: 0, isPinned: false },
+        { id: '4', title: 'ระเบียบจอดรถภายในหมู่บ้าน', category: 'ทั่วไป', content: 'ระเบียบการจอด...', date: '-', recipients: 0, status: 'DRAFT', views: 0, isPinned: false },
+      ];
+      setNews(dummyData);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  if (!isMounted) return null;
+  useEffect(() => {
+    fetchNewsFromDB();
+  }, []);
+
+  const TABS = [
+    { id: 'ALL', label: 'ทั้งหมด', count: news.length },
+    { id: 'PUBLISHED', label: 'เผยแพร่', count: news.filter(n => n.status === 'PUBLISHED').length },
+    { id: 'DRAFT', label: 'ร่าง', count: news.filter(n => n.status === 'DRAFT').length },
+    { id: 'SCHEDULED', label: 'ตั้งเวลา', count: news.filter(n => n.status === 'SCHEDULED').length },
+  ];
+
+  const CATEGORIES = ['ทุกหมวด', 'บำรุงรักษา', 'ด่วน', 'กิจกรรม', 'ทั่วไป'];
+
+  const filteredNews = news.filter(n => {
+    if (activeTab !== 'ALL' && n.status !== activeTab) return false;
+    if (activeCategory !== 'ทุกหมวด' && n.category !== activeCategory) return false;
+    if (searchQuery && !n.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    return true;
+  });
+
+  const getCategoryColor = (cat: string) => {
+    switch(cat) {
+      case 'บำรุงรักษา': return 'bg-emerald-100 text-emerald-700';
+      case 'ด่วน': return 'bg-rose-100 text-rose-700';
+      case 'กิจกรรม': return 'bg-blue-100 text-blue-700';
+      default: return 'bg-slate-100 text-slate-700';
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch(status) {
+      case 'PUBLISHED': return <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 flex items-center gap-1 w-max"><CheckCircle size={12}/> เผยแพร่</span>;
+      case 'SCHEDULED': return <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700 flex items-center gap-1 w-max"><Clock size={12}/> ตั้งเวลา</span>;
+      case 'DRAFT': return <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-600 flex items-center gap-1 w-max"><FileText size={12}/> ร่าง</span>;
+      default: return null;
+    }
+  };
+
+  const handleOpenModal = (editData: NewsItem | null = null) => {
+    if (editData) {
+      setEditingId(editData.id);
+      setFormData({ 
+        title: editData.title, category: editData.category, content: editData.content, 
+        image: '', sendLine: true, publishNow: editData.status === 'PUBLISHED' 
+      });
+    } else {
+      setEditingId(null);
+      setFormData({ title: '', category: 'ทั่วไป', content: '', image: '', sendLine: true, publishNow: true });
+    }
+    setIsModalOpen(true);
+  };
+
+  // 🌟 ฟังก์ชันจัดการเซฟ (ยิง API)
+  const handleSave = async (statusToSave: string) => {
+    if (!formData.title || !formData.content) {
+      Swal.fire({ icon: 'error', title: 'ข้อมูลไม่ครบ', text: 'กรุณากรอกหัวข้อและเนื้อหาประกาศ', customClass: { popup: 'rounded-[2rem]' } });
+      return;
+    }
+
+    // 🚧 ตรงนี้เตรียมไว้ใส่โค้ด fetch ยิง POST/PUT ไปที่ Database ของจริง
+    /*
+    const payload = { ...formData, status: statusToSave };
+    await fetch('/api/admin/news', { method: editingId ? 'PUT' : 'POST', body: JSON.stringify(payload) });
+    */
+
+    Swal.fire({
+      icon: 'success',
+      title: statusToSave === 'DRAFT' ? 'บันทึกฉบับร่างแล้ว' : 'เผยแพร่ประกาศแล้ว',
+      text: formData.sendLine && statusToSave === 'PUBLISHED' ? 'ระบบได้ส่งแจ้งเตือนไปยัง LINE ลูกบ้านเรียบร้อยแล้ว' : '',
+      showConfirmButton: false,
+      timer: 2000,
+      customClass: { popup: 'rounded-[2rem]' }
+    });
+    
+    setIsModalOpen(false);
+    fetchNewsFromDB(); // รีเฟรชข้อมูลใหม่
+  };
+
+  // 🌟 ฟังก์ชันจัดการลบ (ยิง API)
+  const handleDelete = (id: string) => {
+    Swal.fire({
+      title: 'ยืนยันการลบประกาศ?',
+      text: "หากลบแล้วจะไม่สามารถกู้คืนข้อมูลได้",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#9ca3af',
+      confirmButtonText: 'ลบทิ้ง',
+      cancelButtonText: 'ยกเลิก',
+      customClass: { popup: 'rounded-[2rem]' }
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        // 🚧 ตรงนี้เตรียมไว้ใส่โค้ด fetch ยิง DELETE ไป Database
+        // await fetch(`/api/admin/news?id=${id}`, { method: 'DELETE' });
+        
+        setNews(news.filter(n => n.id !== id));
+        Swal.fire({ icon: 'success', title: 'ลบสำเร็จ', showConfirmButton: false, timer: 1500, customClass: { popup: 'rounded-[2rem]' } });
+      }
+    });
+  };
+
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center bg-slate-50"><div className="animate-spin w-10 h-10 border-4 border-[#376B64] border-t-transparent rounded-full"></div></div>;
+  }
 
   return (
-    <div className="p-4 sm:p-6 md:p-8 bg-slate-50 min-h-screen font-sans w-full overflow-x-hidden">
-      <div className="max-w-7xl mx-auto space-y-8">
+    <div className="p-4 sm:p-6 md:p-8 bg-slate-50 min-h-screen font-sans w-full">
+      <div className="max-w-6xl mx-auto space-y-6">
         
-        {/* ==========================================
-            1. WIDGETS (3 การ์ดสถานะด่วน)
-            ========================================== */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-          <div className="bg-white p-5 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col justify-between relative overflow-hidden h-[160px]">
-            <div className="flex justify-between items-start mb-4 relative z-10">
-              <div>
-                <p className="text-slate-500 font-bold text-sm">ประกาศที่กำลังทำงาน</p>
-                <div className="flex items-baseline gap-2 mt-1">
-                  <span className="text-4xl font-black text-slate-800">{news.length}</span>
-                  <span className="text-sm font-medium text-slate-400">รายการ</span>
-                </div>
-              </div>
-              <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shrink-0">
-                <Megaphone size={24} />
-              </div>
-            </div>
-            <button className="w-full py-2.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-500 hover:text-white rounded-xl font-bold text-sm transition-colors flex items-center justify-center gap-2 relative z-10 active:scale-95">
-              <Plus size={16} /> สร้างประกาศด่วน
-            </button>
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-black text-slate-800">ข่าวประกาศ</h1>
+            <p className="text-sm text-slate-500 mt-1">จัดการและเผยแพร่ข่าวสารไปยังลูกบ้านผ่าน LINE</p>
+          </div>
+          <button 
+            onClick={() => handleOpenModal()}
+            className="w-full sm:w-auto px-5 py-2.5 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl shadow-sm hover:bg-slate-50 flex items-center justify-center gap-2 transition-colors active:scale-95"
+          >
+            <Plus size={18} /> สร้างประกาศใหม่
+          </button>
+        </div>
+
+        {/* List Section */}
+        <div className="bg-white border border-slate-200 rounded-[1.5rem] shadow-sm overflow-hidden flex flex-col">
+          
+          {/* Tabs */}
+          <div className="flex overflow-x-auto border-b border-slate-100 custom-scrollbar">
+            {TABS.map(tab => (
+              <button 
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-6 py-4 text-sm font-bold whitespace-nowrap border-b-2 transition-colors flex items-center gap-2 ${activeTab === tab.id ? 'border-slate-800 text-slate-800' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+              >
+                {tab.label} <span className={`px-2 py-0.5 rounded-full text-xs ${activeTab === tab.id ? 'bg-slate-100 text-slate-800' : 'bg-slate-50 text-slate-400'}`}>{tab.count}</span>
+              </button>
+            ))}
           </div>
 
-          <div className="bg-gradient-to-br from-rose-50 to-white p-5 rounded-[2rem] shadow-sm border border-rose-100 flex flex-col justify-center relative overflow-hidden h-[160px]">
-            <div className="absolute -right-4 -bottom-4 text-rose-500 opacity-5">
-              <AlertCircle size={120} />
+          {/* Filters */}
+          <div className="p-4 border-b border-slate-100 flex flex-col md:flex-row gap-4 bg-slate-50/50">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-2.5 text-slate-400" size={18} />
+              <input 
+                type="text" 
+                placeholder="ค้นหาประกาศ..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 font-medium"
+              />
             </div>
-            <div className="flex justify-between items-start relative z-10">
-              <div>
-                <p className="text-rose-600 font-bold text-sm">แจ้งซ่อมรอดำเนินการ</p>
-                <div className="flex items-baseline gap-2 mt-1">
-                  <span className="text-6xl font-black text-rose-600 tracking-tighter">
-                    {tickets.filter(t => t.status === 'NEW').length}
-                  </span>
-                  <span className="text-sm font-bold text-rose-400">คิวงาน</span>
-                </div>
-              </div>
-              <div className="w-12 h-12 bg-white text-rose-500 rounded-2xl flex items-center justify-center shadow-sm shrink-0">
-                <Wrench size={24} />
-              </div>
+            <div className="flex gap-2 overflow-x-auto custom-scrollbar pb-2 md:pb-0">
+              {CATEGORIES.map(cat => (
+                <button 
+                  key={cat}
+                  onClick={() => setActiveCategory(cat)}
+                  className={`px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-colors border ${activeCategory === cat ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+                >
+                  {cat}
+                </button>
+              ))}
             </div>
           </div>
 
-          <div className="bg-white p-5 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col justify-center h-[160px]">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-slate-500 font-bold text-sm">ซ่อมเสร็จแล้วเดือนนี้</p>
-                <div className="flex items-baseline gap-2 mt-1">
-                  <span className="text-4xl font-black text-slate-800">
-                    {tickets.filter(t => t.status === 'RESOLVED').length}
-                  </span>
-                  <span className="text-sm font-medium text-emerald-500 flex items-center gap-1">
-                    <CheckCircle2 size={14} /> เยี่ยมมาก!
-                  </span>
+          {/* Table (Desktop) */}
+          <div className="overflow-x-auto custom-scrollbar">
+            <table className="w-full text-left hidden md:table min-w-[800px]">
+              <thead className="bg-white border-b border-slate-100 text-slate-500 text-sm">
+                <tr>
+                  <th className="px-6 py-4 font-semibold w-2/5">หัวข้อ</th>
+                  <th className="px-6 py-4 font-semibold">หมวด</th>
+                  <th className="px-6 py-4 font-semibold">วันที่</th>
+                  <th className="px-6 py-4 font-semibold text-center">ผู้รับ</th>
+                  <th className="px-6 py-4 font-semibold text-center">สถานะ</th>
+                  <th className="px-6 py-4 font-semibold text-center">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {filteredNews.map(n => (
+                  <tr key={n.id} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-start gap-3">
+                        {n.isPinned ? <Pin size={16} className="text-blue-500 mt-1 shrink-0" /> : <FileText size={16} className="text-slate-300 mt-1 shrink-0" />}
+                        <div>
+                          <p className="font-bold text-slate-800 text-base">{n.title}</p>
+                          <div className="flex items-center gap-3 text-xs text-slate-400 mt-1 font-medium">
+                            <span className="flex items-center gap-1"><Eye size={12} /> {n.views}</span>
+                            <span className="flex items-center gap-1"><MessageCircle size={12} /> 0</span>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2.5 py-1 rounded-md text-xs font-bold ${getCategoryColor(n.category)}`}>{n.category}</span>
+                    </td>
+                    <td className="px-6 py-4 text-sm font-medium text-slate-600">{n.date}</td>
+                    <td className="px-6 py-4 text-sm font-bold text-slate-600 text-center">{n.recipients || '-'}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex justify-center">{getStatusBadge(n.status)}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center justify-center gap-2">
+                        <button onClick={() => handleOpenModal(n)} className="p-2 border border-slate-200 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors bg-white"><Edit size={16} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {/* Mobile View */}
+            <div className="md:hidden divide-y divide-slate-100">
+              {filteredNews.map(n => (
+                <div key={n.id} className="p-4 flex flex-col gap-3">
+                  <div className="flex justify-between items-start">
+                    <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold ${getCategoryColor(n.category)}`}>{n.category}</span>
+                    {getStatusBadge(n.status)}
+                  </div>
+                  <h3 className="font-bold text-slate-800 leading-snug">{n.isPinned && <Pin size={14} className="inline text-blue-500 mr-1" />}{n.title}</h3>
+                  <div className="flex justify-between items-center text-xs font-medium text-slate-500">
+                    <span className="flex items-center gap-1"><Calendar size={12} /> {n.date}</span>
+                    <span className="flex items-center gap-1"><Send size={12} /> ผู้รับ {n.recipients || '-'}</span>
+                  </div>
+                  <button onClick={() => handleOpenModal(n)} className="w-full mt-2 py-2 border border-slate-200 rounded-lg text-slate-600 font-bold text-xs flex items-center justify-center gap-1 bg-white hover:bg-slate-50"><Edit size={14}/> จัดการประกาศ</button>
                 </div>
+              ))}
+            </div>
+            
+            {filteredNews.length === 0 && (
+              <div className="p-10 text-center text-slate-400 font-bold flex flex-col items-center justify-center gap-2">
+                <FileText size={32} className="text-slate-300" />
+                <p>ไม่พบประกาศในหมวดหมู่นี้</p>
               </div>
-              <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center shrink-0">
-                <CheckCircle size={24} />
-              </div>
+            )}
+          </div>
+          
+          {/* Pagination */}
+          <div className="p-4 border-t border-slate-100 flex justify-between items-center text-sm font-medium text-slate-500 bg-slate-50/50">
+            <span>แสดง {filteredNews.length} จาก {news.length} รายการ</span>
+            <div className="flex gap-1">
+              <button className="px-3 py-1 border border-slate-200 rounded-lg bg-white hover:bg-slate-50 font-bold">1</button>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* ==========================================
-            2. NEWS FEED (ระบบข่าวประกาศ)
-            ========================================== */}
-        <section>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-            <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
-              <Megaphone className="text-indigo-600 shrink-0" size={24} /> กระดานข่าวสาร (News Feed)
-            </h2>
-            <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 custom-scrollbar w-full sm:w-auto">
-              <span className="text-xs font-bold text-slate-400 shrink-0">Template ด่วน:</span>
-              <button className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-orange-50 text-orange-600 border border-orange-200 rounded-lg text-xs font-bold hover:bg-orange-100 transition-colors shrink-0 active:scale-95">
-                <Zap size={14} /> ไฟดับ
-              </button>
-              <button className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg text-xs font-bold hover:bg-blue-100 transition-colors shrink-0 active:scale-95">
-                <Droplets size={14} /> น้ำไม่ไหล
-              </button>
-            </div>
-          </div>
+      {/* ==========================================
+          MODAL: สร้าง/แก้ไขประกาศ (Create/Edit Modal)
+          ========================================== */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-[100] flex justify-center items-start md:items-center p-4 bg-slate-900/50 backdrop-blur-sm overflow-y-auto custom-scrollbar">
+          <div className="bg-white rounded-[2rem] w-full max-w-4xl shadow-2xl my-4 md:my-0 flex flex-col md:flex-row overflow-hidden animate-in fade-in zoom-in-95 duration-200 border border-slate-100">
+            
+            {/* Form Section (Left) */}
+            <div className="flex-1 p-6 md:p-8 border-r border-slate-100">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
+                  <FileText className="text-slate-500" /> {editingId ? 'แก้ไขประกาศ' : 'เนื้อหาประกาศ'}
+                </h2>
+                <button onClick={() => setIsModalOpen(false)} className="md:hidden text-slate-400 p-2"><X size={20}/></button>
+              </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {news.map((n) => (
-              <div key={n.id} className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all flex flex-col justify-between min-h-[160px]">
+              <div className="space-y-5">
                 <div>
-                  <div className="flex justify-between items-start mb-3">
-                    <span className={`px-2.5 py-1 rounded-md text-[10px] font-black tracking-wide ${n.color}`}>
-                      {n.tag}
-                    </span>
-                    <button className="text-slate-400 hover:text-slate-600"><MoreHorizontal size={18}/></button>
-                  </div>
-                  <h3 className="font-bold text-slate-800 text-sm leading-relaxed line-clamp-2 mb-2">
-                    {n.title}
-                  </h3>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">หัวข้อประกาศ <span className="text-rose-500">*</span></label>
+                  <input type="text" value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} placeholder="ระบุหัวข้อที่สั้น กระชับ และน่าสนใจ..." className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800 font-medium" />
                 </div>
-                
-                <div className="flex items-center justify-between pt-3 border-t border-slate-50 mt-auto">
-                  <span className="text-xs font-medium text-slate-400 flex items-center gap-1.5">
-                    <Clock size={12} /> {n.date}
-                  </span>
-                  
-                  <div className="flex items-center gap-1">
-                    {n.lineStatus === 'PUSHED' ? (
-                      <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md">
-                        <Send size={10} /> ส่ง LINE แล้ว
-                      </span>
-                    ) : n.lineStatus === 'PUBLISHED' ? (
-                      <span className="flex items-center gap-1 text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-md">
-                        <CheckCircle2 size={10} /> โพสต์ลงบอร์ด
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1 text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-md">
-                        ฉบับร่าง
-                      </span>
-                    )}
+
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">หมวดหมู่ <span className="text-rose-500">*</span></label>
+                  <div className="flex flex-wrap gap-2">
+                    {CATEGORIES.filter(c => c !== 'ทุกหมวด').map(cat => (
+                      <button key={cat} type="button" onClick={() => setFormData({...formData, category: cat})} className={`px-4 py-1.5 rounded-full text-xs font-bold transition-colors border ${formData.category === cat ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}>
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">เนื้อหา <span className="text-rose-500">*</span></label>
+                  <textarea rows={5} value={formData.content} onChange={(e) => setFormData({...formData, content: e.target.value})} placeholder="เขียนเนื้อหาประกาศของคุณที่นี่..." className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800 font-medium resize-none"></textarea>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">แนบรูปภาพ (Cover)</label>
+                  <div className="w-full h-24 border-2 border-dashed border-slate-300 rounded-xl bg-slate-50 flex flex-col items-center justify-center text-slate-400 hover:border-slate-400 hover:bg-slate-100 transition-colors cursor-pointer">
+                    <ImageIcon size={24} className="mb-1" />
+                    <span className="text-xs font-medium">คลิกเพื่ออัปโหลด - PNG/JPG สูงสุด 5MB</span>
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
-        </section>
+            </div>
 
-        {/* ==========================================
-            3. REPAIR HELPDESK (Kanban Board ลากวางได้)
-            ========================================== */}
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
-              <Wrench className="text-rose-500 shrink-0" size={24} /> ระบบรับเรื่องแจ้งซ่อม (Helpdesk)
-            </h2>
-            <p className="text-xs font-bold text-slate-400 hidden sm:block bg-slate-200 px-3 py-1 rounded-full">ลากการ์ดเพื่ออัปเดตสถานะ (Drag & Drop)</p>
-          </div>
+            {/* Settings & Preview Section (Right) */}
+            <div className="w-full md:w-80 bg-slate-50 p-6 md:p-8 flex flex-col gap-6 relative">
+              <button onClick={() => setIsModalOpen(false)} className="hidden md:block absolute top-6 right-6 text-slate-400 hover:text-slate-600 transition-colors"><X size={24}/></button>
 
-          <DragDropContext onDragEnd={onDragEnd}>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6 items-start">
-              
-              {/* คอลัมน์ที่ 1: รอดำเนินการ */}
-              <Droppable droppableId="NEW">
-                {(provided, snapshot) => (
-                  <div 
-                    ref={provided.innerRef} 
-                    {...provided.droppableProps}
-                    className={`p-3 sm:p-4 rounded-[2rem] flex flex-col gap-3 min-h-[400px] transition-colors ${snapshot.isDraggingOver ? 'bg-rose-50 border-2 border-dashed border-rose-200' : 'bg-slate-100/60 border-2 border-transparent'}`}
-                  >
-                    <div className="flex items-center justify-between px-2 mb-2">
-                      <h3 className="font-bold text-slate-800 flex items-center gap-2 text-sm">
-                        <span className="w-3 h-3 rounded-full bg-rose-500"></span> รอดำเนินการ (New)
-                      </h3>
-                      <span className="bg-white text-slate-500 text-xs font-black px-2 py-0.5 rounded-full shadow-sm">
-                        {tickets.filter(t => t.status === 'NEW').length}
-                      </span>
+              <div className="flex justify-between items-center md:hidden">
+                <h2 className="text-lg font-black text-slate-800">ตั้งค่าการเผยแพร่</h2>
+              </div>
+
+              {/* LINE Preview Box */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm relative mt-2 md:mt-8">
+                <p className="absolute -top-3 left-4 bg-slate-800 text-white text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1"><MessageCircle size={10}/> ตัวอย่าง LINE</p>
+                <div className="mt-2 space-y-2">
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${getCategoryColor(formData.category)}`}>{formData.category}</span>
+                  <p className="font-bold text-slate-800 text-sm leading-tight line-clamp-2">{formData.title || 'หัวข้อประกาศ...'}</p>
+                  <p className="text-xs text-slate-500 line-clamp-2">{formData.content || 'เนื้อหาประกาศ...'}</p>
+                  <p className="text-[10px] text-slate-400 pt-2 font-medium">วันนี้ 09:00 น.</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                  <p className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-1"><Clock size={16}/> กำหนดเวลาเผยแพร่</p>
+                  <label className="flex items-center gap-2 mb-2 cursor-pointer">
+                    <input type="radio" name="publish" checked={formData.publishNow} onChange={() => setFormData({...formData, publishNow: true})} className="w-4 h-4 text-emerald-600 focus:ring-emerald-600" />
+                    <span className="text-sm font-medium text-slate-600">เผยแพร่ทันที</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" name="publish" checked={!formData.publishNow} onChange={() => setFormData({...formData, publishNow: false})} className="w-4 h-4 text-emerald-600 focus:ring-emerald-600" />
+                    <span className="text-sm font-medium text-slate-600">กำหนดเวลาล่วงหน้า</span>
+                  </label>
+                </div>
+
+                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input type="checkbox" checked={formData.sendLine} onChange={(e) => setFormData({...formData, sendLine: e.target.checked})} className="mt-1 w-4 h-4 text-emerald-600 rounded focus:ring-emerald-600" />
+                    <div>
+                      <span className="text-sm font-bold text-slate-700 block">ส่ง Push Notification ผ่าน LINE</span>
+                      <span className="text-[10px] text-slate-500 leading-tight block mt-0.5">ลูกบ้านจะได้รับการแจ้งเตือนทันที</span>
                     </div>
-                    
-                    {tickets.filter(t => t.status === 'NEW').map((ticket, index) => (
-                      <Draggable key={ticket.id} draggableId={ticket.id} index={index}>
-                        {(provided, snapshot) => (
-                          <div 
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                            {...provided.dragHandleProps}
-                            className={`bg-white p-4 rounded-2xl border ${snapshot.isDragging ? 'shadow-2xl border-rose-400 rotate-2' : 'shadow-sm border-slate-100 hover:border-rose-300'}`}
-                          >
-                            <div className="flex gap-3">
-                              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-slate-100 rounded-xl flex items-center justify-center shrink-0 border border-slate-200">
-                                <ImageIcon className="text-slate-300" size={20} />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <span className="text-lg sm:text-xl font-black text-rose-600 leading-none mb-1 block truncate">🏠 {ticket.houseNo}</span>
-                                <p className="text-xs font-bold text-slate-600 leading-snug line-clamp-2">{ticket.issue}</p>
-                              </div>
-                            </div>
-                            <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-50">
-                              <span className="text-[10px] font-bold text-rose-500 flex items-center gap-1"><Clock size={12}/> {ticket.time}</span>
-                            </div>
-                          </div>
-                        )}
-                      </Draggable>
-                    ))}
-                    {provided.placeholder}
-                  </div>
-                )}
-              </Droppable>
-
-              {/* คอลัมน์ที่ 2: กำลังซ่อมแซม */}
-              <Droppable droppableId="IN_PROGRESS">
-                {(provided, snapshot) => (
-                  <div 
-                    ref={provided.innerRef} 
-                    {...provided.droppableProps}
-                    className={`p-3 sm:p-4 rounded-[2rem] flex flex-col gap-3 min-h-[400px] transition-colors ${snapshot.isDraggingOver ? 'bg-amber-50 border-2 border-dashed border-amber-200' : 'bg-slate-100/60 border-2 border-transparent'}`}
-                  >
-                    <div className="flex items-center justify-between px-2 mb-2">
-                      <h3 className="font-bold text-slate-800 flex items-center gap-2 text-sm">
-                        <span className="w-3 h-3 rounded-full bg-amber-400"></span> กำลังซ่อมแซม
-                      </h3>
-                      <span className="bg-white text-slate-500 text-xs font-black px-2 py-0.5 rounded-full shadow-sm">
-                        {tickets.filter(t => t.status === 'IN_PROGRESS').length}
-                      </span>
+                  </label>
+                  {formData.sendLine && (
+                    <div className="mt-3 p-2 bg-rose-50 border border-rose-100 rounded-lg flex items-start gap-2 text-rose-600 text-[10px] font-bold">
+                      <AlertCircle size={14} className="shrink-0 mt-0.5" />
+                      <p className="leading-tight">ตรวจสอบก่อนเผยแพร่ ข้อความที่ส่งแล้วไม่สามารถลบออกจาก LINE ลูกบ้านได้</p>
                     </div>
-                    
-                    {tickets.filter(t => t.status === 'IN_PROGRESS').map((ticket, index) => (
-                      <Draggable key={ticket.id} draggableId={ticket.id} index={index}>
-                        {(provided, snapshot) => (
-                          <div 
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                            {...provided.dragHandleProps}
-                            className={`bg-white p-4 rounded-2xl border ${snapshot.isDragging ? 'shadow-2xl border-amber-400 rotate-2' : 'shadow-sm border-amber-200'}`}
-                          >
-                            <div className="flex gap-3">
-                              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-slate-100 rounded-xl flex items-center justify-center shrink-0 border border-slate-200">
-                                <ImageIcon className="text-slate-300" size={20} />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <span className="text-lg sm:text-xl font-black text-amber-600 leading-none mb-1 block truncate">🏠 {ticket.houseNo}</span>
-                                <p className="text-xs font-bold text-slate-600 leading-snug line-clamp-2">{ticket.issue}</p>
-                              </div>
-                            </div>
-                            <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-50">
-                              <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1"><Wrench size={12}/> ช่างกำลังดำเนินการ</span>
-                            </div>
-                          </div>
-                        )}
-                      </Draggable>
-                    ))}
-                    {provided.placeholder}
-                  </div>
-                )}
-              </Droppable>
+                  )}
+                </div>
+              </div>
 
-              {/* คอลัมน์ที่ 3: เสร็จสิ้นแล้ว */}
-              <Droppable droppableId="RESOLVED">
-                {(provided, snapshot) => (
-                  <div 
-                    ref={provided.innerRef} 
-                    {...provided.droppableProps}
-                    className={`p-3 sm:p-4 rounded-[2rem] flex flex-col gap-3 min-h-[400px] transition-colors ${snapshot.isDraggingOver ? 'bg-emerald-50 border-2 border-dashed border-emerald-200' : 'bg-slate-100/60 border-2 border-transparent'}`}
-                  >
-                    <div className="flex items-center justify-between px-2 mb-2">
-                      <h3 className="font-bold text-slate-800 flex items-center gap-2 text-sm">
-                        <span className="w-3 h-3 rounded-full bg-emerald-500"></span> เสร็จสิ้นแล้ว
-                      </h3>
-                      <span className="bg-white text-slate-500 text-xs font-black px-2 py-0.5 rounded-full shadow-sm">
-                         {tickets.filter(t => t.status === 'RESOLVED').length}
-                      </span>
-                    </div>
-
-                    {tickets.filter(t => t.status === 'RESOLVED').map((ticket, index) => (
-                      <Draggable key={ticket.id} draggableId={ticket.id} index={index}>
-                        {(provided, snapshot) => (
-                          <div 
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                            {...provided.dragHandleProps}
-                            className={`bg-white p-4 rounded-2xl border ${snapshot.isDragging ? 'shadow-2xl border-emerald-400 rotate-2 opacity-100' : 'shadow-sm border-slate-100 opacity-60 hover:opacity-100 transition-opacity'}`}
-                          >
-                            <div className="flex gap-3 items-center">
-                               <span className="text-lg font-black text-slate-500 shrink-0">🏠 {ticket.houseNo}</span>
-                               <p className="text-xs font-bold text-slate-500 truncate flex-1">{ticket.issue}</p>
-                               <CheckCircle2 size={16} className="text-emerald-500 shrink-0" />
-                            </div>
-                          </div>
-                        )}
-                      </Draggable>
-                    ))}
-                    {provided.placeholder}
-                  </div>
-                )}
-              </Droppable>
+              {/* Actions */}
+              <div className="mt-auto pt-4 flex flex-col gap-2">
+                <button onClick={() => handleSave('PUBLISHED')} className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md transition-colors active:scale-95 flex items-center justify-center gap-2">
+                  <Send size={16} /> {formData.publishNow ? 'เผยแพร่และแจ้ง LINE' : 'ตั้งเวลาเผยแพร่'}
+                </button>
+                <div className="flex gap-2">
+                  <button onClick={() => setIsModalOpen(false)} className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition-colors">ยกเลิก</button>
+                  <button onClick={() => handleSave('DRAFT')} className="flex-1 py-2.5 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-colors flex items-center justify-center gap-1"><Save size={16} /> บันทึกร่าง</button>
+                  {editingId && (
+                    <button onClick={() => handleDelete(editingId)} className="p-2.5 bg-white border border-rose-200 text-rose-500 rounded-xl hover:bg-rose-50 transition-colors shrink-0"><Trash2 size={20} /></button>
+                  )}
+                </div>
+              </div>
 
             </div>
-          </DragDropContext>
-        </section>
+          </div>
+        </div>
+      )}
 
-      </div>
       <style dangerouslySetInnerHTML={{__html: `
-        .custom-scrollbar::-webkit-scrollbar { height: 4px; }
+        .custom-scrollbar::-webkit-scrollbar { height: 4px; width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
       `}} />
