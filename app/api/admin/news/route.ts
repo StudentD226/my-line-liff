@@ -49,7 +49,8 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { id, title, category, content, status, sendLine, imageUrl } = body;
+    // 🌟 หั่น sendLine ออกไปเลย เพราะเราจะบังคับส่งเมื่อ status === 'PUBLISHED'
+    const { id, title, category, content, status, imageUrl } = body;
 
     let savedNews;
     
@@ -67,22 +68,22 @@ export async function POST(request: Request) {
 
     let lineSentCount = 0;
 
-    // ถ้าแอดมินเลือก "เผยแพร่" และติ๊ก "ส่ง Push Notification"
-    if (status === 'PUBLISHED' && sendLine) {
+    // 🌟 เปลี่ยนเงื่อนไขใหม่: ถ้าแอดมินกดปุ่ม "เผยแพร่" (status === 'PUBLISHED') บังคับยิง LINE ทันที!
+    if (status === 'PUBLISHED') {
       
-      // ดึง Line ID ของลูกบ้าน
+      // ดึง Line ID ของลูกบ้านทั้งหมดจากฐานข้อมูล
       const users = await prisma.user.findMany({ where: { lineId: { not: null } } });
       const uniqueLineIds = [...new Set(users.map(u => u.lineId))].filter(Boolean) as string[];
 
       if (uniqueLineIds.length > 0) {
-        // 🌟 โครงสร้าง Flex Message ที่ดึงรูปโชว์ในแชทให้ลูกบ้านเห็นทันที
+        // 🎨 โครงสร้าง Flex Message สวยเป๊ะตามหน้าพรีวิวแชท LINE
         const flexMessage: messagingApi.FlexMessage = {
           type: "flex",
           altText: `📢 ประกาศใหม่: ${title}`,
           contents: {
             type: "bubble",
             size: "giga",
-            // ถ้าแอดมินใส่รูปลงมา จะแสดงเป็น Hero Image ใหญ่ๆ ด้านบน
+            // ถ้ารูปจาก Cloudinary อัปโหลดมาสำเร็จ จะแสดงเป็น Hero Image ทันที
             hero: imageUrl ? {
               type: "image",
               url: imageUrl,
@@ -111,18 +112,23 @@ export async function POST(request: Request) {
               contents: [
                 {
                   type: "button", style: "primary", color: "#0F172A",
-                  action: { type: "uri", label: "อ่านรายละเอียดเต็ม", uri: `https://liff.line.me/${process.env.NEXT_PUBLIC_LIFF_ID}/news` }
+                  action: { 
+                    type: "uri", 
+                    label: "อ่านรายละเอียดเต็ม", 
+                    // รองรับทั้ง URL สำเร็จรูป หรือจะประกอบร่างจาก LIFF_ID ก็ได้ครับ
+                    uri: process.env.NEXT_PUBLIC_LIFF_URL || `https://liff.line.me/${process.env.NEXT_PUBLIC_LIFF_ID}/news` 
+                  }
                 }
               ]
             }
           } as any
         };
 
-        // ยิงข้อความเข้า LINE
+        // สาดข้อความแบบมัลติแคสต์เข้าแชท LINE ของลูกบ้านทุกคนพร้อมกัน
         await client.multicast({ to: uniqueLineIds, messages: [flexMessage] }).catch(console.error);
         lineSentCount = uniqueLineIds.length;
 
-        // อัปเดตยอดคนรับ
+        // บันทึกจำนวนลูกบ้านที่ได้รับข้อความลง Database
         await prisma.news.update({
           where: { id: savedNews.id },
           data: { recipients: lineSentCount }
