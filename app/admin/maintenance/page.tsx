@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Search, AlertCircle, Clock, CheckCircle2, AlertTriangle, 
   X, Send, Wrench, Calendar, User, Home, FileText, CheckCircle, 
-  Circle, MessageSquare, ImageIcon
+  Circle, MessageSquare, ImageIcon, Camera
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 
@@ -16,6 +16,7 @@ type HistoryItem = {
   status: RepairStatus;
   date: string;
   note: string;
+  imageUrl?: string; // 🌟 เพิ่มที่เก็บรูปลงในแต่ละประวัติ
 };
 
 type RepairTicket = {
@@ -54,6 +55,11 @@ export default function AdminRepairsManagement() {
     note: ''
   });
 
+  // 🌟 State สำหรับรูปภาพของแอดมิน
+  const [adminFile, setAdminFile] = useState<File | null>(null);
+  const [adminImagePreview, setAdminImagePreview] = useState<string | null>(null);
+  const adminFileInputRef = useRef<HTMLInputElement>(null);
+
   const fetchRepairs = async () => {
     setIsLoading(true);
     try {
@@ -86,12 +92,53 @@ export default function AdminRepairsManagement() {
       expectedDate: ticket.expectedDate || '',
       note: ''
     });
+    setAdminFile(null);
+    setAdminImagePreview(null);
+  };
+
+  // 🌟 ฟังก์ชันจัดการรูปภาพของแอดมิน
+  const handleAdminFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        Swal.fire({ icon: 'error', title: 'ไฟล์ใหญ่เกินไป', text: 'รูปต้องขนาดไม่เกิน 2MB ครับ', confirmButtonColor: '#376B64' });
+        return;
+      }
+      setAdminFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setAdminImagePreview(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeAdminImage = () => {
+    setAdminFile(null);
+    setAdminImagePreview(null);
+    if (adminFileInputRef.current) adminFileInputRef.current.value = "";
   };
 
   const handleSaveUpdate = async () => {
     if (!selectedTicket) return;
     
     setIsLoading(true);
+    let updateImageUrl = null;
+
+    // 🌟 แปลงรูปแอดมินเป็น Base64
+    if (adminFile) {
+      try {
+        updateImageUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(adminFile);
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = (error) => reject(error);
+        });
+      } catch (error) {
+        Swal.fire({ icon: 'error', title: 'แปลงรูปภาพไม่สำเร็จ', confirmButtonColor: '#376B64' });
+        setIsLoading(false);
+        return;
+      }
+    }
+
     try {
       const res = await fetch('/api/admin/maintenance', {
         method: 'POST',
@@ -101,7 +148,8 @@ export default function AdminRepairsManagement() {
           status: updateForm.status,
           expectedDate: updateForm.expectedDate,
           note: updateForm.note,
-          sendLine: true 
+          sendLine: true,
+          updateImageUrl: updateImageUrl // 🌟 ส่งรูปของแอดมินไปด้วย
         })
       });
 
@@ -111,7 +159,6 @@ export default function AdminRepairsManagement() {
         Swal.fire({
           icon: 'success',
           title: 'อัปเดตและแจ้ง LINE สำเร็จ!',
-          text: 'ระบบได้ส่งการ์ดสถานะไปยังลูกบ้านแล้ว',
           showConfirmButton: false,
           timer: 2000,
           customClass: { popup: 'rounded-[2rem]' }
@@ -304,10 +351,10 @@ export default function AdminRepairsManagement() {
       {/* 🚀 MODAL */}
       {selectedTicket && (
         <div className="fixed inset-0 z-[100] flex justify-center items-start md:items-center p-4 bg-slate-900/50 backdrop-blur-sm overflow-y-auto custom-scrollbar">
-          <div className="bg-white rounded-[2rem] w-full max-w-4xl shadow-2xl my-4 md:my-0 flex flex-col md:flex-row overflow-hidden animate-in fade-in zoom-in-95 duration-200 border border-slate-100">
+          <div className="bg-white rounded-[2rem] w-full max-w-5xl shadow-2xl my-4 md:my-0 flex flex-col md:flex-row overflow-hidden animate-in fade-in zoom-in-95 duration-200 border border-slate-100">
             
             {/* Left: Info & Timeline */}
-            <div className="flex-1 bg-slate-50 p-6 md:p-8 border-r border-slate-200 overflow-y-auto max-h-[85vh] custom-scrollbar">
+            <div className="flex-1 bg-slate-50 p-6 md:p-8 border-r border-slate-200 overflow-y-auto max-h-[85vh] custom-scrollbar min-w-[50%]">
               <div className="flex justify-between items-start mb-6">
                 <div>
                   <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
@@ -320,6 +367,7 @@ export default function AdminRepairsManagement() {
                 <button onClick={() => setSelectedTicket(null)} className="md:hidden text-slate-400 p-2"><X size={20}/></button>
               </div>
 
+              {/* ข้อมูลผู้แจ้ง */}
               <div className="bg-white p-4 rounded-2xl border border-slate-100 space-y-3 mb-6 shadow-sm">
                 <div className="flex items-start gap-3">
                   <User size={16} className="text-slate-400 mt-0.5" />
@@ -344,10 +392,11 @@ export default function AdminRepairsManagement() {
                 </div>
               </div>
 
+              {/* รูปลูกบ้าน */}
               {selectedTicket.imageUrl && (
                 <div className="mb-6">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-2 flex items-center gap-1"><ImageIcon size={12}/> ภาพประกอบปัญหา</p>
-                  <img src={selectedTicket.imageUrl} alt="Repair Evidence" className="w-full max-h-48 object-cover rounded-xl border border-slate-200" />
+                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-2 flex items-center gap-1"><ImageIcon size={12}/> ภาพประกอบจากลูกบ้าน</p>
+                  <img src={selectedTicket.imageUrl} alt="Resident Evidence" className="w-full max-h-48 object-cover rounded-xl border border-slate-200" />
                 </div>
               )}
 
@@ -356,6 +405,7 @@ export default function AdminRepairsManagement() {
                 <p className="text-xs text-slate-600 leading-relaxed">{selectedTicket.description}</p>
               </div>
 
+              {/* ⏳ Timeline ความคืบหน้าย้อนหลัง */}
               <div>
                 <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2"><Clock size={16} /> ความคืบหน้า (ย้อนหลัง)</h3>
                 <div className="space-y-6 relative before:absolute before:inset-0 before:ml-2.5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-slate-200">
@@ -363,14 +413,18 @@ export default function AdminRepairsManagement() {
                     const isLast = i === selectedTicket.history.length - 1;
                     return (
                       <div key={i} className="relative flex items-start gap-4">
-                        <div className={`absolute left-0 w-5 h-5 rounded-full flex items-center justify-center border-2 bg-white ${isLast ? 'border-[#376B64]' : 'border-slate-300'}`}>
+                        <div className={`absolute left-0 w-5 h-5 rounded-full flex items-center justify-center border-2 bg-white z-10 ${isLast ? 'border-[#376B64]' : 'border-slate-300'}`}>
                           {isLast ? <Circle className="w-2.5 h-2.5 fill-[#376B64] text-[#376B64]" /> : <CheckCircle className="w-3 h-3 text-slate-300" />}
                         </div>
-                        <div className="pl-8">
+                        <div className="pl-8 w-full">
                           <p className={`text-sm font-bold ${isLast ? 'text-slate-800' : 'text-slate-500'}`}>{STATUS_CONFIG[hist.status].label}</p>
                           <p className="text-[10px] font-bold text-slate-400 mb-1">{hist.date}</p>
-                          <div className={`text-xs p-2 rounded-lg ${isLast ? 'bg-white border border-slate-200 shadow-sm text-slate-600' : 'text-slate-500'}`}>
+                          <div className={`text-xs p-3 rounded-xl ${isLast ? 'bg-white border border-slate-200 shadow-sm text-slate-600' : 'bg-slate-100 border border-slate-200 text-slate-500'}`}>
                             {hist.note || '-'}
+                            {/* 🌟 แสดงรูปภาพที่แอดมินแนบมาในประวัติ */}
+                            {hist.imageUrl && (
+                                <img src={hist.imageUrl} alt="Admin Update" className="mt-2 w-full h-24 object-cover rounded-lg border border-slate-200" />
+                            )}
                           </div>
                         </div>
                       </div>
@@ -383,15 +437,15 @@ export default function AdminRepairsManagement() {
               </div>
             </div>
 
-            {/* Right: Update Form */}
-            <div className="w-full md:w-96 bg-white p-6 md:p-8 flex flex-col relative">
+            {/* Right: Update Form (Admin) */}
+            <div className="w-full md:w-[450px] bg-white p-6 md:p-8 flex flex-col relative shrink-0">
               <button onClick={() => setSelectedTicket(null)} className="hidden md:block absolute top-6 right-6 text-slate-400 hover:text-slate-600"><X size={24}/></button>
               
               <h3 className="font-black text-slate-800 text-lg mb-6">ฟอร์มอัปเดตสถานะ</h3>
 
-              <div className="space-y-5 flex-1">
+              <div className="space-y-4 flex-1">
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">สถานะใหม่</label>
+                  <label className="block text-sm font-bold text-slate-700 mb-1.5">สถานะใหม่</label>
                   <select 
                     value={updateForm.status} 
                     onChange={e => setUpdateForm({...updateForm, status: e.target.value as RepairStatus})}
@@ -404,7 +458,7 @@ export default function AdminRepairsManagement() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">วันที่คาดว่าจะเสร็จ / วันที่เสร็จ</label>
+                  <label className="block text-sm font-bold text-slate-700 mb-1.5">วันที่คาดว่าจะเสร็จ / วันที่เสร็จ</label>
                   <input 
                     type="date" 
                     value={updateForm.expectedDate}
@@ -414,28 +468,47 @@ export default function AdminRepairsManagement() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">หมายเหตุ / รายละเอียดการซ่อม</label>
+                  <label className="block text-sm font-bold text-slate-700 mb-1.5">หมายเหตุ / รายละเอียดการซ่อม</label>
                   <textarea 
-                    rows={4} 
-                    placeholder="ระบุรายละเอียดเพื่อแจ้งให้ลูกบ้านทราบ..."
+                    rows={3} 
+                    placeholder="ระบุรายละเอียดให้ลูกบ้านทราบ..."
                     value={updateForm.note}
                     onChange={e => setUpdateForm({...updateForm, note: e.target.value})}
                     className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:border-[#376B64] font-medium resize-none bg-slate-50"
                   ></textarea>
                 </div>
 
+                {/* 🌟 ปุ่มแนบรูปของฝั่งแอดมิน */}
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-1.5">ภาพประกอบแจ้งลูกบ้าน</label>
+                  <input type="file" accept="image/*" ref={adminFileInputRef} onChange={handleAdminFileChange} className="hidden" />
+                  
+                  {adminImagePreview ? (
+                    <div className="relative w-full h-24 rounded-xl overflow-hidden border-2 border-slate-200 shadow-sm">
+                      <img src={adminImagePreview} alt="Admin Preview" className="w-full h-full object-cover" />
+                      <button onClick={removeAdminImage} className="absolute top-1 right-1 bg-slate-900/60 p-1.5 rounded-full text-white hover:bg-rose-500">
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    <button onClick={() => adminFileInputRef.current?.click()} className="w-full border-2 border-dashed border-slate-300 rounded-xl py-4 flex flex-col items-center justify-center bg-slate-50 text-slate-500 hover:border-[#376B64]/50 hover:bg-[#376B64]/5 transition-all">
+                      <Camera size={20} className="mb-1 text-slate-400" />
+                      <span className="text-xs font-semibold">แนบรูปภาพอัปเดตงาน (ไม่เกิน 2MB)</span>
+                    </button>
+                  )}
+                </div>
+
                 <div className="bg-[#376B64]/10 border border-[#376B64]/20 p-4 rounded-xl flex items-start gap-3 mt-4">
                   <MessageSquare className="text-[#376B64] shrink-0 mt-0.5" size={18} />
                   <div>
-                    <p className="text-xs font-bold text-[#376B64] mb-1">ตัวอย่างข้อความแจ้งเตือน:</p>
-                    <p className="text-[11px] text-[#376B64]/80 leading-relaxed font-medium">
-                      ระบบจะส่ง <strong>Flex Message</strong> (แบบการ์ดภาพ) เข้า LINE ของลูกบ้านทันทีที่คุณกดบันทึก
+                    <p className="text-[11px] text-[#376B64]/80 leading-relaxed font-bold">
+                      จะส่งเข้า LINE ลูกบ้านเป็นการ์ดพร้อมรูปภาพทันที
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="mt-8 flex gap-3 pt-4 border-t border-slate-100">
+              <div className="mt-6 flex gap-3 pt-4 border-t border-slate-100">
                 <button onClick={() => setSelectedTicket(null)} className="flex-1 py-3 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50">ยกเลิก</button>
                 <button 
                   onClick={handleSaveUpdate} 

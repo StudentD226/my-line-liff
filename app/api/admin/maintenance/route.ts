@@ -44,7 +44,7 @@ export async function GET() {
         reportedDate: r.createdAt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }),
         expectedDate: extraData.expectedDate,
         history: extraData.history,
-        imageUrl: r.imageUrl, // ส่งรูปภาพไปแสดงที่ Modal
+        imageUrl: r.imageUrl,
       };
     }));
 
@@ -61,7 +61,8 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { id, status, expectedDate, note, sendLine } = body;
+    // 🌟 รับค่า updateImageUrl (รูปที่แอดมินเพิ่งถ่าย) มาด้วย
+    const { id, status, expectedDate, note, sendLine, updateImageUrl } = body;
 
     const existingReport = await prisma.report.findUnique({ where: { id } });
     if (!existingReport) {
@@ -75,12 +76,13 @@ export async function POST(request: Request) {
         } catch (e) {}
     }
 
-    // อัปเดตวันที่และเพิ่มประวัติใหม่ลงไป
+    // 🌟 ยัดรูปลงไปใน History ข้อใหม่ล่าสุด
     extraData.expectedDate = expectedDate || extraData.expectedDate;
     extraData.history.push({
         status: status,
         date: new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' }),
-        note: note || 'อัปเดตสถานะโดยนิติบุคคล'
+        note: note || 'อัปเดตสถานะโดยนิติบุคคล',
+        imageUrl: updateImageUrl || null // เก็บรูปแอดมินไว้ใน Timeline
     });
 
     // บันทึกลงฐานข้อมูล
@@ -92,27 +94,25 @@ export async function POST(request: Request) {
         }
     });
 
-    // 🌟 ยิง Flex Message สุดสวยพร้อมรูปภาพ เข้า LINE
+    // 🌟 ยิง Flex Message เข้า LINE
     if (sendLine && existingReport.lineId) {
         const LINE_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN;
         
         if (LINE_TOKEN) {
-            // ตั้งค่า สี และ ข้อความสถานะ ให้ตรงกับ UI
-            let headerBgColor = "#376B64"; // Default: กำลังดำเนินการ (เขียวเข้ม)
+            let headerBgColor = "#376B64"; 
             let statusTextColor = "#376B64";
             let statusTextTh = "กำลังดำเนินการ 🔧";
 
             if (status === 'PENDING') {
-              headerBgColor = "#f97316"; // รอดำเนินการ (ส้ม)
+              headerBgColor = "#f97316"; 
               statusTextColor = "#ea580c";
               statusTextTh = "รอดำเนินการ ⏳";
             } else if (status === 'COMPLETED') {
-              headerBgColor = "#10b981"; // เสร็จสิ้น (เขียวสว่าง)
+              headerBgColor = "#10b981"; 
               statusTextColor = "#059669";
               statusTextTh = "เสร็จสิ้นเรียบร้อย ✅";
             }
 
-            // จัดเตรียมส่วนเนื้อหา (Body)
             const flexBodyContents: any[] = [
               {
                 type: "text",
@@ -157,7 +157,6 @@ export async function POST(request: Request) {
               });
             }
 
-            // ประกอบร่าง Flex Message
             const flexMessage: any = {
               type: "flex",
               altText: `อัปเดตงานแจ้งซ่อม: ${existingReport.title}`,
@@ -202,11 +201,13 @@ export async function POST(request: Request) {
               }
             };
 
-            // 🌟 แทรกรูปภาพลงในการ์ด ถ้าลูกบ้านแนบรูปมา
-            if (existingReport.imageUrl) {
+            // 🌟 พระเอกอยู่ตรงนี้: ถ้าแอดมินส่งรูปใหม่มา ให้โชว์รูปล่าสุดของแอดมิน ถ้าไม่ส่งมา ค่อยไปดึงรูปเก่าของลูกบ้านมาโชว์!
+            const displayImageUrl = updateImageUrl || existingReport.imageUrl;
+            
+            if (displayImageUrl) {
               flexMessage.contents.hero = {
                 type: "image",
-                url: existingReport.imageUrl,
+                url: displayImageUrl,
                 size: "full",
                 aspectRatio: "20:13",
                 aspectMode: "cover"

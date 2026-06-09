@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     const randomCode = Math.floor(1000 + Math.random() * 9000);
     const ticketNo = `MT${dateStr}-${randomCode}`;
 
-    // 🌟 3. สร้าง History เริ่มต้น เพื่อให้สอดคล้องกับระบบ Timeline ฝั่ง Admin
+    // 3. สร้าง History เริ่มต้น เพื่อให้สอดคล้องกับระบบ Timeline ฝั่ง Admin
     const initialDate = new Date().toLocaleDateString('th-TH', { 
         day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' 
     });
@@ -39,20 +39,20 @@ export async function POST(req: Request) {
         ]
     });
 
-    // 4. บันทึกเข้าตาราง Report
+    // 4. บันทึกเข้าตาราง Report (ฟิลด์ imageUrl จะเก็บข้อความ Base64 ของรูปภาพลง DB ทันที)
     const newReport = await prisma.report.create({
       data: {
         ticketNo: ticketNo,
-        lineId: lineId, // เก็บไลน์ไอดีไว้แจ้งกลับ
+        lineId: lineId, 
         type: type,
         category: category,
         location: location,
         title: title,
         description: description,
-        imageUrl: imageUrl,
-        residentHouseId: user.residentHouse.id, // ผูกกับบ้านเลขที่
+        imageUrl: imageUrl, // รองรับ String Base64 เรียบร้อยแล้ว
+        residentHouseId: user.residentHouse.id,
         status: "PENDING",
-        adminNote: initialAdminNote // 🌟 ยัด History ข้อแรกเข้าไป (รับเรื่องแล้ว)
+        adminNote: initialAdminNote 
       }
     });
 
