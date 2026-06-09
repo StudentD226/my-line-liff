@@ -18,11 +18,13 @@ export type NewsItem = {
   status: 'PUBLISHED' | 'DRAFT';
   views: number;
   isPinned: boolean;
+  imageUrl?: string;  // 🌟 เพิ่มบรรทัดนี้เข้าไปเลยครับลูกพี่!
 };
 
 export default function AdminNewsManagement() {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isUploading, setIsUploading] = useState(false); // 🌟 State หมุนติ้วๆ ตอนอัปโหลดรูป
 
   const [activeTab, setActiveTab] = useState('ALL');
   const [activeCategory, setActiveCategory] = useState('ทุกหมวด');
@@ -91,13 +93,49 @@ export default function AdminNewsManagement() {
       setEditingId(editData.id);
       setFormData({ 
         title: editData.title, category: editData.category, content: editData.content, 
-        image: '', sendLine: true
+        image: editData.imageUrl || '', sendLine: true // ดึงรูปเก่ามาโชว์ถ้ามี
       });
     } else {
       setEditingId(null);
       setFormData({ title: '', category: 'ทั่วไป', content: '', image: '', sendLine: true });
     }
     setIsModalOpen(true);
+  };
+
+  // 🌟 ฟังก์ชันอัปโหลดรูปขึ้น Cloudinary
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const uploadData = new FormData();
+      uploadData.append('file', file);
+      
+      // 🛑 1. ใส่ชื่อ Upload Preset ของลูกพี่ (ตัวอย่าง: 'ml_default')
+      uploadData.append('upload_preset', 'news_unsigned'); 
+
+      // 🛑 2. ใส่ Cloud Name ของลูกพี่
+      const cloudName = 'Ourlineliff';
+
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+        method: 'POST',
+        body: uploadData
+      });
+
+      const json = await res.json();
+      
+      if (json.secure_url) {
+        setFormData({ ...formData, image: json.secure_url });
+        Swal.fire({ icon: 'success', title: 'อัปโหลดรูปสำเร็จ', timer: 1500, showConfirmButton: false, customClass: { popup: 'rounded-[2rem]' } });
+      } else {
+        Swal.fire({ icon: 'error', title: 'อัปโหลดไม่สำเร็จ', text: json.error?.message || 'กรุณาลองใหม่อีกครั้ง' });
+      }
+    } catch (error) {
+      Swal.fire({ icon: 'error', title: 'เชื่อมต่อ Cloudinary ล้มเหลว' });
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleSave = async (statusToSave: string) => {
@@ -346,13 +384,33 @@ export default function AdminNewsManagement() {
                   <textarea rows={6} value={formData.content} onChange={(e) => setFormData({...formData, content: e.target.value})} placeholder="เขียนเนื้อหา..." className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:border-slate-800 font-medium resize-none"></textarea>
                 </div>
 
+                {/* 🌟 กล่องอัปโหลดรูปภาพที่แก้ใหม่เป็นแบบใช้งานได้จริง */}
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-2">แนบรูปภาพ (Cover)</label>
-                  <div className="w-full h-24 border-2 border-dashed border-slate-300 rounded-xl bg-slate-50 flex flex-col items-center justify-center text-slate-400 hover:bg-slate-100 cursor-pointer">
-                    <ImageIcon size={24} className="mb-1" />
-                    <span className="text-xs font-medium">PNG/JPG สูงสุด 5MB</span>
-                  </div>
+                  <input type="file" id="upload-image" accept="image/png, image/jpeg, image/webp" className="hidden" onChange={handleImageUpload} disabled={isUploading} />
+                  <label htmlFor="upload-image" className={`w-full h-32 border-2 border-dashed ${formData.image ? 'border-emerald-400 bg-emerald-50' : 'border-slate-300 bg-slate-50'} rounded-xl flex flex-col items-center justify-center text-slate-400 hover:bg-slate-100 cursor-pointer overflow-hidden relative transition-colors`}>
+                    {isUploading ? (
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="animate-spin w-6 h-6 border-2 border-slate-400 border-t-transparent rounded-full"></div>
+                        <span className="text-xs font-bold text-slate-500">กำลังอัปโหลด...</span>
+                      </div>
+                    ) : formData.image ? (
+                      <>
+                        <img src={formData.image} alt="Preview" className="absolute inset-0 w-full h-full object-cover opacity-40" />
+                        <div className="relative z-10 flex flex-col items-center bg-white/90 px-4 py-2 rounded-xl shadow-sm border border-emerald-100">
+                          <CheckCircle size={24} className="text-emerald-500 mb-1" />
+                          <span className="text-xs font-bold text-emerald-700">อัปโหลดสำเร็จ (คลิกเปลี่ยนรูป)</span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <ImageIcon size={24} className="mb-1" />
+                        <span className="text-xs font-medium">คลิกเพื่ออัปโหลด - PNG/JPG สูงสุด 5MB</span>
+                      </>
+                    )}
+                  </label>
                 </div>
+
               </div>
             </div>
 
