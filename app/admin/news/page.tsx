@@ -113,9 +113,8 @@ export default function AdminNewsManagement() {
       
       uploadData.append('upload_preset', 'news_unsigned'); 
 
-      // อย่าลืมแก้ชื่อคลาวด์เนมตรงนี้ด้วยนะครับลูกพี่!
+      // ใส่ชื่อคลาวด์เนมของลูกพี่
       const cloudName = 'dszygeicw';
-
       
       const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
         method: 'POST',
@@ -125,7 +124,10 @@ export default function AdminNewsManagement() {
       const json = await res.json();
       
       if (json.secure_url) {
-        setFormData({ ...formData, image: json.secure_url });
+        // 🌟 แทรกคำสั่งบีบรูปเข้าไปใน URL ให้กว้างสุด 1000px และบีบอัดไฟล์ออโต้!
+        const optimizedUrl = json.secure_url.replace('/upload/', '/upload/w_1000,c_limit,q_auto/');
+        
+        setFormData({ ...formData, image: optimizedUrl });
         Swal.fire({ icon: 'success', title: 'อัปโหลดรูปสำเร็จ', timer: 1500, showConfirmButton: false, customClass: { popup: 'rounded-[2rem]' } });
       } else {
         Swal.fire({ icon: 'error', title: 'อัปโหลดไม่สำเร็จ', text: json.error?.message || 'กรุณาลองใหม่อีกครั้ง' });
@@ -156,7 +158,7 @@ export default function AdminNewsManagement() {
           category: formData.category,
           content: formData.content,
           status: statusToSave,
-          sendLine: true, // 🌟 บังคับส่ง LINE ทันทีถ้ายิง API (สถานะ PUBLISHED)
+          sendLine: true, 
           imageUrl: formData.image
         })
       });
