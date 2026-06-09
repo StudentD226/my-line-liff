@@ -84,7 +84,7 @@ export async function POST(request: Request) {
               url: imageUrl,
               size: "full",
               aspectRatio: "20:13",
-              aspectMode: "cover"
+              aspectMode: "fit"
             } : undefined,
             body: {
               type: "box",
