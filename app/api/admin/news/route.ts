@@ -8,7 +8,7 @@ const client = new messagingApi.MessagingApiClient({
   channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN || '',
 });
 
-// Helper: แปลงวันที่เป็นรูปแบบภาษาไทยให้ดูสวยงาม
+// Helper: แปลงวันที่เป็นรูปแบบภาษาไทย
 const formatThaiDate = (date: Date) => {
   const months = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
   return `${date.getDate()} ${months[date.getMonth() + 1]} ${date.getFullYear() + 543}`;
@@ -44,7 +44,7 @@ export async function GET() {
 }
 
 // ==========================================
-// 2. สร้าง หรือ แก้ไขประกาศ (POST) - เวอร์ชันคลีน ไร้ระบบตั้งเวลา
+// 2. สร้าง หรือ แก้ไขประกาศ พร้อมยิง LINE (POST)
 // ==========================================
 export async function POST(request: Request) {
   try {
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
     if (id) {
       savedNews = await prisma.news.update({
         where: { id },
-        data: { title, category, content, imageUrl, status, scheduledAt: null } // ล้างค่าเผื่อมีของเก่า
+        data: { title, category, content, imageUrl, status, scheduledAt: null }
       });
     } else {
       savedNews = await prisma.news.create({
@@ -67,21 +67,22 @@ export async function POST(request: Request) {
 
     let lineSentCount = 0;
 
-    // ถ้าแอดมินเลือก "เผยแพร่" และติ๊กถูกที่ "ส่ง Push Notification"
+    // ถ้าแอดมินเลือก "เผยแพร่" และติ๊ก "ส่ง Push Notification"
     if (status === 'PUBLISHED' && sendLine) {
       
-      // ดึง Line ID ของลูกบ้านทุกคนที่มีในระบบ
+      // ดึง Line ID ของลูกบ้าน
       const users = await prisma.user.findMany({ where: { lineId: { not: null } } });
       const uniqueLineIds = [...new Set(users.map(u => u.lineId))].filter(Boolean) as string[];
 
       if (uniqueLineIds.length > 0) {
-        // สร้างโครงสร้าง Flex Message แบบทางการ สวยงาม อ่านง่าย
+        // 🌟 โครงสร้าง Flex Message ที่ดึงรูปโชว์ในแชทให้ลูกบ้านเห็นทันที
         const flexMessage: messagingApi.FlexMessage = {
           type: "flex",
           altText: `📢 ประกาศใหม่: ${title}`,
           contents: {
             type: "bubble",
             size: "giga",
+            // ถ้าแอดมินใส่รูปลงมา จะแสดงเป็น Hero Image ใหญ่ๆ ด้านบน
             hero: imageUrl ? {
               type: "image",
               url: imageUrl,
@@ -117,11 +118,11 @@ export async function POST(request: Request) {
           } as any
         };
 
-        // ยิงข้อความหาลูกบ้านทุกคนแบบ Multicast
+        // ยิงข้อความเข้า LINE
         await client.multicast({ to: uniqueLineIds, messages: [flexMessage] }).catch(console.error);
         lineSentCount = uniqueLineIds.length;
 
-        // อัปเดตยอดคนรับ (recipients) กลับไปที่ตาราง News
+        // อัปเดตยอดคนรับ
         await prisma.news.update({
           where: { id: savedNews.id },
           data: { recipients: lineSentCount }
