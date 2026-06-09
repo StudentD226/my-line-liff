@@ -13,21 +13,17 @@ export async function GET() {
       orderBy: { createdAt: 'desc' },
     });
 
-    // แมปข้อมูลให้ตรงกับ Type ที่หน้าบ้านต้องการ
     const tickets = await Promise.all(rawReports.map(async (r) => {
-      // หาชื่อผู้แจ้งจาก lineId
       const reporter = await prisma.user.findUnique({ 
         where: { lineId: r.lineId },
         select: { name: true }
       });
       
-      // 🌟 ทริกพิเศษ: ดึง History และ ExpectedDate ที่ซ่อนไว้ใน adminNote ออกมาใช้
       let extraData = { expectedDate: '', history: [] as any[] };
       if (r.adminNote) {
         try {
           extraData = JSON.parse(r.adminNote);
         } catch (e) {
-          // ถ้าเป็นข้อความธรรมดา (ของเก่า) ให้จับใส่ History ซะ
           extraData.history = [{ 
             status: r.status, 
             date: r.updatedAt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }), 
@@ -44,7 +40,7 @@ export async function GET() {
         description: r.description,
         category: r.category,
         status: r.status,
-        isUrgent: r.type === 'URGENT', // สมมติว่าใช้ type เช็คความด่วน
+        isUrgent: r.type === 'URGENT',
         reportedDate: r.createdAt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }),
         expectedDate: extraData.expectedDate,
         history: extraData.history,
@@ -60,7 +56,7 @@ export async function GET() {
 }
 
 // ==========================================
-// 2. อัปเดตสถานะและแจ้งเตือน LINE (POST)
+// 2. อัปเดตสถานะและแจ้งเตือน LINE แบบ Flex Message (POST)
 // ==========================================
 export async function POST(request: Request) {
   try {
@@ -72,7 +68,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'ไม่พบข้อมูลแจ้งซ่อมในระบบ' }, { status: 404 });
     }
 
-    // 🌟 ดึงประวัติเก่าออกมาเตรียมบวกประวัติใหม่เข้าไป
     let extraData = { expectedDate: '', history: [] as any[] };
     if (existingReport.adminNote) {
         try { 
@@ -80,7 +75,6 @@ export async function POST(request: Request) {
         } catch (e) {}
     }
 
-    // อัปเดตวันที่และเพิ่มประวัติใหม่ลงไป
     extraData.expectedDate = expectedDate || extraData.expectedDate;
     extraData.history.push({
         status: status,
@@ -88,23 +82,125 @@ export async function POST(request: Request) {
         note: note || 'อัปเดตสถานะโดยนิติบุคคล'
     });
 
-    // บันทึกลงฐานข้อมูล
     const updatedReport = await prisma.report.update({
         where: { id },
         data: {
             status: status,
-            adminNote: JSON.stringify(extraData), // แปลงกลับเป็น String เก็บลง DB
+            adminNote: JSON.stringify(extraData), 
         }
     });
 
-    // 🌟 ยิงข้อความ LINE หา "ลูกบ้านคนที่แจ้ง" โดยเฉพาะ (Push Message)
+    // 🌟 ยิง Flex Message สุดสวยเข้า LINE
     if (sendLine && existingReport.lineId) {
         const LINE_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN;
         
         if (LINE_TOKEN) {
-            const statusText = status === 'IN_PROGRESS' ? 'กำลังดำเนินการ 🔧' : status === 'COMPLETED' ? 'เสร็จสิ้นเรียบร้อย ✅' : 'รอดำเนินการ ⏳';
-            const expectedText = expectedDate ? `\n📅 คาดว่าจะเสร็จ: ${expectedDate}` : '';
-            const noteText = note ? `\n📝 หมายเหตุ: ${note}` : '';
+            // ตั้งค่า สี และ ข้อความสถานะ ให้ตรงกับ UI
+            let headerBgColor = "#376B64"; // Default
+            let statusTextColor = "#376B64";
+            let statusTextTh = "กำลังดำเนินการ 🔧";
+
+            if (status === 'PENDING') {
+              headerBgColor = "#f97316"; // สีส้ม
+              statusTextColor = "#ea580c";
+              statusTextTh = "รอดำเนินการ ⏳";
+            } else if (status === 'COMPLETED') {
+              headerBgColor = "#10b981"; // สีเขียว
+              statusTextColor = "#059669";
+              statusTextTh = "เสร็จสิ้นเรียบร้อย ✅";
+            }
+
+            // จัดเตรียมส่วนเนื้อหา (Body) ของ Flex Message
+            const flexBodyContents: any[] = [
+              {
+                type: "text",
+                text: `${existingReport.title}`,
+                weight: "bold",
+                size: "md",
+                wrap: true,
+                color: "#1e293b" // slate-800
+              },
+              {
+                type: "box",
+                layout: "baseline",
+                margin: "md",
+                contents: [
+                  { type: "text", text: "สถานะ", color: "#64748b", size: "sm", flex: 2 },
+                  { type: "text", text: statusTextTh, weight: "bold", color: statusTextColor, size: "sm", flex: 5, wrap: true }
+                ]
+              }
+            ];
+
+            // ถ้ามีวันที่คาดว่าจะเสร็จ ให้เพิ่มบรรทัดนี้
+            if (expectedDate) {
+              flexBodyContents.push({
+                type: "box",
+                layout: "baseline",
+                margin: "sm",
+                contents: [
+                  { type: "text", text: "คาดว่าเสร็จ", color: "#64748b", size: "sm", flex: 2 },
+                  { type: "text", text: expectedDate, color: "#334155", size: "sm", flex: 5, wrap: true }
+                ]
+              });
+            }
+
+            // ถ้ามีหมายเหตุ ให้เพิ่มบรรทัดนี้
+            if (note) {
+              flexBodyContents.push({
+                type: "box",
+                layout: "baseline",
+                margin: "sm",
+                contents: [
+                  { type: "text", text: "หมายเหตุ", color: "#64748b", size: "sm", flex: 2 },
+                  { type: "text", text: note, color: "#334155", size: "sm", flex: 5, wrap: true }
+                ]
+              });
+            }
+
+            // ประกอบร่างเป็น Flex Message JSON
+            const flexMessage = {
+              type: "flex",
+              altText: `อัปเดตงานแจ้งซ่อม: ${existingReport.title}`,
+              contents: {
+                type: "bubble",
+                size: "kilo",
+                header: {
+                  type: "box",
+                  layout: "vertical",
+                  backgroundColor: headerBgColor,
+                  paddingAll: "12px",
+                  contents: [
+                    {
+                      type: "text",
+                      text: "อัปเดตสถานะงานแจ้งซ่อม",
+                      color: "#ffffff",
+                      weight: "bold",
+                      size: "sm"
+                    }
+                  ]
+                },
+                body: {
+                  type: "box",
+                  layout: "vertical",
+                  spacing: "sm",
+                  paddingAll: "20px",
+                  contents: flexBodyContents
+                },
+                footer: {
+                  type: "box",
+                  layout: "vertical",
+                  contents: [
+                    {
+                      type: "text",
+                      text: "ตรวจสอบประวัติเพิ่มเติมได้ในระบบ",
+                      color: "#94a3b8",
+                      size: "xs",
+                      align: "center"
+                    }
+                  ]
+                }
+              }
+            };
 
             await fetch('https://api.line.me/v2/bot/message/push', {
                 method: 'POST',
@@ -113,11 +209,8 @@ export async function POST(request: Request) {
                   'Authorization': `Bearer ${LINE_TOKEN}` 
                 },
                 body: JSON.stringify({
-                    to: existingReport.lineId, // ส่งเจาะจงหาคนแจ้ง ไม่รบกวนคนอื่น
-                    messages: [{
-                        type: "text",
-                        text: `📢 อัปเดตงานแจ้งซ่อม\nเรื่อง: ${existingReport.title}\n\nสถานะตอนนี้: ${statusText}${expectedText}${noteText}`
-                    }]
+                    to: existingReport.lineId,
+                    messages: [flexMessage]
                 })
             });
         }
