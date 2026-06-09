@@ -116,7 +116,7 @@ export default function AdminNewsManagement() {
       uploadData.append('upload_preset', 'news_unsigned'); 
 
       // 🛑 ใส่ Cloud Name ของลูกพี่ (อย่าลืมแก้ตรงนี้นะครับ!)
-      const cloudName = 'ใส่ชื่อคลาวด์เนมของลูกพี่ตรงนี้';
+      const cloudName = 'Ourlineliff';
 
       const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
         method: 'POST',
