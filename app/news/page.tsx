@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Calendar, Megaphone, X, ChevronRight, Pin, BellRing } from 'lucide-react';
+import { Calendar, Megaphone, X, ChevronRight, Pin, BellRing, Image as ImageIcon } from 'lucide-react';
 
 export type NewsItem = {
   id: string;
@@ -12,6 +12,7 @@ export type NewsItem = {
   status: string;
   views: number;
   isPinned: boolean;
+  imageUrl?: string; // 🌟 เพิ่มตัวแปรรับลิงก์รูปภาพ
 };
 
 export default function ResidentNewsFeed() {
@@ -19,7 +20,7 @@ export default function ResidentNewsFeed() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedNews, setSelectedNews] = useState<NewsItem | null>(null);
 
-  // 🌟 ดึงข้อมูลจาก API ฝั่งลูกบ้านโดยตรง (ข้อมูลถูกกรอง PUBLISHED มาให้แล้วจากหลังบ้าน)
+  // ดึงข้อมูลจาก API ฝั่งลูกบ้าน
   const fetchNews = async () => {
     setIsLoading(true);
     try {
@@ -85,32 +86,41 @@ export default function ResidentNewsFeed() {
             <button 
               key={item.id} 
               onClick={() => setSelectedNews(item)}
-              className="w-full bg-white p-5 rounded-[1.5rem] border border-slate-100 shadow-sm hover:shadow-md transition-all text-left flex flex-col gap-3 active:scale-[0.98]"
+              className="w-full bg-white rounded-[1.5rem] border border-slate-100 shadow-sm hover:shadow-md transition-all text-left flex flex-col overflow-hidden active:scale-[0.98]"
             >
-              <div className="flex justify-between items-start w-full">
-                <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black border ${getCategoryColor(item.category)}`}>
-                  {item.category}
-                </span>
-                <span className="flex items-center gap-1 text-[10px] font-bold text-slate-400">
-                  <Calendar size={12} /> {item.date}
-                </span>
-              </div>
-              
-              <div>
-                <h3 className="font-black text-slate-800 text-[15px] leading-snug line-clamp-2">
-                  {item.isPinned && <Pin size={14} className="inline text-blue-500 mr-1 -mt-0.5" />}
-                  {item.title}
-                </h3>
-                <p className="text-xs text-slate-500 mt-1.5 line-clamp-2 font-medium leading-relaxed">
-                  {item.content}
-                </p>
-              </div>
+              {/* 🌟 แสดงรูปหน้าปกในหน้าฟีด (ถ้ามี) */}
+              {item.imageUrl && (
+                <div className="w-full h-36 bg-slate-100 relative">
+                  <img src={item.imageUrl} alt="cover" className="w-full h-full object-cover" />
+                </div>
+              )}
 
-              <div className="pt-3 mt-1 border-t border-slate-50 flex items-center justify-between w-full">
-                <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
-                  คลิกเพื่ออ่านรายละเอียด
-                </span>
-                <ChevronRight size={14} className="text-slate-300" />
+              <div className="p-5 flex flex-col gap-3">
+                <div className="flex justify-between items-start w-full">
+                  <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black border ${getCategoryColor(item.category)}`}>
+                    {item.category}
+                  </span>
+                  <span className="flex items-center gap-1 text-[10px] font-bold text-slate-400">
+                    <Calendar size={12} /> {item.date}
+                  </span>
+                </div>
+                
+                <div>
+                  <h3 className="font-black text-slate-800 text-[15px] leading-snug line-clamp-2">
+                    {item.isPinned && <Pin size={14} className="inline text-blue-500 mr-1 -mt-0.5" />}
+                    {item.title}
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1.5 line-clamp-2 font-medium leading-relaxed">
+                    {item.content}
+                  </p>
+                </div>
+
+                <div className="pt-3 mt-1 border-t border-slate-50 flex items-center justify-between w-full">
+                  <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
+                    คลิกเพื่ออ่านรายละเอียด
+                  </span>
+                  <ChevronRight size={14} className="text-slate-300" />
+                </div>
               </div>
             </button>
           ))
@@ -120,7 +130,7 @@ export default function ResidentNewsFeed() {
       {/* Popup Full Screen Modal */}
       {selectedNews && (
         <div className="fixed inset-0 z-50 bg-white flex flex-col animate-in slide-in-from-bottom-full duration-300">
-          <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-white/80 backdrop-blur-md sticky top-0">
+          <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-white/80 backdrop-blur-md sticky top-0 z-10">
             <span className={`px-3 py-1.5 rounded-xl text-[10px] font-black border ${getCategoryColor(selectedNews.category)}`}>
               {selectedNews.category}
             </span>
@@ -132,17 +142,26 @@ export default function ResidentNewsFeed() {
             </button>
           </div>
           
-          <div className="flex-1 overflow-y-auto p-5 pb-20">
-            <h2 className="text-2xl font-black text-slate-800 leading-tight mb-4">
-              {selectedNews.title}
-            </h2>
-            <div className="flex items-center gap-2 mb-8 pb-4 border-b border-slate-100">
-              <Calendar size={14} className="text-slate-400" />
-              <span className="text-xs font-bold text-slate-500">{selectedNews.date}</span>
-            </div>
-            
-            <div className="prose prose-slate prose-sm font-medium text-slate-600 leading-relaxed whitespace-pre-wrap">
-              {selectedNews.content}
+          <div className="flex-1 overflow-y-auto pb-20">
+            {/* 🌟 แสดงรูปหน้าปกขนาดใหญ่ในหน้าอ่านข่าว (ถ้ามี) */}
+            {selectedNews.imageUrl && (
+              <div className="w-full h-56 bg-slate-100 relative">
+                <img src={selectedNews.imageUrl} alt="cover" className="w-full h-full object-cover" />
+              </div>
+            )}
+
+            <div className="p-5">
+              <h2 className="text-2xl font-black text-slate-800 leading-tight mb-4 mt-2">
+                {selectedNews.title}
+              </h2>
+              <div className="flex items-center gap-2 mb-8 pb-4 border-b border-slate-100">
+                <Calendar size={14} className="text-slate-400" />
+                <span className="text-xs font-bold text-slate-500">{selectedNews.date}</span>
+              </div>
+              
+              <div className="prose prose-slate prose-sm font-medium text-slate-600 leading-relaxed whitespace-pre-wrap">
+                {selectedNews.content}
+              </div>
             </div>
           </div>
         </div>
