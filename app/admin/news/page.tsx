@@ -18,13 +18,13 @@ export type NewsItem = {
   status: 'PUBLISHED' | 'DRAFT';
   views: number;
   isPinned: boolean;
-  imageUrl?: string;  // 🌟 เพิ่มบรรทัดนี้เข้าไปเลยครับลูกพี่!
+  imageUrl?: string; // 🌟 แก้เส้นแดงตรงนี้ให้แล้วครับ!
 };
 
 export default function AdminNewsManagement() {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isUploading, setIsUploading] = useState(false); // 🌟 State หมุนติ้วๆ ตอนอัปโหลดรูป
+  const [isUploading, setIsUploading] = useState(false); // State สำหรับหมุนโหลดรูป
 
   const [activeTab, setActiveTab] = useState('ALL');
   const [activeCategory, setActiveCategory] = useState('ทุกหมวด');
@@ -93,7 +93,7 @@ export default function AdminNewsManagement() {
       setEditingId(editData.id);
       setFormData({ 
         title: editData.title, category: editData.category, content: editData.content, 
-        image: editData.imageUrl || '', sendLine: true // ดึงรูปเก่ามาโชว์ถ้ามี
+        image: editData.imageUrl || '', sendLine: true
       });
     } else {
       setEditingId(null);
@@ -102,7 +102,7 @@ export default function AdminNewsManagement() {
     setIsModalOpen(true);
   };
 
-  // 🌟 ฟังก์ชันอัปโหลดรูปขึ้น Cloudinary
+  // 🌟 ฟังก์ชันอัปโหลดรูปลง Cloudinary
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -112,11 +112,11 @@ export default function AdminNewsManagement() {
       const uploadData = new FormData();
       uploadData.append('file', file);
       
-      // 🛑 1. ใส่ชื่อ Upload Preset ของลูกพี่ (ตัวอย่าง: 'ml_default')
+      // 🛑 ใส่ชื่อ Upload Preset ที่ลูกพี่เพิ่งสร้างไว้
       uploadData.append('upload_preset', 'news_unsigned'); 
 
-      // 🛑 2. ใส่ Cloud Name ของลูกพี่
-      const cloudName = 'Ourlineliff';
+      // 🛑 ใส่ Cloud Name ของลูกพี่ (อย่าลืมแก้ตรงนี้นะครับ!)
+      const cloudName = 'ใส่ชื่อคลาวด์เนมของลูกพี่ตรงนี้';
 
       const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
         method: 'POST',
@@ -384,15 +384,15 @@ export default function AdminNewsManagement() {
                   <textarea rows={6} value={formData.content} onChange={(e) => setFormData({...formData, content: e.target.value})} placeholder="เขียนเนื้อหา..." className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:border-slate-800 font-medium resize-none"></textarea>
                 </div>
 
-                {/* 🌟 กล่องอัปโหลดรูปภาพที่แก้ใหม่เป็นแบบใช้งานได้จริง */}
+                {/* 🌟 กล่องอัปโหลดรูปภาพ ปลดล็อกขนาดไฟล์และให้รองรับทุกรูป */}
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-2">แนบรูปภาพ (Cover)</label>
-                  <input type="file" id="upload-image" accept="image/png, image/jpeg, image/webp" className="hidden" onChange={handleImageUpload} disabled={isUploading} />
+                  <input type="file" id="upload-image" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={isUploading} />
                   <label htmlFor="upload-image" className={`w-full h-32 border-2 border-dashed ${formData.image ? 'border-emerald-400 bg-emerald-50' : 'border-slate-300 bg-slate-50'} rounded-xl flex flex-col items-center justify-center text-slate-400 hover:bg-slate-100 cursor-pointer overflow-hidden relative transition-colors`}>
                     {isUploading ? (
                       <div className="flex flex-col items-center gap-2">
                         <div className="animate-spin w-6 h-6 border-2 border-slate-400 border-t-transparent rounded-full"></div>
-                        <span className="text-xs font-bold text-slate-500">กำลังอัปโหลด...</span>
+                        <span className="text-xs font-bold text-slate-500">กำลังอัปโหลดขึ้นเซิร์ฟเวอร์...</span>
                       </div>
                     ) : formData.image ? (
                       <>
@@ -405,7 +405,7 @@ export default function AdminNewsManagement() {
                     ) : (
                       <>
                         <ImageIcon size={24} className="mb-1" />
-                        <span className="text-xs font-medium">คลิกเพื่ออัปโหลด - PNG/JPG สูงสุด 5MB</span>
+                        <span className="text-xs font-medium">คลิกเพื่ออัปโหลดรูปภาพหน้าปกประกาศ</span>
                       </>
                     )}
                   </label>
