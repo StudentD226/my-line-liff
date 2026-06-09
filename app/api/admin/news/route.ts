@@ -66,18 +66,19 @@ export async function POST(request: Request) {
 
     let lineSentCount = 0;
 
+    // บังคับส่ง LINE ทันทีเมื่อสถานะเป็น PUBLISHED
     if (status === 'PUBLISHED') {
       const users = await prisma.user.findMany({ where: { lineId: { not: null } } });
       const uniqueLineIds = [...new Set(users.map(u => u.lineId))].filter(Boolean) as string[];
 
       if (uniqueLineIds.length > 0) {
-        // 🎨 โครงสร้าง Flex Message ที่ถูกต้องตามกฎของ LINE 100%
+        // 🎨 โครงสร้าง Flex Message ขนาด Kilo (กะทัดรัด สวยงาม)
         const flexMessage: messagingApi.FlexMessage = {
           type: "flex",
           altText: `📢 ประกาศใหม่: ${title}`,
           contents: {
             type: "bubble",
-            size: "giga",
+            size: "kilo", // 🌟 เปลี่ยนเป็นขนาด Kilo ตามคำขอครับลูกพี่
             hero: imageUrl ? {
               type: "image",
               url: imageUrl,
@@ -86,38 +87,92 @@ export async function POST(request: Request) {
               aspectMode: "cover"
             } : undefined,
             body: {
-              type: "box", layout: "vertical", paddingAll: "xl", backgroundColor: "#F8FAFC",
+              type: "box",
+              layout: "vertical",
+              paddingAll: "lg",
+              backgroundColor: "#FFFFFF",
               contents: [
                 {
-                  type: "box", layout: "horizontal", alignItems: "center",
-                  // ❌ เอา marginBottom ออก (LINE ไม่รู้จัก)
+                  type: "box",
+                  layout: "horizontal",
+                  alignItems: "center",
                   contents: [
-                    { type: "text", text: "📢 ข่าวประกาศหมู่บ้าน", weight: "bold", color: "#0F172A", size: "sm", flex: 1 },
                     {
-                      // 🌟 แก้ป้ายหมวดหมู่ให้เป็น Box ก่อนถึงจะใส่ Padding ได้
-                      type: "box", layout: "vertical", backgroundColor: "#059669", cornerRadius: "md", flex: 0,
-                      paddingStart: "sm", paddingEnd: "sm", paddingTop: "xs", paddingBottom: "xs",
+                      type: "text",
+                      text: "📢 ข่าวหมู่บ้าน",
+                      weight: "bold",
+                      color: "#111827",
+                      size: "xs",
+                      flex: 1
+                    },
+                    {
+                      type: "box",
+                      layout: "vertical",
+                      backgroundColor: "#059669",
+                      cornerRadius: "md",
+                      flex: 0,
+                      paddingStart: "sm",
+                      paddingEnd: "sm",
+                      paddingTop: "2px",
+                      paddingBottom: "2px",
                       contents: [
-                        { type: "text", text: category, color: "#FFFFFF", size: "xs", weight: "bold", align: "center" }
+                        {
+                          type: "text",
+                          text: category,
+                          color: "#FFFFFF",
+                          size: "xxs",
+                          weight: "bold",
+                          align: "center"
+                        }
                       ]
                     }
                   ]
                 },
-                // 🌟 ย้ายมาใส่ margin ที่ตัวลูกแทน เพื่อดันให้ห่างจากตัวบน
-                { type: "text", text: title, weight: "bold", size: "xl", color: "#0F172A", wrap: true, margin: "lg" },
-                { type: "text", text: content, size: "sm", color: "#475569", wrap: true, maxLines: 5, margin: "md" },
-                { type: "separator", margin: "xl", color: "#E2E8F0" },
-                { type: "text", text: `ประกาศเมื่อ: ${formatThaiDate(new Date())}`, size: "xs", color: "#94A3B8", margin: "md" }
+                {
+                  type: "text",
+                  text: title,
+                  weight: "bold",
+                  size: "md", // ปรับขนาดฟอนต์ให้เข้ากับขนาด Kilo
+                  color: "#111827",
+                  wrap: true,
+                  margin: "md"
+                },
+                {
+                  type: "text",
+                  text: content,
+                  size: "xs",
+                  color: "#4B5563",
+                  wrap: true,
+                  maxLines: 4, // ลดจำนวนบรรทัดลงให้พอดีขนาด Kilo
+                  margin: "sm"
+                },
+                {
+                  type: "separator",
+                  margin: "lg",
+                  color: "#F3F4F6"
+                },
+                {
+                  type: "text",
+                  text: `ประกาศเมื่อ: ${formatThaiDate(new Date())}`,
+                  size: "xxs",
+                  color: "#9CA3AF",
+                  margin: "md"
+                }
               ]
             },
             footer: {
-              type: "box", layout: "vertical", paddingAll: "md",
+              type: "box",
+              layout: "vertical",
+              paddingAll: "sm",
               contents: [
                 {
-                  type: "button", style: "primary", color: "#0F172A",
+                  type: "button",
+                  style: "primary",
+                  color: "#111827",
+                  height: "sm", // ปุ่มขนาดเล็กลงให้ดูแพง
                   action: { 
                     type: "uri", 
-                    label: "อ่านรายละเอียดเต็ม", 
+                    label: "อ่านรายละเอียด", 
                     uri: process.env.NEXT_PUBLIC_LIFF_URL || `https://liff.line.me/${process.env.NEXT_PUBLIC_LIFF_ID}/news` 
                   }
                 }
@@ -130,11 +185,11 @@ export async function POST(request: Request) {
           await client.multicast({ to: uniqueLineIds, messages: [flexMessage] });
           lineSentCount = uniqueLineIds.length;
         } catch (err: any) {
-          console.error("❌ LINE API พัง:", err.originalError?.response?.data || err);
+          console.error("❌ LINE API Error:", err.originalError?.response?.data || err);
           return NextResponse.json({ 
             success: false, 
-            error: `เซฟลงเว็บแล้ว แต่ยิง LINE ไม่ผ่าน! (ระบบ LINE ปฏิเสธการส่ง)`,
-            details: err.originalError?.response?.data
+            error: `บันทึกแล้วแต่ยิง LINE ไม่ผ่าน`,
+            details: err.originalError?.response?.data 
           });
         }
 
