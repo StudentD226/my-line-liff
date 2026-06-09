@@ -3,8 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Plus, Search, Edit, Trash2, Image as ImageIcon, 
-  Calendar, Eye, MessageCircle, X, Send, AlertCircle, Pin, FileText,
-  CheckCircle, Save
+  Calendar, X, Send, Pin, FileText, CheckCircle, Save
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 
@@ -124,9 +123,7 @@ export default function AdminNewsManagement() {
       const json = await res.json();
       
       if (json.secure_url) {
-        // 🌟 แทรกคำสั่งบีบรูปเข้าไปใน URL ให้กว้างสุด 1000px และบีบอัดไฟล์ออโต้!
         const optimizedUrl = json.secure_url.replace('/upload/', '/upload/w_1000,c_limit,q_auto/');
-        
         setFormData({ ...formData, image: optimizedUrl });
         Swal.fire({ icon: 'success', title: 'อัปโหลดรูปสำเร็จ', timer: 1500, showConfirmButton: false, customClass: { popup: 'rounded-[2rem]' } });
       } else {
@@ -298,11 +295,8 @@ export default function AdminNewsManagement() {
                       <div className="flex items-start gap-3">
                         {n.isPinned ? <Pin size={16} className="text-blue-500 mt-1 shrink-0" /> : <FileText size={16} className="text-slate-300 mt-1 shrink-0" />}
                         <div>
-                          <p className="font-bold text-slate-800 text-base">{n.title}</p>
-                          <div className="flex items-center gap-3 text-xs text-slate-400 mt-1 font-medium">
-                            <span className="flex items-center gap-1"><Eye size={12} /> {n.views}</span>
-                            <span className="flex items-center gap-1"><MessageCircle size={12} /> 0</span>
-                          </div>
+                          {/* ❌ เอาส่วนยอดวิวกับคอมเมนต์ออกไปแล้ว */}
+                          <p className="font-bold text-slate-800 text-base mt-0.5">{n.title}</p>
                         </div>
                       </div>
                     </td>
@@ -419,7 +413,7 @@ export default function AdminNewsManagement() {
               <button onClick={() => setIsModalOpen(false)} className="hidden md:block absolute top-6 right-6 text-slate-400 hover:text-slate-600 z-10"><X size={24}/></button>
               
               <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
-                <MessageCircle size={18} className="text-[#00B900]" /> ตัวอย่างข้อความ LINE
+                <Send size={18} className="text-[#00B900]" /> ตัวอย่างข้อความ LINE
               </h3>
 
               {/* จำลองห้องแชท LINE */}
