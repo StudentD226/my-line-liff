@@ -30,7 +30,7 @@ type RepairTicket = {
   reportedDate: string;
   expectedDate?: string;
   history: HistoryItem[];
-  imageUrl?: string; // 🌟 เพิ่มสำหรับแสดงรูปลูกบ้านถ่ายมา
+  imageUrl?: string;
 };
 
 const STATUS_CONFIG = {
@@ -54,7 +54,6 @@ export default function AdminRepairsManagement() {
     note: ''
   });
 
-  // 🌟 ฟังก์ชันดึงข้อมูล (แก้เป็น /api/admin/maintenance แล้ว)
   const fetchRepairs = async () => {
     setIsLoading(true);
     try {
@@ -89,7 +88,6 @@ export default function AdminRepairsManagement() {
     });
   };
 
-  // 🌟 ฟังก์ชันบันทึกข้อมูล (แก้เป็น /api/admin/maintenance แล้ว)
   const handleSaveUpdate = async () => {
     if (!selectedTicket) return;
     
@@ -113,7 +111,7 @@ export default function AdminRepairsManagement() {
         Swal.fire({
           icon: 'success',
           title: 'อัปเดตและแจ้ง LINE สำเร็จ!',
-          text: 'ระบบได้ส่งข้อความอัปเดตสถานะไปยังลูกบ้านแล้ว',
+          text: 'ระบบได้ส่งการ์ดสถานะไปยังลูกบ้านแล้ว',
           showConfirmButton: false,
           timer: 2000,
           customClass: { popup: 'rounded-[2rem]' }
@@ -192,7 +190,6 @@ export default function AdminRepairsManagement() {
         {/* 📋 Main Management Card */}
         <div className="bg-white rounded-[1.5rem] shadow-sm border border-slate-200 overflow-hidden flex flex-col">
           
-          {/* Tabs */}
           <div className="flex overflow-x-auto border-b border-slate-100 bg-slate-50/50 pt-2 px-4 custom-scrollbar">
             {TABS.map(tab => (
               <button 
@@ -204,7 +201,6 @@ export default function AdminRepairsManagement() {
             ))}
           </div>
 
-          {/* Filters & Search */}
           <div className="p-4 border-b border-slate-100 flex flex-col lg:flex-row gap-4 items-start lg:items-center">
             <div className="relative w-full lg:w-64 shrink-0">
               <Search className="absolute left-3 top-2.5 text-slate-400" size={18} />
@@ -219,7 +215,6 @@ export default function AdminRepairsManagement() {
             </div>
           </div>
 
-          {/* Table / List */}
           <div className="overflow-x-auto min-h-[300px]">
             {filteredTickets.length === 0 && !isLoading ? (
                <div className="p-10 text-center text-slate-500 font-bold flex flex-col items-center gap-2">
@@ -306,7 +301,7 @@ export default function AdminRepairsManagement() {
         </div>
       </div>
 
-      {/* 🚀 MODAL: อัปเดตสถานะ & Timeline */}
+      {/* 🚀 MODAL */}
       {selectedTicket && (
         <div className="fixed inset-0 z-[100] flex justify-center items-start md:items-center p-4 bg-slate-900/50 backdrop-blur-sm overflow-y-auto custom-scrollbar">
           <div className="bg-white rounded-[2rem] w-full max-w-4xl shadow-2xl my-4 md:my-0 flex flex-col md:flex-row overflow-hidden animate-in fade-in zoom-in-95 duration-200 border border-slate-100">
@@ -325,7 +320,6 @@ export default function AdminRepairsManagement() {
                 <button onClick={() => setSelectedTicket(null)} className="md:hidden text-slate-400 p-2"><X size={20}/></button>
               </div>
 
-              {/* ข้อมูลผู้แจ้ง */}
               <div className="bg-white p-4 rounded-2xl border border-slate-100 space-y-3 mb-6 shadow-sm">
                 <div className="flex items-start gap-3">
                   <User size={16} className="text-slate-400 mt-0.5" />
@@ -350,7 +344,6 @@ export default function AdminRepairsManagement() {
                 </div>
               </div>
 
-              {/* 🌟 แสดงรูปภาพประกอบ (ถ้ามี) */}
               {selectedTicket.imageUrl && (
                 <div className="mb-6">
                   <p className="text-[10px] font-bold text-slate-400 uppercase mb-2 flex items-center gap-1"><ImageIcon size={12}/> ภาพประกอบปัญหา</p>
@@ -358,13 +351,11 @@ export default function AdminRepairsManagement() {
                 </div>
               )}
 
-              {/* รายละเอียดปัญหา */}
               <div className="bg-rose-50/50 p-4 rounded-2xl border border-rose-100 mb-8">
                 <h3 className="font-bold text-slate-800 text-sm mb-1">{selectedTicket.title}</h3>
                 <p className="text-xs text-slate-600 leading-relaxed">{selectedTicket.description}</p>
               </div>
 
-              {/* ⏳ Timeline ความคืบหน้าย้อนหลัง */}
               <div>
                 <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2"><Clock size={16} /> ความคืบหน้า (ย้อนหลัง)</h3>
                 <div className="space-y-6 relative before:absolute before:inset-0 before:ml-2.5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-slate-200">
@@ -399,7 +390,6 @@ export default function AdminRepairsManagement() {
               <h3 className="font-black text-slate-800 text-lg mb-6">ฟอร์มอัปเดตสถานะ</h3>
 
               <div className="space-y-5 flex-1">
-                {/* 1. เลือกสถานะ */}
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-2">สถานะใหม่</label>
                   <select 
@@ -413,7 +403,6 @@ export default function AdminRepairsManagement() {
                   </select>
                 </div>
 
-                {/* 2. วันที่คาดว่าจะเสร็จ (เอาเวลาออก) */}
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-2">วันที่คาดว่าจะเสร็จ / วันที่เสร็จ</label>
                   <input 
@@ -424,7 +413,6 @@ export default function AdminRepairsManagement() {
                   />
                 </div>
 
-                {/* 3. หมายเหตุ */}
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-2">หมายเหตุ / รายละเอียดการซ่อม</label>
                   <textarea 
@@ -436,19 +424,17 @@ export default function AdminRepairsManagement() {
                   ></textarea>
                 </div>
 
-                {/* Preview Message */}
                 <div className="bg-[#376B64]/10 border border-[#376B64]/20 p-4 rounded-xl flex items-start gap-3 mt-4">
                   <MessageSquare className="text-[#376B64] shrink-0 mt-0.5" size={18} />
                   <div>
                     <p className="text-xs font-bold text-[#376B64] mb-1">ตัวอย่างข้อความแจ้งเตือน:</p>
                     <p className="text-[11px] text-[#376B64]/80 leading-relaxed font-medium">
-                      จะส่งเข้า LINE ลูกบ้านและโชว์ในประวัติทันทีที่คุณกดบันทึก
+                      ระบบจะส่ง <strong>Flex Message</strong> (แบบการ์ดภาพ) เข้า LINE ของลูกบ้านทันทีที่คุณกดบันทึก
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* Action Buttons */}
               <div className="mt-8 flex gap-3 pt-4 border-t border-slate-100">
                 <button onClick={() => setSelectedTicket(null)} className="flex-1 py-3 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50">ยกเลิก</button>
                 <button 

@@ -44,7 +44,7 @@ export async function GET() {
         reportedDate: r.createdAt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }),
         expectedDate: extraData.expectedDate,
         history: extraData.history,
-        imageUrl: r.imageUrl,
+        imageUrl: r.imageUrl, // ส่งรูปภาพไปแสดงที่ Modal
       };
     }));
 
@@ -75,6 +75,7 @@ export async function POST(request: Request) {
         } catch (e) {}
     }
 
+    // อัปเดตวันที่และเพิ่มประวัติใหม่ลงไป
     extraData.expectedDate = expectedDate || extraData.expectedDate;
     extraData.history.push({
         status: status,
@@ -82,6 +83,7 @@ export async function POST(request: Request) {
         note: note || 'อัปเดตสถานะโดยนิติบุคคล'
     });
 
+    // บันทึกลงฐานข้อมูล
     const updatedReport = await prisma.report.update({
         where: { id },
         data: {
@@ -90,27 +92,27 @@ export async function POST(request: Request) {
         }
     });
 
-    // 🌟 ยิง Flex Message สุดสวยเข้า LINE
+    // 🌟 ยิง Flex Message สุดสวยพร้อมรูปภาพ เข้า LINE
     if (sendLine && existingReport.lineId) {
         const LINE_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN;
         
         if (LINE_TOKEN) {
             // ตั้งค่า สี และ ข้อความสถานะ ให้ตรงกับ UI
-            let headerBgColor = "#376B64"; // Default
+            let headerBgColor = "#376B64"; // Default: กำลังดำเนินการ (เขียวเข้ม)
             let statusTextColor = "#376B64";
             let statusTextTh = "กำลังดำเนินการ 🔧";
 
             if (status === 'PENDING') {
-              headerBgColor = "#f97316"; // สีส้ม
+              headerBgColor = "#f97316"; // รอดำเนินการ (ส้ม)
               statusTextColor = "#ea580c";
               statusTextTh = "รอดำเนินการ ⏳";
             } else if (status === 'COMPLETED') {
-              headerBgColor = "#10b981"; // สีเขียว
+              headerBgColor = "#10b981"; // เสร็จสิ้น (เขียวสว่าง)
               statusTextColor = "#059669";
               statusTextTh = "เสร็จสิ้นเรียบร้อย ✅";
             }
 
-            // จัดเตรียมส่วนเนื้อหา (Body) ของ Flex Message
+            // จัดเตรียมส่วนเนื้อหา (Body)
             const flexBodyContents: any[] = [
               {
                 type: "text",
@@ -118,7 +120,7 @@ export async function POST(request: Request) {
                 weight: "bold",
                 size: "md",
                 wrap: true,
-                color: "#1e293b" // slate-800
+                color: "#1e293b" 
               },
               {
                 type: "box",
@@ -131,7 +133,6 @@ export async function POST(request: Request) {
               }
             ];
 
-            // ถ้ามีวันที่คาดว่าจะเสร็จ ให้เพิ่มบรรทัดนี้
             if (expectedDate) {
               flexBodyContents.push({
                 type: "box",
@@ -144,7 +145,6 @@ export async function POST(request: Request) {
               });
             }
 
-            // ถ้ามีหมายเหตุ ให้เพิ่มบรรทัดนี้
             if (note) {
               flexBodyContents.push({
                 type: "box",
@@ -157,13 +157,13 @@ export async function POST(request: Request) {
               });
             }
 
-            // ประกอบร่างเป็น Flex Message JSON
-            const flexMessage = {
+            // ประกอบร่าง Flex Message
+            const flexMessage: any = {
               type: "flex",
               altText: `อัปเดตงานแจ้งซ่อม: ${existingReport.title}`,
               contents: {
                 type: "bubble",
-                size: "kilo",
+                size: "mega",
                 header: {
                   type: "box",
                   layout: "vertical",
@@ -201,6 +201,17 @@ export async function POST(request: Request) {
                 }
               }
             };
+
+            // 🌟 แทรกรูปภาพลงในการ์ด ถ้าลูกบ้านแนบรูปมา
+            if (existingReport.imageUrl) {
+              flexMessage.contents.hero = {
+                type: "image",
+                url: existingReport.imageUrl,
+                size: "full",
+                aspectRatio: "20:13",
+                aspectMode: "cover"
+              };
+            }
 
             await fetch('https://api.line.me/v2/bot/message/push', {
                 method: 'POST',
