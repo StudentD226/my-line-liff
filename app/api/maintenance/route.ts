@@ -23,7 +23,23 @@ export async function POST(req: Request) {
     const randomCode = Math.floor(1000 + Math.random() * 9000);
     const ticketNo = `MT${dateStr}-${randomCode}`;
 
-    // 3. บันทึกเข้าตาราง Report
+    // 🌟 3. สร้าง History เริ่มต้น เพื่อให้สอดคล้องกับระบบ Timeline ฝั่ง Admin
+    const initialDate = new Date().toLocaleDateString('th-TH', { 
+        day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' 
+    });
+    
+    const initialAdminNote = JSON.stringify({
+        expectedDate: "",
+        history: [
+            {
+                status: "PENDING",
+                date: initialDate,
+                note: "ระบบรับคำร้องอัตโนมัติ"
+            }
+        ]
+    });
+
+    // 4. บันทึกเข้าตาราง Report
     const newReport = await prisma.report.create({
       data: {
         ticketNo: ticketNo,
@@ -34,7 +50,9 @@ export async function POST(req: Request) {
         title: title,
         description: description,
         imageUrl: imageUrl,
-        residentHouseId: user.residentHouse.id // ผูกกับบ้านเลขที่
+        residentHouseId: user.residentHouse.id, // ผูกกับบ้านเลขที่
+        status: "PENDING",
+        adminNote: initialAdminNote // 🌟 ยัด History ข้อแรกเข้าไป (รับเรื่องแล้ว)
       }
     });
 
