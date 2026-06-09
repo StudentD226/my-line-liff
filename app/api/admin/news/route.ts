@@ -49,12 +49,10 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    // 🌟 หั่น sendLine ออกไปเลย เพราะเราจะบังคับส่งเมื่อ status === 'PUBLISHED'
     const { id, title, category, content, status, imageUrl } = body;
 
     let savedNews;
     
-    // ตรวจสอบว่ามี ID ไหม ถ้ามี=อัปเดต ถ้าไม่มี=สร้างใหม่
     if (id) {
       savedNews = await prisma.news.update({
         where: { id },
@@ -68,22 +66,18 @@ export async function POST(request: Request) {
 
     let lineSentCount = 0;
 
-    // 🌟 เปลี่ยนเงื่อนไขใหม่: ถ้าแอดมินกดปุ่ม "เผยแพร่" (status === 'PUBLISHED') บังคับยิง LINE ทันที!
     if (status === 'PUBLISHED') {
-      
-      // ดึง Line ID ของลูกบ้านทั้งหมดจากฐานข้อมูล
       const users = await prisma.user.findMany({ where: { lineId: { not: null } } });
       const uniqueLineIds = [...new Set(users.map(u => u.lineId))].filter(Boolean) as string[];
 
       if (uniqueLineIds.length > 0) {
-        // 🎨 โครงสร้าง Flex Message สวยเป๊ะตามหน้าพรีวิวแชท LINE
+        // 🎨 โครงสร้าง Flex Message ที่ถูกต้องตามกฎของ LINE 100%
         const flexMessage: messagingApi.FlexMessage = {
           type: "flex",
           altText: `📢 ประกาศใหม่: ${title}`,
           contents: {
             type: "bubble",
             size: "giga",
-            // ถ้ารูปจาก Cloudinary อัปโหลดมาสำเร็จ จะแสดงเป็น Hero Image ทันที
             hero: imageUrl ? {
               type: "image",
               url: imageUrl,
@@ -95,14 +89,23 @@ export async function POST(request: Request) {
               type: "box", layout: "vertical", paddingAll: "xl", backgroundColor: "#F8FAFC",
               contents: [
                 {
-                  type: "box", layout: "horizontal", alignItems: "center", marginBottom: "lg",
+                  type: "box", layout: "horizontal", alignItems: "center",
+                  // ❌ เอา marginBottom ออก (LINE ไม่รู้จัก)
                   contents: [
                     { type: "text", text: "📢 ข่าวประกาศหมู่บ้าน", weight: "bold", color: "#0F172A", size: "sm", flex: 1 },
-                    { type: "text", text: category, color: "#FFFFFF", size: "xs", backgroundColor: "#059669", align: "center", weight: "bold", flex: 0, paddingStart: "sm", paddingEnd: "sm", paddingTop: "xs", paddingBottom: "xs", cornerRadius: "md" }
+                    {
+                      // 🌟 แก้ป้ายหมวดหมู่ให้เป็น Box ก่อนถึงจะใส่ Padding ได้
+                      type: "box", layout: "vertical", backgroundColor: "#059669", cornerRadius: "md", flex: 0,
+                      paddingStart: "sm", paddingEnd: "sm", paddingTop: "xs", paddingBottom: "xs",
+                      contents: [
+                        { type: "text", text: category, color: "#FFFFFF", size: "xs", weight: "bold", align: "center" }
+                      ]
+                    }
                   ]
                 },
-                { type: "text", text: title, weight: "bold", size: "xl", color: "#0F172A", wrap: true, marginBottom: "md" },
-                { type: "text", text: content, size: "sm", color: "#475569", wrap: true, maxLines: 5 },
+                // 🌟 ย้ายมาใส่ margin ที่ตัวลูกแทน เพื่อดันให้ห่างจากตัวบน
+                { type: "text", text: title, weight: "bold", size: "xl", color: "#0F172A", wrap: true, margin: "lg" },
+                { type: "text", text: content, size: "sm", color: "#475569", wrap: true, maxLines: 5, margin: "md" },
                 { type: "separator", margin: "xl", color: "#E2E8F0" },
                 { type: "text", text: `ประกาศเมื่อ: ${formatThaiDate(new Date())}`, size: "xs", color: "#94A3B8", margin: "md" }
               ]
@@ -115,7 +118,6 @@ export async function POST(request: Request) {
                   action: { 
                     type: "uri", 
                     label: "อ่านรายละเอียดเต็ม", 
-                    // รองรับทั้ง URL สำเร็จรูป หรือจะประกอบร่างจาก LIFF_ID ก็ได้ครับ
                     uri: process.env.NEXT_PUBLIC_LIFF_URL || `https://liff.line.me/${process.env.NEXT_PUBLIC_LIFF_ID}/news` 
                   }
                 }
@@ -124,11 +126,18 @@ export async function POST(request: Request) {
           } as any
         };
 
-        // สาดข้อความแบบมัลติแคสต์เข้าแชท LINE ของลูกบ้านทุกคนพร้อมกัน
-        await client.multicast({ to: uniqueLineIds, messages: [flexMessage] }).catch(console.error);
-        lineSentCount = uniqueLineIds.length;
+        try {
+          await client.multicast({ to: uniqueLineIds, messages: [flexMessage] });
+          lineSentCount = uniqueLineIds.length;
+        } catch (err: any) {
+          console.error("❌ LINE API พัง:", err.originalError?.response?.data || err);
+          return NextResponse.json({ 
+            success: false, 
+            error: `เซฟลงเว็บแล้ว แต่ยิง LINE ไม่ผ่าน! (ระบบ LINE ปฏิเสธการส่ง)`,
+            details: err.originalError?.response?.data
+          });
+        }
 
-        // บันทึกจำนวนลูกบ้านที่ได้รับข้อความลง Database
         await prisma.news.update({
           where: { id: savedNews.id },
           data: { recipients: lineSentCount }
