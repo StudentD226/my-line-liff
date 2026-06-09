@@ -18,13 +18,13 @@ export type NewsItem = {
   status: 'PUBLISHED' | 'DRAFT';
   views: number;
   isPinned: boolean;
-  imageUrl?: string; // 🌟 แก้เส้นแดงตรงนี้ให้แล้วครับ!
+  imageUrl?: string;
 };
 
 export default function AdminNewsManagement() {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isUploading, setIsUploading] = useState(false); // State สำหรับหมุนโหลดรูป
+  const [isUploading, setIsUploading] = useState(false);
 
   const [activeTab, setActiveTab] = useState('ALL');
   const [activeCategory, setActiveCategory] = useState('ทุกหมวด');
@@ -34,7 +34,7 @@ export default function AdminNewsManagement() {
   const [editingId, setEditingId] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({ 
-    title: '', category: 'ทั่วไป', content: '', image: '', sendLine: true
+    title: '', category: 'ทั่วไป', content: '', image: ''
   });
 
   const fetchNewsFromDB = async () => {
@@ -93,16 +93,15 @@ export default function AdminNewsManagement() {
       setEditingId(editData.id);
       setFormData({ 
         title: editData.title, category: editData.category, content: editData.content, 
-        image: editData.imageUrl || '', sendLine: true
+        image: editData.imageUrl || ''
       });
     } else {
       setEditingId(null);
-      setFormData({ title: '', category: 'ทั่วไป', content: '', image: '', sendLine: true });
+      setFormData({ title: '', category: 'ทั่วไป', content: '', image: '' });
     }
     setIsModalOpen(true);
   };
 
-  // 🌟 ฟังก์ชันอัปโหลดรูปลง Cloudinary
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -112,10 +111,9 @@ export default function AdminNewsManagement() {
       const uploadData = new FormData();
       uploadData.append('file', file);
       
-      // 🛑 ใส่ชื่อ Upload Preset ที่ลูกพี่เพิ่งสร้างไว้
       uploadData.append('upload_preset', 'news_unsigned'); 
 
-      // 🛑 ใส่ Cloud Name ของลูกพี่ (อย่าลืมแก้ตรงนี้นะครับ!)
+      // อย่าลืมแก้ชื่อคลาวด์เนมตรงนี้ด้วยนะครับลูกพี่! 🛑
       const cloudName = 'Ourlineliff';
 
       const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
@@ -157,7 +155,7 @@ export default function AdminNewsManagement() {
           category: formData.category,
           content: formData.content,
           status: statusToSave,
-          sendLine: formData.sendLine,
+          sendLine: true, // 🌟 บังคับส่ง LINE ทันทีถ้ายิง API (สถานะ PUBLISHED)
           imageUrl: formData.image
         })
       });
@@ -167,7 +165,7 @@ export default function AdminNewsManagement() {
         Swal.fire({ 
           icon: 'success', 
           title: 'บันทึกสำเร็จ', 
-          text: json.lineSent ? `ส่งข้อความ LINE หาลูกบ้านจำนวน ${json.lineSent} คนแล้ว` : '',
+          text: statusToSave === 'PUBLISHED' && json.lineSent ? `ส่งข้อความ LINE หาลูกบ้านจำนวน ${json.lineSent} คนแล้ว` : '',
           timer: 2000,
           showConfirmButton: false,
           customClass: { popup: 'rounded-[2rem]' }
@@ -384,7 +382,6 @@ export default function AdminNewsManagement() {
                   <textarea rows={6} value={formData.content} onChange={(e) => setFormData({...formData, content: e.target.value})} placeholder="เขียนเนื้อหา..." className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:border-slate-800 font-medium resize-none"></textarea>
                 </div>
 
-                {/* 🌟 กล่องอัปโหลดรูปภาพ ปลดล็อกขนาดไฟล์และให้รองรับทุกรูป */}
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-2">แนบรูปภาพ (Cover)</label>
                   <input type="file" id="upload-image" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={isUploading} />
@@ -414,38 +411,59 @@ export default function AdminNewsManagement() {
               </div>
             </div>
 
-            {/* Settings & Preview Section */}
-            <div className="w-full md:w-80 bg-slate-50 p-6 md:p-8 flex flex-col gap-6 relative">
-              <button onClick={() => setIsModalOpen(false)} className="hidden md:block absolute top-6 right-6 text-slate-400 hover:text-slate-600"><X size={24}/></button>
+            {/* 🌟 Settings & Preview Section (ปรับใหม่เป็นหน้าจอ LINE จำลอง) 🌟 */}
+            <div className="w-full md:w-80 bg-slate-100 p-6 md:p-8 flex flex-col relative border-l border-slate-200">
+              <button onClick={() => setIsModalOpen(false)} className="hidden md:block absolute top-6 right-6 text-slate-400 hover:text-slate-600 z-10"><X size={24}/></button>
+              
+              <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
+                <MessageCircle size={18} className="text-[#00B900]" /> ตัวอย่างข้อความ LINE
+              </h3>
 
-              <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm relative mt-8">
-                <p className="absolute -top-3 left-4 bg-slate-800 text-white text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1"><MessageCircle size={10}/> ตัวอย่าง LINE</p>
-                <div className="mt-2 space-y-2">
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${getCategoryColor(formData.category)}`}>{formData.category}</span>
-                  <p className="font-bold text-slate-800 text-sm leading-tight line-clamp-2">{formData.title || 'หัวข้อประกาศ...'}</p>
-                  <p className="text-xs text-slate-500 line-clamp-2">{formData.content || 'เนื้อหาประกาศ...'}</p>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                  <label className="flex items-start gap-3 cursor-pointer">
-                    <input type="checkbox" checked={formData.sendLine} onChange={(e) => setFormData({...formData, sendLine: e.target.checked})} className="mt-1 w-4 h-4 text-emerald-600 rounded" />
-                    <div>
-                      <span className="text-sm font-bold text-slate-700 block">ส่ง Push Notification ผ่าน LINE</span>
-                      <span className="text-[10px] text-slate-500 block mt-0.5">ลูกบ้านจะได้รับการแจ้งเตือนทันที</span>
+              {/* จำลองห้องแชท LINE */}
+              <div className="flex-1 bg-[#849ebf] rounded-[2rem] p-4 flex flex-col overflow-hidden relative shadow-inner mb-6 min-h-[350px]">
+                
+                {/* จำลองข้อความแชท (Flex Message Bubble) */}
+                <div className="bg-white rounded-2xl w-full overflow-hidden shadow-sm flex flex-col mt-4">
+                  {/* Hero Image */}
+                  {formData.image ? (
+                    <div className="w-full h-32 bg-slate-200 relative">
+                      <img src={formData.image} className="w-full h-full object-cover" alt="cover" />
                     </div>
-                  </label>
+                  ) : (
+                    <div className="w-full h-24 bg-slate-100 flex flex-col items-center justify-center text-slate-400 border-b border-slate-100">
+                      <ImageIcon size={20} className="mb-1 opacity-50" />
+                      <span className="text-[10px]">(ไม่มีรูปหน้าปก)</span>
+                    </div>
+                  )}
+
+                  {/* Body */}
+                  <div className="p-4 flex flex-col gap-2">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[10px] font-bold text-slate-800 flex-1">📢 ข่าวประกาศหมู่บ้าน</span>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold text-white bg-emerald-600`}>{formData.category}</span>
+                    </div>
+                    <h4 className="font-bold text-slate-800 text-sm leading-snug line-clamp-2">{formData.title || 'หัวข้อประกาศจะแสดงที่นี่...'}</h4>
+                    <p className="text-[11px] text-slate-500 line-clamp-3 leading-relaxed">{formData.content || 'เนื้อหาประกาศย่อจะแสดงตรงนี้ประมาณ 3-5 บรรทัดแรก...'}</p>
+                    
+                    <div className="w-full h-px bg-slate-100 my-2"></div>
+                    <div className="text-[9px] text-slate-400">ประกาศเมื่อ: วันนี้</div>
+                  </div>
+
+                  {/* Footer Button */}
+                  <div className="p-3 border-t border-slate-100 bg-slate-50">
+                    <div className="w-full py-2 bg-slate-800 text-white text-xs font-bold rounded-lg text-center shadow-sm">
+                      อ่านรายละเอียดเต็ม
+                    </div>
+                  </div>
                 </div>
               </div>
 
               {/* Actions */}
-              <div className="mt-auto pt-4 flex flex-col gap-2">
-                <button onClick={() => handleSave('PUBLISHED')} className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md flex items-center justify-center gap-2">
-                  <Send size={16} /> เผยแพร่และแจ้ง LINE
+              <div className="mt-auto flex flex-col gap-2">
+                <button onClick={() => handleSave('PUBLISHED')} className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md flex items-center justify-center gap-2 transition-transform active:scale-95">
+                  <Send size={16} /> เผยแพร่และแจ้ง LINE ทันที
                 </button>
-                <button onClick={() => handleSave('DRAFT')} className="w-full py-2.5 bg-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-300 flex items-center justify-center gap-1"><Save size={16} /> บันทึกเป็นฉบับร่าง</button>
-                <button onClick={() => setIsModalOpen(false)} className="w-full py-2.5 bg-white border border-slate-200 text-slate-500 font-bold rounded-xl hover:bg-slate-50">ยกเลิก</button>
+                <button onClick={() => handleSave('DRAFT')} className="w-full py-2.5 bg-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-300 flex items-center justify-center gap-1 transition-colors"><Save size={16} /> บันทึกเป็นฉบับร่าง</button>
               </div>
 
             </div>
