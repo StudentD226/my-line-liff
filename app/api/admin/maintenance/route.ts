@@ -1,100 +1,131 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
-import { messagingApi } from '@line/bot-sdk';
 
 const prisma = new PrismaClient();
-const client = new messagingApi.MessagingApiClient({
-  channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN || '',
-});
 
+// ==========================================
+// 1. ดึงข้อมูลรายการแจ้งซ่อมทั้งหมด (GET)
+// ==========================================
 export async function GET() {
   try {
-    const requests = await prisma.report.findMany({
+    const rawReports = await prisma.report.findMany({
+      include: { house: true },
       orderBy: { createdAt: 'desc' },
-      include: { house: true } // ดึงบ้านเลขที่มาแสดง
     });
-    return NextResponse.json({ success: true, requests });
+
+    // แมปข้อมูลให้ตรงกับ Type ที่หน้าบ้านต้องการ
+    const tickets = await Promise.all(rawReports.map(async (r) => {
+      // หาชื่อผู้แจ้งจาก lineId
+      const reporter = await prisma.user.findUnique({ 
+        where: { lineId: r.lineId },
+        select: { name: true }
+      });
+      
+      // 🌟 ทริกพิเศษ: ดึง History และ ExpectedDate ที่ซ่อนไว้ใน adminNote ออกมาใช้
+      let extraData = { expectedDate: '', history: [] as any[] };
+      if (r.adminNote) {
+        try {
+          extraData = JSON.parse(r.adminNote);
+        } catch (e) {
+          // ถ้าเป็นข้อความธรรมดา (ของเก่า) ให้จับใส่ History ซะ
+          extraData.history = [{ 
+            status: r.status, 
+            date: r.updatedAt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }), 
+            note: r.adminNote 
+          }];
+        }
+      }
+
+      return {
+        id: r.id,
+        residentName: reporter?.name || 'ลูกบ้าน',
+        houseNo: r.house?.houseNo || '-',
+        title: r.title,
+        description: r.description,
+        category: r.category,
+        status: r.status,
+        isUrgent: r.type === 'URGENT', // สมมติว่าใช้ type เช็คความด่วน
+        reportedDate: r.createdAt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }),
+        expectedDate: extraData.expectedDate,
+        history: extraData.history,
+        imageUrl: r.imageUrl,
+      };
+    }));
+
+    return NextResponse.json({ success: true, data: tickets });
   } catch (error) {
-    return NextResponse.json({ success: false, error: 'Failed to fetch' }, { status: 500 });
+    console.error("GET Maintenance Error:", error);
+    return NextResponse.json({ success: false, error: 'ดึงข้อมูลไม่สำเร็จ' }, { status: 500 });
   }
 }
 
-export async function PATCH(req: Request) {
+// ==========================================
+// 2. อัปเดตสถานะและแจ้งเตือน LINE (POST)
+// ==========================================
+export async function POST(request: Request) {
   try {
-    const { id, status, adminNote, lineId } = await req.json();
+    const body = await request.json();
+    const { id, status, expectedDate, note, sendLine } = body;
 
-    const updated = await prisma.report.update({
-      where: { id },
-      data: { status, adminNote }
-    });
-
-    // 🌟 ระบบส่งข้อความแจ้งเตือนกลับไปยังลูกบ้านแบบพรีเมียม Flex Message
-    let statusText = "รอตรวจสอบ";
-    let statusColor = "#6B7280"; 
-    let iconUrl = "https://img.icons8.com/fluency-systems-filled/48/6B7280/clock.png";
-
-    if (status === "IN_PROGRESS") { 
-      statusText = "กำลังดำเนินการ"; 
-      statusColor = "#D97706"; 
-      iconUrl = "https://img.icons8.com/fluency-systems-filled/48/D97706/settings.png";
-    } 
-    if (status === "COMPLETED") { 
-      statusText = "แก้ไขเรียบร้อยแล้ว"; 
-      statusColor = "#059669"; 
-      iconUrl = "https://img.icons8.com/fluency-systems-filled/48/059669/check-circle.png";
-    } 
-    if (status === "CANCELED") { 
-      statusText = "รับทราบ / ยกเลิก"; 
-      statusColor = "#DC2626"; 
-      iconUrl = "https://img.icons8.com/fluency-systems-filled/48/DC2626/cancel.png";
+    const existingReport = await prisma.report.findUnique({ where: { id } });
+    if (!existingReport) {
+      return NextResponse.json({ success: false, error: 'ไม่พบข้อมูลแจ้งซ่อมในระบบ' }, { status: 404 });
     }
 
-    await client.pushMessage({
-      to: lineId,
-      messages: [
-        {
-          type: "flex",
-          altText: `อัปเดตสถานะ: ${updated.title}`,
-          contents: {
-            type: "bubble",
-            size: "mega",
-            body: {
-              type: "box", layout: "vertical", paddingAll: "xl",
-              contents: [
-                { type: "text", text: "อัปเดตสถานะรับเรื่อง", weight: "bold", size: "xl", color: "#111827" },
-                { type: "text", text: `Ticket: ${updated.ticketNo}`, size: "xs", color: "#6B7280", margin: "sm" },
-                { type: "separator", margin: "lg", color: "#E5E7EB" },
-                { type: "text", text: updated.title, weight: "bold", size: "md", color: "#111827", margin: "lg", wrap: true },
-                {
-                  type: "box", layout: "horizontal", margin: "md", alignItems: "center",
-                  contents: [
-                    { type: "text", text: "สถานะปัจจุบัน", size: "sm", color: "#4B5563", flex: 1 },
-                    {
-                      type: "box", layout: "horizontal", flex: 0, alignItems: "center", spacing: "sm",
-                      contents: [
-                        { type: "image", url: iconUrl, size: "16px" },
-                        { type: "text", text: statusText, weight: "bold", size: "sm", color: statusColor, align: "end" }
-                      ]
-                    }
-                  ]
-                },
-                ...(adminNote ? [{
-                  type: "box", layout: "vertical", margin: "xl", backgroundColor: "#F9FAFB", cornerRadius: "lg", paddingAll: "lg",
-                  contents: [
-                    { type: "text", text: "ข้อความจากนิติบุคคล", size: "xs", weight: "bold", color: "#374151" },
-                    { type: "text", text: adminNote, size: "sm", color: "#4B5563", wrap: true, margin: "md" }
-                  ]
-                }] : [])
-              ]
-            }
-          } as any
-        }
-      ]
+    // 🌟 ดึงประวัติเก่าออกมาเตรียมบวกประวัติใหม่เข้าไป
+    let extraData = { expectedDate: '', history: [] as any[] };
+    if (existingReport.adminNote) {
+        try { 
+          extraData = JSON.parse(existingReport.adminNote); 
+        } catch (e) {}
+    }
+
+    // อัปเดตวันที่และเพิ่มประวัติใหม่ลงไป
+    extraData.expectedDate = expectedDate || extraData.expectedDate;
+    extraData.history.push({
+        status: status,
+        date: new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' }),
+        note: note || 'อัปเดตสถานะโดยนิติบุคคล'
     });
 
-    return NextResponse.json({ success: true, updated });
+    // บันทึกลงฐานข้อมูล
+    const updatedReport = await prisma.report.update({
+        where: { id },
+        data: {
+            status: status,
+            adminNote: JSON.stringify(extraData), // แปลงกลับเป็น String เก็บลง DB
+        }
+    });
+
+    // 🌟 ยิงข้อความ LINE หา "ลูกบ้านคนที่แจ้ง" โดยเฉพาะ (Push Message)
+    if (sendLine && existingReport.lineId) {
+        const LINE_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN;
+        
+        if (LINE_TOKEN) {
+            const statusText = status === 'IN_PROGRESS' ? 'กำลังดำเนินการ 🔧' : status === 'COMPLETED' ? 'เสร็จสิ้นเรียบร้อย ✅' : 'รอดำเนินการ ⏳';
+            const expectedText = expectedDate ? `\n📅 คาดว่าจะเสร็จ: ${expectedDate}` : '';
+            const noteText = note ? `\n📝 หมายเหตุ: ${note}` : '';
+
+            await fetch('https://api.line.me/v2/bot/message/push', {
+                method: 'POST',
+                headers: { 
+                  'Content-Type': 'application/json', 
+                  'Authorization': `Bearer ${LINE_TOKEN}` 
+                },
+                body: JSON.stringify({
+                    to: existingReport.lineId, // ส่งเจาะจงหาคนแจ้ง ไม่รบกวนคนอื่น
+                    messages: [{
+                        type: "text",
+                        text: `📢 อัปเดตงานแจ้งซ่อม\nเรื่อง: ${existingReport.title}\n\nสถานะตอนนี้: ${statusText}${expectedText}${noteText}`
+                    }]
+                })
+            });
+        }
+    }
+
+    return NextResponse.json({ success: true, data: updatedReport });
   } catch (error) {
-    console.error("Admin Update Maintenance Error:", error);
-    return NextResponse.json({ success: false }, { status: 500 });
+    console.error("POST Maintenance Error:", error);
+    return NextResponse.json({ success: false, error: 'บันทึกข้อมูลไม่สำเร็จ' }, { status: 500 });
   }
 }
