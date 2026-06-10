@@ -3,6 +3,57 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+// ========================================================
+// 🌟 1. [GET] ระบบดึงประวัติการแจ้งเรื่องของลูกบ้าน
+// ========================================================
+export async function GET(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const lineId = searchParams.get('lineId');
+
+    // ถ้าไม่มี LineID ส่งมา จะไม่คืนค่าอะไรกลับไป (ความปลอดภัย)
+    if (!lineId) {
+      return NextResponse.json({ success: false, error: 'ไม่พบ lineId' }, { status: 400 });
+    }
+
+    // ดึงเฉพาะรายการที่ตรงกับ LineID ของลูกบ้านคนนั้นๆ เรียงจากใหม่ไปเก่า
+    const rawReports = await prisma.report.findMany({
+      where: { lineId: lineId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const tickets = rawReports.map((r) => {
+      let extraData = { expectedDate: '', history: [] as any[] };
+      if (r.adminNote) {
+        try {
+          extraData = JSON.parse(r.adminNote);
+        } catch (e) {}
+      }
+
+      return {
+        id: r.id,
+        ticketNo: r.ticketNo,
+        title: r.title,
+        description: r.description,
+        category: r.category,
+        status: r.status,
+        reportedDate: r.createdAt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }),
+        expectedDate: extraData.expectedDate,
+        history: extraData.history,
+        imageUrl: r.imageUrl,
+      };
+    });
+
+    return NextResponse.json({ success: true, data: tickets });
+  } catch (error) {
+    console.error("GET Maintenance Error:", error);
+    return NextResponse.json({ success: false, error: 'ดึงข้อมูลไม่สำเร็จ' }, { status: 500 });
+  }
+}
+
+// ========================================================
+// 🌟 2. [POST] ระบบบันทึกการแจ้งเรื่องใหม่
+// ========================================================
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -49,7 +100,7 @@ export async function POST(req: Request) {
         location: location,
         title: title,
         description: description,
-        imageUrl: imageUrl, // รองรับ String Base64 เรียบร้อยแล้ว
+        imageUrl: imageUrl, 
         residentHouseId: user.residentHouse.id,
         status: "PENDING",
         adminNote: initialAdminNote 

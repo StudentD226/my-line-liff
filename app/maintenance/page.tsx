@@ -201,7 +201,7 @@ export default function MaintenancePage() {
             onClick={() => setActiveView("INFORM")}
             className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${activeView === "INFORM" ? "bg-blue-50 text-blue-700 shadow-sm border border-blue-100" : "text-slate-500 hover:bg-slate-50"}`}
           >
-            <Info size={16} /> แจ้งเพื่อทราบ
+            <Info size={16} /> แจ้งร้องเรียน
           </button>
           <button 
             onClick={() => setActiveView("HISTORY")}
@@ -292,7 +292,7 @@ export default function MaintenancePage() {
               ) : (
                 <button onClick={() => fileInputRef.current?.click()} className="w-full border-2 border-dashed border-gray-300 rounded-xl py-6 flex flex-col items-center justify-center bg-white text-gray-500 hover:border-[#376B64]/50 hover:bg-[#376B64]/5 active:scale-[0.99] transition-all">
                   <ImageIcon size={24} className="mb-2 text-[#376B64]/70" />
-                  <span className="text-xs font-semibold text-slate-700">กดเพื่อถ่ายภาพ หรือเลือกรูปจากอัลบั้ม</span>
+                  <span className="text-xs font-semibold text-slate-700">กดเพื่อเลือกรูปจากอัลบั้ม</span>
                   <span className="text-[10px] text-slate-400 mt-1">(ไม่เกิน 2MB)</span>
                 </button>
               )}
