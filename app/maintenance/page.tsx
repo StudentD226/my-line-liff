@@ -17,7 +17,7 @@ const STATUS_CONFIG: Record<string, any> = {
 };
 
 export default function MaintenancePage() {
-  // 🌟 State ควบคุมหน้าจอ (Tabs) สลับไปมา 3 หน้า
+  // 🌟 State ควบคุมหน้าจอ (Tabs)
   const [activeView, setActiveView] = useState<'REPAIR' | 'INFORM' | 'HISTORY'>('REPAIR');
 
   // --- State สำหรับ Form ---
@@ -27,7 +27,6 @@ export default function MaintenancePage() {
   const [details, setDetails] = useState("");
   const [lineId, setLineId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -52,7 +51,7 @@ export default function MaintenancePage() {
     initLiff();
   }, []);
 
-  // 🌟 โหลดประวัติจาก Database ทันทีเมื่อลูกบ้านกดแท็บ 'HISTORY'
+  // โหลดประวัติเมื่อเปิดแท็บ HISTORY
   useEffect(() => {
     if (activeView === 'HISTORY' && lineId) {
       fetchHistory(lineId);
@@ -62,7 +61,14 @@ export default function MaintenancePage() {
   const fetchHistory = async (userId: string) => {
     setIsLoadingHistory(true);
     try {
-      const res = await fetch(`/api/maintenance/history?lineId=${userId}`);
+      // 🌟 จุดแก้ที่ 1: ใส่ { cache: 'no-store' } เพื่อไม่ให้ Next.js จำแคชข้อมูลเก่า
+      const res = await fetch(`/api/maintenance?lineId=${userId}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
       const json = await res.json();
       if (json.success) {
         setTickets(json.data);
@@ -116,25 +122,7 @@ export default function MaintenancePage() {
     }
 
     setIsSubmitting(true);
-    let finalImageUrl = null;
-
-    if (selectedFile) {
-      setIsUploading(true);
-      try {
-        finalImageUrl = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.readAsDataURL(selectedFile);
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = (error) => reject(error);
-        });
-      } catch (error) {
-        Swal.fire({ icon: 'error', title: 'แปลงรูปภาพไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง', confirmButtonColor: '#376B64', customClass: { popup: 'rounded-[2rem]' } });
-        setIsSubmitting(false);
-        setIsUploading(false);
-        return;
-      }
-      setIsUploading(false);
-    }
+    const finalImageUrl = imagePreview || null;
 
     try {
       const response = await fetch('/api/maintenance', {
@@ -142,18 +130,18 @@ export default function MaintenancePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           lineId: lineId,
-          type: activeView, // ส่งค่าแท็บปัจจุบัน (REPAIR หรือ INFORM) เข้า Database
+          type: activeView, 
           category: selectedCategory,
           location: location,
           title: title,
           description: details,
-          imageUrl: finalImageUrl 
+          imageUrl: finalImageUrl
         })
       });
 
       const data = await response.json();
 
-      if (data.success) {
+      if (data.success && data.ticket) {
         Swal.fire({ 
           icon: 'success', 
           title: 'ส่งแจ้งเรื่องสำเร็จ!', 
@@ -161,12 +149,37 @@ export default function MaintenancePage() {
           confirmButtonColor: '#376B64',
           customClass: { popup: 'rounded-[2rem]' }
         }).then(() => {
-          // 🌟 ส่งเสร็จปุ๊บ เคลียร์ฟอร์ม แล้วเด้งไปแท็บประวัติให้ดูอัตโนมัติ
+          
+          // 🌟 จุดแก้ที่ 2: สร้างก้อนข้อมูลจำลองของเคสล่าสุด แล้วยัดเข้าหน้าสเตทประวัติทันทีโดยไม่ต้องรอโหลดเครือข่ายใหม่
+          const newTicketData = {
+            id: data.ticket.id,
+            ticketNo: data.ticket.ticketNo,
+            title: data.ticket.title,
+            description: data.ticket.description,
+            category: data.ticket.category,
+            status: data.ticket.status,
+            reportedDate: new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }),
+            imageUrl: data.ticket.imageUrl,
+            history: [
+              {
+                status: "PENDING",
+                date: new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' }),
+                note: "ระบบรับคำร้องอัตโนมัติ"
+              }
+            ]
+          };
+
+          // ยัดต่อเข้าอาเรย์ด้านบนสุด (ทำให้อัปเดตทันที)
+          setTickets(prevTickets => [newTicketData, ...prevTickets]);
+
+          // เคลียร์ฟอร์ม
           setTitle("");
           setDetails("");
           setLocation("");
           removeImage();
-          setActiveView('HISTORY');
+          
+          // สลับไปหน้าประวัติทันที
+          setActiveView('HISTORY'); 
         });
       } else {
         Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: data.error || 'ไม่สามารถส่งข้อมูลได้', confirmButtonColor: '#376B64', customClass: { popup: 'rounded-[2rem]' } });
@@ -189,7 +202,7 @@ export default function MaintenancePage() {
 
       <main className="p-4 max-w-md mx-auto space-y-4">
         
-        {/* 🌟 3 Tabs Menu สลับไปมา */}
+        {/* 3 Tabs Menu */}
         <div className="bg-white p-1 rounded-xl shadow-sm border border-slate-100 flex gap-1">
           <button 
             onClick={() => setActiveView("REPAIR")}
@@ -201,7 +214,7 @@ export default function MaintenancePage() {
             onClick={() => setActiveView("INFORM")}
             className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${activeView === "INFORM" ? "bg-blue-50 text-blue-700 shadow-sm border border-blue-100" : "text-slate-500 hover:bg-slate-50"}`}
           >
-            <Info size={16} /> แจ้งร้องเรียน
+            <Info size={16} /> แจ้งเพื่อทราบ
           </button>
           <button 
             onClick={() => setActiveView("HISTORY")}
@@ -211,9 +224,7 @@ export default function MaintenancePage() {
           </button>
         </div>
 
-        {/* ======================================================== */}
-        {/* หน้าจอส่วนฟอร์ม (แสดงเมื่อกดแท็บ แจ้งซ่อม หรือ แจ้งเพื่อทราบ) */}
-        {/* ======================================================== */}
+        {/* ฟอร์มแจ้งเรื่อง (REPAIR / INFORM) */}
         {(activeView === 'REPAIR' || activeView === 'INFORM') && (
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <div className="space-y-2">
@@ -292,7 +303,7 @@ export default function MaintenancePage() {
               ) : (
                 <button onClick={() => fileInputRef.current?.click()} className="w-full border-2 border-dashed border-gray-300 rounded-xl py-6 flex flex-col items-center justify-center bg-white text-gray-500 hover:border-[#376B64]/50 hover:bg-[#376B64]/5 active:scale-[0.99] transition-all">
                   <ImageIcon size={24} className="mb-2 text-[#376B64]/70" />
-                  <span className="text-xs font-semibold text-slate-700">กดเพื่อเลือกรูปจากอัลบั้ม</span>
+                  <span className="text-xs font-semibold text-slate-700">กดเพื่อถ่ายภาพ หรือเลือกรูปจากอัลบั้ม</span>
                   <span className="text-[10px] text-slate-400 mt-1">(ไม่เกิน 2MB)</span>
                 </button>
               )}
@@ -300,9 +311,7 @@ export default function MaintenancePage() {
           </div>
         )}
 
-        {/* ======================================================== */}
-        {/* หน้าจอส่วนประวัติ (แสดงเมื่อกดแท็บ ประวัติ) */}
-        {/* ======================================================== */}
+        {/* หน้าประวัติ (HISTORY) */}
         {activeView === 'HISTORY' && (
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
             {isLoadingHistory ? (
@@ -338,29 +347,22 @@ export default function MaintenancePage() {
             )}
           </div>
         )}
-
       </main>
 
-      {/* 🌟 ปุ่มส่งเรื่องจะโชว์เฉพาะหน้าฟอร์ม (ถ้าอยู่หน้าประวัติจะซ่อนไป) */}
+      {/* ปุ่มส่งเรื่อง */}
       {(activeView === 'REPAIR' || activeView === 'INFORM') && (
         <div className="fixed bottom-0 left-0 right-0 p-3 bg-white/90 backdrop-blur-md border-t border-slate-100 max-w-md mx-auto shadow-[0_-4px_15px_rgba(0,0,0,0.02)]">
           <button 
             onClick={handleSubmit} 
-            disabled={isSubmitting || isUploading}
-            className={`w-full text-white font-black py-3.5 px-4 rounded-xl flex items-center justify-center shadow-lg transition-all active:scale-[0.98] ${isSubmitting || isUploading ? 'bg-slate-400 cursor-not-allowed' : 'bg-[#376B64] hover:bg-[#2a524c]'}`}
+            disabled={isSubmitting}
+            className={`w-full text-white font-black py-3.5 px-4 rounded-xl flex items-center justify-center shadow-lg transition-all active:scale-[0.98] ${isSubmitting ? 'bg-slate-400 cursor-not-allowed' : 'bg-[#376B64] hover:bg-[#2a524c]'}`}
           >
-            {isUploading ? (
-                <><div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2.5"></div> กำลังจัดการรูปภาพ...</>
-            ) : isSubmitting ? (
-                "กำลังส่งข้อมูล..."
-            ) : (
-                <><Send size={18} className="mr-2" /> ส่งเรื่องให้นิติบุคคล</>
-            )}
+            {isSubmitting ? "กำลังส่งข้อมูล..." : <><Send size={18} className="mr-2" /> ส่งเรื่องให้นิติบุคคล</>}
           </button>
         </div>
       )}
 
-      {/* 🚀 MODAL: ป็อปอัปเวลาคลิกดูรายละเอียดของประวัติ */}
+      {/* MODAL: รายละเอียด History */}
       {selectedTicket && (
         <div className="fixed inset-0 z-50 flex flex-col justify-end p-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-t-3xl w-full max-w-md mx-auto max-h-[90vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom-10 duration-300">
