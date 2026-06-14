@@ -37,6 +37,11 @@ function PaymentForm() {
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // 🌟 State ใหม่สำหรับเก็บข้อมูลแอบซ่อนที่ AI แกะมาได้ 
+  const [senderName, setSenderName] = useState<string>('');
+  const [receiverName, setReceiverName] = useState<string>('');
+  const [bankRef, setBankRef] = useState<string>('');
+
   const [isCustomSelectOpen, setIsCustomSelectOpen] = useState(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [isTimePickerOpen, setIsTimePickerOpen] = useState(false);
@@ -154,7 +159,6 @@ function PaymentForm() {
         const mm = String(d.getMonth() + 1).padStart(2, '0');
         const dd = String(d.getDate()).padStart(2, '0');
         let label = `${d.getDate()} ${['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'][d.getMonth()]} ${d.getFullYear() + 543}`;
-        // 🌟 แก้ไขเอาวงเล็บออกตรงนี้ครับ 🌟
         if (i === 0) label = `วันนี้ ${label}`;
         else if (i === 1) label = `เมื่อวาน ${label}`;
         return { value: `${yyyy}-${mm}-${dd}`, label };
@@ -177,18 +181,75 @@ function PaymentForm() {
     setIsTimePickerOpen(true);
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // 🌟 ฟังก์ชันอัปโหลดรูปที่ฝังสมอง AI (Real-time Auto-fill)
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      if (selectedFile.size > 10 * 1024 * 1024) {
-        Swal.fire({
-          icon: 'warning', title: 'ไฟล์ขนาดใหญ่เกินไป', text: 'กรุณาอัปโหลดไฟล์ขนาดไม่เกิน 10MB ครับ',
-          confirmButtonColor: '#376B64', customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl px-6 py-2.5 font-bold' }
+    if (!selectedFile) return;
+
+    if (selectedFile.size > 10 * 1024 * 1024) {
+      Swal.fire({
+        icon: 'warning', title: 'ไฟล์ขนาดใหญ่เกินไป', text: 'กรุณาอัปโหลดไฟล์ขนาดไม่เกิน 10MB ครับ',
+        confirmButtonColor: '#376B64', customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl px-6 py-2.5 font-bold' }
+      });
+      return;
+    }
+
+    // 1. โชว์รูปบนหน้าจอให้ลูกบ้านเห็นทันที
+    setFile(selectedFile);
+    setPreviewUrl(URL.createObjectURL(selectedFile));
+
+    // 2. เด้งหน้าต่างบอกว่า AI กำลังทำงาน
+    Swal.fire({ 
+      title: 'กำลังสแกนสลิป...', 
+      text: 'ระบบ AI กำลังตรวจสอบยอดเงินและเวลา',
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading(),
+      customClass: { popup: 'rounded-[2rem] p-6' }
+    });
+
+    const formData = new FormData();
+    formData.append('slip', selectedFile);
+
+    try {
+      // 3. ยิงสลิปไปให้ API AI ทำงาน
+      const res = await fetch('/api/payment/scan-slip', { method: 'POST', body: formData });
+      const json = await res.json();
+
+      if (json.success && json.data) {
+        const aiData = json.data;
+        
+        // 🎯 4. ถอดรหัส Auto-fill กรอกข้อมูลบนหน้าจอให้อัตโนมัติ!
+        if (aiData.amount) {
+          setCustomAmount(aiData.amount.toString()); // เติมยอดเงิน
+          setPayOption(-1); // ยกเลิกการเลือก Option มาตรฐาน
+        }
+        if (aiData.date) setTransferDate(aiData.date); // เติมวันที่
+        if (aiData.time) setTransferTime(aiData.time); // เติมเวลา
+
+        // 🎯 5. ซ่อนข้อมูลลับไว้ส่งไปให้แอดมินตอนกดปุ่มยืนยัน
+        if (aiData.senderName) setSenderName(aiData.senderName);
+        if (aiData.receiverName) setReceiverName(aiData.receiverName);
+        if (aiData.bankRef) setBankRef(aiData.bankRef);
+
+        Swal.fire({ 
+          icon: 'success', 
+          title: 'สแกนข้อมูลสำเร็จ!', 
+          text: 'กรุณาตรวจสอบความถูกต้องก่อนกดยืนยัน',
+          timer: 2000, 
+          showConfirmButton: false,
+          customClass: { popup: 'rounded-[2rem]' }
         });
-        return;
+      } else {
+        Swal.fire({ 
+          icon: 'info', 
+          title: 'สแกนสลิปไม่ชัดเจน', 
+          text: 'กรุณาระบุยอดเงินและเวลาด้วยตนเอง',
+          confirmButtonColor: '#376B64',
+          customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl px-6 py-2.5 font-bold' }
+        });
       }
-      setFile(selectedFile);
-      setPreviewUrl(URL.createObjectURL(selectedFile));
+    } catch (err) {
+      Swal.close(); // ปิดโหลดถ้าเกิด Error
     }
   };
 
@@ -201,7 +262,7 @@ function PaymentForm() {
     });
 
     try {
-      let finalAdvanceMonths = payOption;
+      let finalAdvanceMonths = payOption >= 0 ? payOption : 0;
       if (customAmount) {
         const totalDebt = outstandingBalance; 
         const overpay = finalPayAmount - totalDebt;
@@ -224,6 +285,11 @@ function PaymentForm() {
       formData.append('remainingBalance', remainingBalance.toString()); 
       formData.append('payOptionMonths', finalAdvanceMonths.toString()); 
       formData.append('fineAmount', fineAmount.toString());
+
+      // 🌟 ส่งข้อมูล AI ลับๆ ไปให้หลังบ้านด้วย
+      formData.append('senderName', senderName);
+      formData.append('receiverName', receiverName);
+      formData.append('bankRef', bankRef);
 
       const res = await fetch('/api/payment', { method: 'POST', body: formData });
       const data = await res.json();
@@ -343,11 +409,11 @@ function PaymentForm() {
             <div onClick={() => setIsCustomSelectOpen(true)} className="w-full p-4 bg-[#F8FAFC] border border-gray-200 rounded-xl flex flex-col justify-center cursor-pointer active:scale-[0.98] transition-all">
               <div className="flex justify-between items-center mb-1">
                 <span className="text-[14px] font-bold text-[#376B64]">
-                  {paymentOptions.find(o => o.value === payOption)?.title} <span className="text-gray-400 font-normal ml-1">({(outstandingBalance + monthlyRate * payOption).toLocaleString('th-TH')} บาท)</span>
+                  {paymentOptions.find(o => o.value === payOption)?.title || 'ระบุยอดโอนเอง'} <span className="text-gray-400 font-normal ml-1">({(outstandingBalance + monthlyRate * (payOption >= 0 ? payOption : 0)).toLocaleString('th-TH')} บาท)</span>
                 </span>
                 <ChevronDown size={20} strokeWidth={2.5} className="text-[#376B64]/50" />
               </div>
-              <p className="text-[12px] font-medium text-gray-500 leading-relaxed">{getCoverageText(payOption)}</p>
+              <p className="text-[12px] font-medium text-gray-500 leading-relaxed">{getCoverageText(payOption >= 0 ? payOption : 0)}</p>
             </div>
           </div>
 
@@ -362,7 +428,7 @@ function PaymentForm() {
             </label>
             <div className="relative group">
               <input 
-                type="number" value={customAmount} onChange={(e) => setCustomAmount(e.target.value)}
+                type="number" value={customAmount} onChange={(e) => { setCustomAmount(e.target.value); setPayOption(-1); }}
                 placeholder="ระบุจำนวนเงินที่ต้องการชำระ (บาท)"
                 className="w-full p-4 pl-4 bg-white border border-gray-200 rounded-xl text-[16px] font-bold text-[#376B64] focus:outline-none focus:border-[#376B64] focus:ring-2 focus:ring-[#376B64]/20 transition-all placeholder:font-medium placeholder:text-gray-300 placeholder:text-[14px]" 
               />
