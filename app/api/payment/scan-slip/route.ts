@@ -1,9 +1,19 @@
-export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// เรียกใช้งาน Google Gemini SDK ด้วยคีย์ใน Vercel / .env
+export const dynamic = 'force-dynamic';
+
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+
+function getMimeType(filename: string, originalType: string): string {
+  if (originalType && originalType !== 'application/octet-stream') return originalType;
+  const ext = filename.split('.').pop()?.toLowerCase();
+  const map: Record<string, string> = {
+    jpg: 'image/jpeg', jpeg: 'image/jpeg',
+    png: 'image/png', webp: 'image/webp',
+  };
+  return map[ext || ''] || 'image/jpeg';
+}
 
 export async function POST(request: Request) {
   try {
@@ -11,57 +21,56 @@ export async function POST(request: Request) {
     const file = formData.get('slip') as File;
 
     if (!file) {
-      return NextResponse.json({ success: false, error: 'ไม่พบไฟล์สลิปโอนเงิน' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'ไม่พบไฟล์' }, { status: 400 });
     }
 
-    // 1. แปลงไฟล์รูปภาพสลิปให้อยู่ในรูปแบบ Buffer และ Base64 เพื่อส่งให้ Gemini อ่าน
     const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    const base64Image = buffer.toString('base64');
+    const base64Image = Buffer.from(arrayBuffer).toString('base64');
+    const mimeType = getMimeType(file.name, file.type);
 
-    // 2. เรียกใช้โมเดลระดับท็อปด้านการอ่านภาพสลิป
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash',
-      generationConfig: { responseMimeType: 'application/json' },
-    });
+    // ลอง gemini-2.0-flash ซึ่ง support vision ได้ดีกว่า 1.5-flash
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
-    // 3. ส่ง Prompt ไม้ตายเพื่อสั่งให้ AI แกะข้อมูลสลิปธนาคารไทยอย่างแม่นยำ
     const prompt = `
-      You are an expert OCR system specializing in Thai Bank transfer slips.
-      Analyze the attached slip image and extract the following information into a strict JSON format.
-      
-      Do not include any markdown formatting, only valid JSON.
-      If any field cannot be read or found, set it to null.
+You are an expert OCR system for Thai bank transfer slips.
+Extract data from the image and respond ONLY with a valid JSON object. No markdown, no explanation.
 
-      The JSON structure MUST be exactly like this:
-      {
-        "amount": number (Total transfer amount, e.g. 500.00),
-        "date": "YYYY-MM-DD" (Transfer date in Gregorian calendar format, e.g. "2026-06-14"),
-        "time": "HH:mm" (Transfer time in 24-hour format, e.g. "15:42"),
-        "senderName": "string" (Full name of the sender person in Thai or English),
-        "receiverName": "string" (Full name of the receiver/juristic office),
-        "bankRef": "string" (Transaction ID / Reference Number)
-      }
+JSON format:
+{
+  "amount": <number or null>,
+  "date": "<YYYY-MM-DD or null>",
+  "time": "<HH:mm or null>",
+  "senderName": "<string or null>",
+  "receiverName": "<string or null>",
+  "bankRef": "<string or null>",
+  "bankName": "<string or null>"
+}
+
+If the image is a Thai bank app screenshot, look for:
+- ยอดเงิน / จำนวนเงิน = amount
+- ชื่อผู้โอน / จากบัญชี = senderName  
+- ชื่อผู้รับ / ไปยัง = receiverName
+- เลขที่อ้างอิง / รหัสอ้างอิง = bankRef
     `;
 
-    const imagePart = {
-      inlineData: {
-        data: base64Image,
-        mimeType: file.type,
-      },
-    };
+    const result = await model.generateContent([
+      { text: prompt },
+      { inlineData: { data: base64Image, mimeType } },
+    ]);
 
-    // 4. ยิงสั่งให้ AI ประมวลผลภาพสลิป
-    const result = await model.generateContent([prompt, imagePart]);
-    const responseText = result.response.text();
+    let responseText = result.response.text().trim();
     
-    // แปลงข้อความสติง JSON จาก AI ให้กลายเป็น Object
-    const extractedData = JSON.parse(responseText);
+    // กัน case ที่ Gemini ห่อด้วย ```json ... ```
+    responseText = responseText.replace(/^```json\n?/, '').replace(/\n?```$/, '');
 
+    const extractedData = JSON.parse(responseText);
     return NextResponse.json({ success: true, data: extractedData });
 
   } catch (error: any) {
-    console.error('Gemini Scan Slip Error:', error);
-    return NextResponse.json({ success: false, error: 'AI ไม่สามารถอ่านข้อมูลสลิปนี้ได้' }, { status: 500 });
+    console.error('Error:', error);
+    return NextResponse.json({ 
+      success: false, 
+      error: error.message || 'อ่านสลิปไม่ได้' 
+    }, { status: 500 });
   }
 }
