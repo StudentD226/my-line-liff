@@ -37,6 +37,7 @@ function PaymentForm() {
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // 🌟 State ใหม่สำหรับเก็บข้อมูลแอบซ่อนที่ AI แกะมาได้ 
   const [senderName, setSenderName] = useState<string>('');
   const [receiverName, setReceiverName] = useState<string>('');
   const [bankRef, setBankRef] = useState<string>('');
@@ -180,7 +181,7 @@ function PaymentForm() {
     setIsTimePickerOpen(true);
   };
 
-  // ✅ handleFileChange แก้แล้ว — Swal.close() ก่อนเสมอ ไม่ค้างหมุน
+  // 🌟 ฟังก์ชันอัปโหลดรูปที่ฝังสมอง AI (Real-time Auto-fill)
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
@@ -193,67 +194,62 @@ function PaymentForm() {
       return;
     }
 
+    // 1. โชว์รูปบนหน้าจอให้ลูกบ้านเห็นทันที
     setFile(selectedFile);
     setPreviewUrl(URL.createObjectURL(selectedFile));
 
-    Swal.fire({
-      title: 'กำลังสแกนสลิป...',
+    // 2. เด้งหน้าต่างบอกว่า AI กำลังทำงาน
+    Swal.fire({ 
+      title: 'กำลังสแกนสลิป...', 
       text: 'ระบบ AI กำลังตรวจสอบยอดเงินและเวลา',
       allowOutsideClick: false,
       didOpen: () => Swal.showLoading(),
       customClass: { popup: 'rounded-[2rem] p-6' }
     });
 
-    try {
-      const formData = new FormData();
-      formData.append('slip', selectedFile);
+    const formData = new FormData();
+    formData.append('slip', selectedFile);
 
+    try {
+      // 3. ยิงสลิปไปให้ API AI ทำงาน
       const res = await fetch('/api/payment/scan-slip', { method: 'POST', body: formData });
       const json = await res.json();
 
-      // ✅ ปิด loading ก่อนเสมอ ไม่ว่าจะสำเร็จหรือไม่
-      Swal.close();
-
       if (json.success && json.data) {
         const aiData = json.data;
-
+        
+        // 🎯 4. ถอดรหัส Auto-fill กรอกข้อมูลบนหน้าจอให้อัตโนมัติ!
         if (aiData.amount) {
-          setCustomAmount(aiData.amount.toString());
-          setPayOption(-1);
+          setCustomAmount(aiData.amount.toString()); // เติมยอดเงิน
+          setPayOption(-1); // ยกเลิกการเลือก Option มาตรฐาน
         }
-        if (aiData.date) setTransferDate(aiData.date);
-        if (aiData.time) setTransferTime(aiData.time);
+        if (aiData.date) setTransferDate(aiData.date); // เติมวันที่
+        if (aiData.time) setTransferTime(aiData.time); // เติมเวลา
+
+        // 🎯 5. ซ่อนข้อมูลลับไว้ส่งไปให้แอดมินตอนกดปุ่มยืนยัน
         if (aiData.senderName) setSenderName(aiData.senderName);
         if (aiData.receiverName) setReceiverName(aiData.receiverName);
         if (aiData.bankRef) setBankRef(aiData.bankRef);
 
-        Swal.fire({
-          icon: 'success',
-          title: 'สแกนข้อมูลสำเร็จ!',
+        Swal.fire({ 
+          icon: 'success', 
+          title: 'สแกนข้อมูลสำเร็จ!', 
           text: 'กรุณาตรวจสอบความถูกต้องก่อนกดยืนยัน',
-          timer: 2000,
+          timer: 2000, 
           showConfirmButton: false,
           customClass: { popup: 'rounded-[2rem]' }
         });
       } else {
-        Swal.fire({
-          icon: 'info',
-          title: 'สแกนไม่สำเร็จ',
-          text: json.error || 'กรุณาระบุยอดเงินและเวลาด้วยตนเอง',
+        Swal.fire({ 
+          icon: 'info', 
+          title: 'สแกนสลิปไม่ชัดเจน', 
+          text: 'กรุณาระบุยอดเงินและเวลาด้วยตนเอง',
           confirmButtonColor: '#376B64',
           customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl px-6 py-2.5 font-bold' }
         });
       }
-    } catch (err: any) {
-      // ✅ ปิด loading ตอน network error ด้วย
-      Swal.close();
-      Swal.fire({
-        icon: 'warning',
-        title: 'เชื่อมต่อไม่ได้',
-        text: 'กรุณาระบุข้อมูลด้วยตนเอง',
-        confirmButtonColor: '#376B64',
-        customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl px-6 py-2.5 font-bold' }
-      });
+    } catch (err) {
+      Swal.close(); // ปิดโหลดถ้าเกิด Error
     }
   };
 
@@ -289,6 +285,8 @@ function PaymentForm() {
       formData.append('remainingBalance', remainingBalance.toString()); 
       formData.append('payOptionMonths', finalAdvanceMonths.toString()); 
       formData.append('fineAmount', fineAmount.toString());
+
+      // 🌟 ส่งข้อมูล AI ลับๆ ไปให้หลังบ้านด้วย
       formData.append('senderName', senderName);
       formData.append('receiverName', receiverName);
       formData.append('bankRef', bankRef);

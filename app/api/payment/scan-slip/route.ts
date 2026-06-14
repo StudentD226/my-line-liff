@@ -1,24 +1,9 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-export const dynamic = 'force-dynamic';
-
+// เรียกใช้งาน Google Gemini SDK ด้วยคีย์ใน Vercel / .env
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-
-function getMimeType(filename: string, originalType: string): string {
-  if (originalType && originalType !== 'application/octet-stream' && originalType !== '') {
-    return originalType;
-  }
-  const ext = filename.split('.').pop()?.toLowerCase();
-  const map: Record<string, string> = {
-    jpg: 'image/jpeg',
-    jpeg: 'image/jpeg',
-    png: 'image/png',
-    webp: 'image/webp',
-    gif: 'image/gif',
-  };
-  return map[ext || ''] || 'image/jpeg';
-}
 
 export async function POST(request: Request) {
   try {
@@ -26,68 +11,57 @@ export async function POST(request: Request) {
     const file = formData.get('slip') as File;
 
     if (!file) {
-      return NextResponse.json({ success: false, error: 'ไม่พบไฟล์สลิป' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'ไม่พบไฟล์สลิปโอนเงิน' }, { status: 400 });
     }
 
+    // 1. แปลงไฟล์รูปภาพสลิปให้อยู่ในรูปแบบ Buffer และ Base64 เพื่อส่งให้ Gemini อ่าน
     const arrayBuffer = await file.arrayBuffer();
-    const base64Image = Buffer.from(arrayBuffer).toString('base64');
-    const mimeType = getMimeType(file.name, file.type);
+    const buffer = Buffer.from(arrayBuffer);
+    const base64Image = buffer.toString('base64');
 
-    console.log('[ScanSlip] file:', file.name, '| type:', file.type, '| resolved:', mimeType);
+    // 2. เรียกใช้โมเดลระดับท็อปด้านการอ่านภาพสลิป
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-1.5-flash',
+      generationConfig: { responseMimeType: 'application/json' },
+    });
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-
+    // 3. ส่ง Prompt ไม้ตายเพื่อสั่งให้ AI แกะข้อมูลสลิปธนาคารไทยอย่างแม่นยำ
     const prompt = `
-You are an expert OCR system for Thai bank transfer slips (ใบสลิปธนาคารไทย).
-This image is a screenshot from a Thai banking app on a smartphone.
+      You are an expert OCR system specializing in Thai Bank transfer slips.
+      Analyze the attached slip image and extract the following information into a strict JSON format.
+      
+      Do not include any markdown formatting, only valid JSON.
+      If any field cannot be read or found, set it to null.
 
-Carefully read ALL text visible in the image, then respond ONLY with a raw JSON object.
-No markdown, no backticks, no explanation. Just the JSON.
+      The JSON structure MUST be exactly like this:
+      {
+        "amount": number (Total transfer amount, e.g. 500.00),
+        "date": "YYYY-MM-DD" (Transfer date in Gregorian calendar format, e.g. "2026-06-14"),
+        "time": "HH:mm" (Transfer time in 24-hour format, e.g. "15:42"),
+        "senderName": "string" (Full name of the sender person in Thai or English),
+        "receiverName": "string" (Full name of the receiver/juristic office),
+        "bankRef": "string" (Transaction ID / Reference Number)
+      }
+    `;
 
-{
-  "amount": <number e.g. 500.00, or null>,
-  "date": "<YYYY-MM-DD in Gregorian calendar, or null>",
-  "time": "<HH:mm in 24-hour format, or null>",
-  "senderName": "<full name of sender in Thai or English, or null>",
-  "receiverName": "<full name of receiver in Thai or English, or null>",
-  "bankRef": "<transaction reference number, or null>",
-  "bankName": "<bank name e.g. ธนาคารกสิกรไทย, or null>"
-}
+    const imagePart = {
+      inlineData: {
+        data: base64Image,
+        mimeType: file.type,
+      },
+    };
 
-Thai keywords to look for:
-- ยอดเงิน / จำนวนเงิน / โอนเงิน = amount
-- ชื่อผู้โอน / จาก / บัญชีต้นทาง = senderName
-- ชื่อผู้รับ / ถึง / ไปยัง / บัญชีปลายทาง = receiverName
-- เลขที่อ้างอิง / รหัสอ้างอิง / Ref / Transaction ID = bankRef
-- วันที่ / Date = date (convert Buddhist year to Gregorian if needed, e.g. 2568 → 2025)
-- เวลา / Time = time
-`;
-
-    const result = await model.generateContent([
-      { text: prompt },
-      { inlineData: { data: base64Image, mimeType } },
-    ]);
-
-    let responseText = result.response.text().trim();
-    console.log('[ScanSlip] RAW GEMINI:', responseText);
-
-    // ลบ markdown wrapper ถ้ามี
-    responseText = responseText
-      .replace(/^```json\s*/i, '')
-      .replace(/^```\s*/i, '')
-      .replace(/\s*```$/i, '')
-      .trim();
-
+    // 4. ยิงสั่งให้ AI ประมวลผลภาพสลิป
+    const result = await model.generateContent([prompt, imagePart]);
+    const responseText = result.response.text();
+    
+    // แปลงข้อความสติง JSON จาก AI ให้กลายเป็น Object
     const extractedData = JSON.parse(responseText);
-    console.log('[ScanSlip] Parsed:', extractedData);
 
     return NextResponse.json({ success: true, data: extractedData });
 
   } catch (error: any) {
-    console.error('[ScanSlip] Error:', error?.message || error);
-    return NextResponse.json(
-      { success: false, error: error?.message || 'ไม่สามารถอ่านสลิปได้' },
-      { status: 500 }
-    );
+    console.error('Gemini Scan Slip Error:', error);
+    return NextResponse.json({ success: false, error: 'AI ไม่สามารถอ่านข้อมูลสลิปนี้ได้' }, { status: 500 });
   }
 }
