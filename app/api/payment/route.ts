@@ -27,6 +27,11 @@ export async function POST(request: Request) {
     const transferDate = formData.get('transferDate') as string;
     const transferTime = formData.get('transferTime') as string;
     
+    // 🌟 รับค่าข้อมูลที่ AI สแกนมาได้
+    const senderName = formData.get('senderName') as string || null;
+    const receiverName = formData.get('receiverName') as string || null;
+    const bankRef = formData.get('bankRef') as string || null;
+    
     const payAmount = truncateDecimals(parseFloat(formData.get('payAmount') as string || '0'));
 
     if (!file || !houseNo || payAmount <= 0) 
@@ -86,6 +91,10 @@ export async function POST(request: Request) {
         slipUrl,
         transferDate,
         transferTime,
+        // 🌟 บันทึกข้อมูล AI ลง Database
+        senderName,
+        receiverName,
+        bankRef,
         residentHouseId: house.id,
         dueDate: now,
         isNotified: false
@@ -110,7 +119,7 @@ export async function POST(request: Request) {
             {
               type: "box", layout: "vertical", margin: "md", backgroundColor: "#FFF7ED", cornerRadius: "lg", paddingAll: "lg",
               contents: [
-                { type: "text", text: " เจ้าหน้าที่ได้รับข้อมูลแล้ว\n กำลังตรวจสอบ", size: "sm", color: "#EA580C", weight: "bold", align: "center" }
+                { type: "text", text: " เจ้าหน้าที่ได้รับข้อมูลแล้ว\nกำลังตรวจสอบ", size: "sm", color: "#EA580C", weight: "bold", align: "center" }
               ]
             },
             {
@@ -124,7 +133,6 @@ export async function POST(request: Request) {
               type: "box", layout: "horizontal", margin: "lg",
               contents: [
                 { type: "text", text: "วันที่ชำระ", size: "sm", color: "#4B5563" },
-                // 🌟 แก้ไขตรงนี้: เอา / ออก เปลี่ยนเป็นเว้นวรรค และเอา weight: "bold" ออก
                 { type: "text", text: `${dayStr} ${fullThaiMonths[parseInt(monthStr, 10)]} ${yearStr}`, size: "sm", color: "#111827", align: "end" }
               ]
             }

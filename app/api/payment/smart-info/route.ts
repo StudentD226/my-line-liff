@@ -41,19 +41,22 @@ export async function GET(request: Request) {
     let totalBase = 0;
     let totalFine = 0;
     
+    // 🌟 ตัวแปรใหม่สำหรับนับจำนวนเดือนที่ค้าง และเก็บเลขบิล
+    let overdueCount = 0;
+    let oldestInvoiceNo = 'INV-000';
+
     house.invoices.forEach(inv => {
       const dueDate = inv.dueDate ? new Date(inv.dueDate) : new Date();
       dueDate.setHours(0, 0, 0, 0);
 
       const base = truncateDecimals(Number(inv.baseAmount || 0));
-      let penalty = truncateDecimals(Number(inv.penaltyAmount || 0)); // 🌟 ดึงค่าปรับจาก DB ตรงๆ
+      let penalty = truncateDecimals(Number(inv.penaltyAmount || 0)); 
       const currentPaid = truncateDecimals(Number(inv.paidAmount || 0));
 
       if (today > dueDate) {
-        // 🌟 ถ้าระบบยังไม่แสตมป์ค่าปรับ (เป็น 0) ให้คำนวณสดจาก Config เหมือน Webhook เด๊ะๆ
         if (penalty === 0) {
           let monthsLate = (today.getFullYear() - dueDate.getFullYear()) * 12 + (today.getMonth() - dueDate.getMonth());
-          if (monthsLate <= 0) monthsLate = 1; // เลยกำหนดปุ๊บ บังคับ 1 เดือนทันที
+          if (monthsLate <= 0) monthsLate = 1; 
           penalty = truncateDecimals(monthsLate * penaltyRate);
         }
       } else {
@@ -64,7 +67,6 @@ export async function GET(request: Request) {
       const actualDebt = truncateDecimals(currentTotal - currentPaid);
 
       if (actualDebt > 0) {
-        // หักยอดที่เคยจ่ายมาแล้วออกแบบลดต้นลดดอก (หักค่าปรับก่อน)
         let remainingBase = base;
         let remainingPenalty = penalty;
 
@@ -79,6 +81,16 @@ export async function GET(request: Request) {
 
         totalBase += remainingBase;
         totalFine += remainingPenalty;
+        
+        // 🌟 ถ้ายอดหนี้เหลือ และเลยกำหนด ให้บวกจำนวนเดือนที่ค้าง
+        if (today > dueDate) {
+          overdueCount++;
+        }
+        
+        // 🌟 เก็บเลขบิลของอันที่เก่าที่สุดไว้ให้หน้าบ้านใช้งาน
+        if (oldestInvoiceNo === 'INV-000') {
+          oldestInvoiceNo = inv.invoiceNo;
+        }
       }
     });
 
@@ -89,7 +101,10 @@ export async function GET(request: Request) {
         monthlyRate: house.feeRate ? truncateDecimals(Number(house.feeRate)) : 1000,
         outstandingBalance: truncateDecimals(totalBase),
         fineAmount: truncateDecimals(totalFine),
-        totalToPay: truncateDecimals(totalBase + totalFine) 
+        totalToPay: truncateDecimals(totalBase + totalFine),
+        // 🌟 ส่งค่าไปให้หน้าบ้านโชว์แถบสีแดง
+        overdueMonthsText: overdueCount > 0 ? `ค้างชำระ ${overdueCount} รอบบิล` : '',
+        refInvoiceNo: oldestInvoiceNo
       }
     });
   } catch (error) {

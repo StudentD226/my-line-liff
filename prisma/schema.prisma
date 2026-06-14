@@ -105,6 +105,12 @@ model Invoice {
   
   slipUrl         String?       
   payeeName       String?       
+  
+  // 🌟 ฟิลด์ใหม่สำหรับเก็บข้อมูลจาก AI ตรวจสลิป
+  senderName      String?       // ชื่อผู้โอน
+  receiverName    String?       // ชื่อผู้รับโอน
+  bankRef         String?       // รหัสอ้างอิงธนาคาร
+  
   transferDate    String?       
   transferTime    String?       
   paidAt          DateTime?     
@@ -154,7 +160,7 @@ model Report {
 }
 
 // ------------------------------------------------------
-// 6. ข่าวประกาศ (News) 🌟 (อัปเดตใหม่ให้ตรงกับ UI)
+// 6. ข่าวประกาศ (News)
 // ------------------------------------------------------
 model News {
   id          String   @id @default(cuid())
