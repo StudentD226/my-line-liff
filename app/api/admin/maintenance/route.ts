@@ -1,7 +1,15 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import { v2 as cloudinary } from 'cloudinary'; // 🌟 1. นำเข้า Cloudinary สำหรับฝั่งแอดมิน
 
 const prisma = new PrismaClient();
+
+// 🌟 2. ตั้งค่าการเชื่อมต่อ Cloudinary ด้วยคีย์ใน .env
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 // ==========================================
 // 1. ดึงข้อมูลรายการแจ้งซ่อมทั้งหมด (GET)
@@ -61,7 +69,6 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    // 🌟 รับค่า updateImageUrl (รูปที่แอดมินเพิ่งถ่าย) มาด้วย
     const { id, status, expectedDate, note, sendLine, updateImageUrl } = body;
 
     const existingReport = await prisma.report.findUnique({ where: { id } });
@@ -76,13 +83,32 @@ export async function POST(request: Request) {
         } catch (e) {}
     }
 
-    // 🌟 ยัดรูปลงไปใน History ข้อใหม่ล่าสุด
+    // 🌟 3. ตรวจสอบและอัปโหลดรูปภาพที่แอดมินส่งมาเข้า Cloudinary
+    let finalUpdateImageUrl = null;
+    if (updateImageUrl && updateImageUrl.startsWith('data:image')) {
+      try {
+        // อัปโหลดรูปภาพหลักฐานจากแอดมินไปเก็บไว้ในโฟลเดอร์ admin_updates
+        const uploadResponse = await cloudinary.uploader.upload(updateImageUrl, {
+          folder: 'admin_updates',
+        });
+        // เปลี่ยนมาใช้ลิงก์ URL สั้นๆ จาก Cloudinary แทนสายอักขระ Base64 เดิม
+        finalUpdateImageUrl = uploadResponse.secure_url;
+      } catch (uploadError) {
+        console.error("Admin Cloudinary Upload Fail:", uploadError);
+        return NextResponse.json({ success: false, error: 'อัปโหลดรูปภาพฝั่งแอดมินเข้าระบบ Cloud ไม่สำเร็จ' }, { status: 500 });
+      }
+    } else {
+      // ถ้ารูปที่ส่งมาไม่ใช่ Base64 (อาจเป็นลิงก์เดิมอยู่แล้ว) ให้ใช้ค่านั้นต่อได้เลย
+      finalUpdateImageUrl = updateImageUrl || null;
+    }
+
+    // 🌟 ยัดลิงก์รูปภาพสั้นลงไปในประวัติ Timeline ข้อใหม่ล่าสุด
     extraData.expectedDate = expectedDate || extraData.expectedDate;
     extraData.history.push({
         status: status,
         date: new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' }),
         note: note || 'อัปเดตสถานะโดยนิติบุคคล',
-        imageUrl: updateImageUrl || null // เก็บรูปแอดมินไว้ใน Timeline
+        imageUrl: finalUpdateImageUrl // บันทึกลิงก์รูปภาพสั้นสะอาดลงตารางโครงสร้าง JSON ของระบบ
     });
 
     // บันทึกลงฐานข้อมูล
@@ -201,8 +227,8 @@ export async function POST(request: Request) {
               }
             };
 
-            // 🌟 พระเอกอยู่ตรงนี้: ถ้าแอดมินส่งรูปใหม่มา ให้โชว์รูปล่าสุดของแอดมิน ถ้าไม่ส่งมา ค่อยไปดึงรูปเก่าของลูกบ้านมาโชว์!
-            const displayImageUrl = updateImageUrl || existingReport.imageUrl;
+            // 🌟 จุดเปลี่ยนสำคัญ: แสดงรูปภาพที่อัปเดตล่าสุดของแอดมินบนตัว Flex Message
+            const displayImageUrl = finalUpdateImageUrl || existingReport.imageUrl;
             
             if (displayImageUrl) {
               flexMessage.contents.hero = {
