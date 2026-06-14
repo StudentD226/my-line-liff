@@ -1,13 +1,110 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
-import { sendStatusUpdateFlex } from '@/lib/line-notify'; 
+import { messagingApi } from '@line/bot-sdk';
 
 const prisma = new PrismaClient();
 const truncateDecimals = (val: number) => Math.floor(Math.round(val * 10000) / 100) / 100;
 
+// 🌟 ตั้งค่า LINE Client สำหรับยิงแจ้งเตือน
+const client = new messagingApi.MessagingApiClient({
+  channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN || '',
+});
+
 // ==========================================
-// 1. ดึงข้อมูลสลิปที่รอตรวจสอบ (ปรับปรุงสูตรคำนวณโชว์แอดมิน)
+// ฟังก์ชันพิเศษสำหรับยิง Flex Message แจ้งผลการตรวจสลิป
+// ==========================================
+async function sendInlineFlexNotify(invoice: any, status: string, note?: string) {
+  if (!client) return;
+  try {
+    const house = await prisma.house.findUnique({
+      where: { id: invoice.residentHouseId },
+      include: { residents: true }
+    });
+    if (!house) return;
+
+    const lineIds = house.residents.map(r => r.lineId).filter(Boolean) as string[];
+    if (lineIds.length === 0) return;
+
+    const isApproved = status === 'PAID';
+    const statusBgColor = isApproved ? "#ECFDF5" : "#FEF2F2"; 
+    const statusTextColor = isApproved ? "#059669" : "#DC2626"; 
+    const statusIconAndText = isApproved ? "✅ ยืนยันยอดเงินสำเร็จ" : "❌ สลิปถูกปฏิเสธ";
+    
+    const buttonColor = isApproved ? "#376B64" : "#EF4444";
+    const buttonLabel = isApproved ? "ดูประวัติบิล" : "แนบสลิปใหม่";
+    const buttonUri = isApproved ? "/invoices" : "/payment"; 
+
+    const flexBodyContents: any[] = [
+      {
+        type: "box", layout: "horizontal", alignItems: "center",
+        contents: [
+          { type: "text", text: `🏠 บ้านเลขที่ ${house.houseNo || "-"}`, weight: "bold", size: "xl", color: "#111827" }
+        ]
+      },
+      {
+        type: "box", layout: "vertical", margin: "md", backgroundColor: statusBgColor, cornerRadius: "lg", paddingAll: "lg",
+        contents: [
+          { type: "text", text: statusIconAndText, size: "sm", color: statusTextColor, weight: "bold", align: "center" }
+        ]
+      }
+    ];
+
+    if (!isApproved && note) {
+      flexBodyContents.push({
+        type: "box", layout: "vertical", margin: "xl", backgroundColor: "#F9FAFB", cornerRadius: "lg", paddingAll: "lg",
+        contents: [
+          { type: "text", text: "สาเหตุที่ปฏิเสธสลิป", size: "xs", color: "#6B7280", weight: "bold", margin: "sm" },
+          { type: "text", text: note, size: "sm", color: "#EF4444", weight: "bold", wrap: true, margin: "sm" }
+        ]
+      });
+    }
+
+    flexBodyContents.push({
+      type: "box", layout: "horizontal", margin: "lg",
+      contents: [
+        { type: "text", text: "ยอดแจ้งโอน", size: "sm", color: "#4B5563" },
+        { type: "text", text: `${Number(invoice.totalAmount).toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#111827", align: "end", weight: "bold" }
+      ]
+    });
+
+    const flexMessage: messagingApi.FlexMessage = {
+      type: "flex",
+      altText: isApproved ? `ยืนยันรับชำระเงิน บ้านเลขที่ ${house.houseNo}` : `สลิปถูกปฏิเสธ บ้านเลขที่ ${house.houseNo}`,
+      contents: {
+        type: "bubble",
+        size: "kilo",
+        body: {
+          type: "box", layout: "vertical", paddingAll: "xl", backgroundColor: "#FFFFFF",
+          contents: flexBodyContents
+        },
+        footer: {
+          type: "box", layout: "vertical", paddingStart: "xl", paddingEnd: "xl", paddingBottom: "xl",
+          contents: [
+            {
+              type: "button", style: "primary", color: buttonColor, height: "sm",
+              action: { 
+                type: "uri", 
+                label: buttonLabel, 
+                uri: `https://liff.line.me/${process.env.NEXT_PUBLIC_LIFF_ID}${buttonUri}` 
+              }
+            },
+            {
+              type: "text", text: `REF: ${invoice.invoiceNo}`, color: "#9CA3AF", size: "xs", align: "center", margin: "md"
+            }
+          ]
+        }
+      } as any
+    };
+
+    await client.multicast({ to: lineIds, messages: [flexMessage] });
+  } catch (error) {
+    console.error('Inline LINE notify failed:', error);
+  }
+}
+
+// ==========================================
+// 1. ดึงข้อมูลสลิปที่รอตรวจสอบ (GET)
 // ==========================================
 export async function GET() {
   try {
@@ -35,7 +132,6 @@ export async function GET() {
     });
 
     const mappedInvoices = invoices.map(inv => {
-      // 🌟 1. ดักแก้บั๊ก: อัปเดตค่าปรับในอาเรย์ย่อยของบิลค้างก่อน เผื่อ Frontend ดึงไปวนลูปแสดงผล
       if (inv.house && inv.house.invoices) {
         inv.house.invoices = inv.house.invoices.map(item => {
           let base = Number(item.baseAmount || 0);
@@ -58,7 +154,6 @@ export async function GET() {
         });
       }
 
-      // 🌟 2. คำนวณยอดหนี้รวมสุทธิของบ้านหลังนี้ใหม่ทั้งหมดแบบรวมค่าปรับสดๆ
       const totalDebt = inv.house?.invoices.reduce((sum, item) => {
         const itemTotal = Number(item.baseAmount || 0) + Number(item.penaltyAmount || 0); 
         const debt = truncateDecimals(itemTotal - Number(item.paidAmount || 0));
@@ -67,7 +162,6 @@ export async function GET() {
       
       return {
         ...inv,
-        // 🎯 3. ดักส่งให้ 2 ชื่อตัวแปรเลย กันเหนียว เผื่อ Frontend เรียกชื่อต่างกัน ยอดจะได้ขึ้นชัวร์ๆ!
         totalDebt: truncateDecimals(totalDebt),
         outstandingBalance: truncateDecimals(totalDebt) 
       };
@@ -81,7 +175,7 @@ export async function GET() {
 }
 
 // ==========================================
-// 2. แอดมินกดอนุมัติ/ปฏิเสธ สลิป (ระบบ FIFO)
+// 2. แอดมินกดอนุมัติ/ปฏิเสธ สลิป (PATCH) - ระบบ FIFO
 // ==========================================
 export async function PATCH(request: Request) {
   try {
@@ -92,12 +186,17 @@ export async function PATCH(request: Request) {
     const transactionInvoice = await prisma.invoice.findUnique({ where: { id: invoiceId } });
     if (!transactionInvoice) return NextResponse.json({ success: false, error: 'ไม่พบรายการแจ้งโอน' }, { status: 404 });
 
+    // 🔴 1. กรณีปฏิเสธสลิป
     if (status === 'REJECTED') {
       await prisma.invoice.update({ where: { id: invoiceId }, data: { status: 'REJECTED' } });
-      await sendStatusUpdateFlex(invoiceId, 'REJECTED').catch(e => console.error('LINE notify failed', e)); 
+      
+      // 🌟 เรียกใช้ฟังก์ชันยิง Flex Message แจ้งเตือนสีแดงพร้อมบอกสาเหตุ
+      await sendInlineFlexNotify(transactionInvoice, 'REJECTED', note); 
+      
       return NextResponse.json({ success: true, message: `ปฏิเสธสลิปสำเร็จ` });
     }
 
+    // 🟢 2. กรณีอนุมัติสลิป (ทำงานตามระบบ FIFO)
     if (status === 'PAID') {
       let remainingMoney = truncateDecimals(Number(transactionInvoice.totalAmount)); 
       let updatedInvoicesCount = 0;
@@ -211,9 +310,8 @@ export async function PATCH(request: Request) {
         data: { status: 'PAID', paidAt: new Date() } 
       });
       
-      try {
-        await sendStatusUpdateFlex(invoiceId, 'PAID');
-      } catch (lineError) { console.error('LINE notify failed', lineError); }
+      // 🌟 เรียกใช้ฟังก์ชันยิง Flex Message แจ้งเตือนสีเขียว
+      await sendInlineFlexNotify(transactionInvoice, 'PAID');
 
       return NextResponse.json({ success: true, message: `รับยอดโอนสำเร็จ (อัปเดตไป ${updatedInvoicesCount} รายการ)` });
     }
