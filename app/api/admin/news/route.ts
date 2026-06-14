@@ -2,10 +2,18 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { messagingApi } from '@line/bot-sdk';
+import { v2 as cloudinary } from 'cloudinary'; // 🌟 1. นำเข้า Cloudinary
 
 const prisma = new PrismaClient();
 const client = new messagingApi.MessagingApiClient({
   channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN || '',
+});
+
+// 🌟 2. ตั้งค่า Cloudinary ด้วยตัวแปร .env
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
 // Helper: แปลงวันที่เป็นรูปแบบภาษาไทย
@@ -51,16 +59,32 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { id, title, category, content, status, imageUrl } = body;
 
+    // 🌟 3. ท่าไม้ตายคัดแยกรูปภาพเข้า Cloudinary
+    let finalImageUrl = imageUrl;
+    
+    // ถ้ารูปเป็น Base64 (มาจากไฟล์ที่เพิ่งอัปโหลด) ให้โยนขึ้น Cloudinary
+    if (imageUrl && imageUrl.startsWith('data:image')) {
+      try {
+        const uploadResponse = await cloudinary.uploader.upload(imageUrl, {
+          folder: 'village_news', // เก็บในโฟลเดอร์ข่าวโดยเฉพาะ
+        });
+        finalImageUrl = uploadResponse.secure_url;
+      } catch (uploadError) {
+        console.error("Cloudinary News Upload Fail:", uploadError);
+        return NextResponse.json({ success: false, error: 'อัปโหลดรูปภาพขึ้น Cloud ไม่สำเร็จ' }, { status: 500 });
+      }
+    }
+
     let savedNews;
     
     if (id) {
       savedNews = await prisma.news.update({
         where: { id },
-        data: { title, category, content, imageUrl, status, scheduledAt: null }
+        data: { title, category, content, imageUrl: finalImageUrl, status, scheduledAt: null } // 🌟 ใช้ finalImageUrl
       });
     } else {
       savedNews = await prisma.news.create({
-        data: { title, category, content, imageUrl, status }
+        data: { title, category, content, imageUrl: finalImageUrl, status } // 🌟 ใช้ finalImageUrl
       });
     }
 
@@ -78,10 +102,10 @@ export async function POST(request: Request) {
           altText: `📢 ประกาศใหม่: ${title}`,
           contents: {
             type: "bubble",
-            size: "kilo", // 🌟 เปลี่ยนเป็นขนาด Kilo ตามคำขอครับลูกพี่
-            hero: imageUrl ? {
+            size: "kilo", // 🌟 เปลี่ยนเป็นขนาด Kilo
+            hero: finalImageUrl ? { // 🌟 ใช้ finalImageUrl ยิงขึ้นหน้าการ์ด
               type: "image",
-              url: imageUrl,
+              url: finalImageUrl,
               size: "full",
               aspectRatio: "20:13",
               aspectMode: "fit"
@@ -132,7 +156,7 @@ export async function POST(request: Request) {
                   type: "text",
                   text: title,
                   weight: "bold",
-                  size: "md", // ปรับขนาดฟอนต์ให้เข้ากับขนาด Kilo
+                  size: "md", 
                   color: "#111827",
                   wrap: true,
                   margin: "md"
@@ -143,7 +167,7 @@ export async function POST(request: Request) {
                   size: "xs",
                   color: "#4B5563",
                   wrap: true,
-                  maxLines: 4, // ลดจำนวนบรรทัดลงให้พอดีขนาด Kilo
+                  maxLines: 4, 
                   margin: "sm"
                 },
                 {
@@ -169,7 +193,7 @@ export async function POST(request: Request) {
                   type: "button",
                   style: "primary",
                   color: "#111827",
-                  height: "sm", // ปุ่มขนาดเล็กลงให้ดูแพง
+                  height: "sm", 
                   action: { 
                     type: "uri", 
                     label: "อ่านรายละเอียด", 

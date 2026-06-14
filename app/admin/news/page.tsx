@@ -101,39 +101,24 @@ export default function AdminNewsManagement() {
     setIsModalOpen(true);
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // 🌟 ฟังก์ชันจัดการรูปภาพที่อัปเกรดแล้ว (แปลงเป็น Base64)
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setIsUploading(true);
-    try {
-      const uploadData = new FormData();
-      uploadData.append('file', file);
-      
-      uploadData.append('upload_preset', 'news_unsigned'); 
-
-      // ใส่ชื่อคลาวด์เนมของลูกพี่
-      const cloudName = 'dszygeicw';
-      
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
-        method: 'POST',
-        body: uploadData
-      });
-
-      const json = await res.json();
-      
-      if (json.secure_url) {
-        const optimizedUrl = json.secure_url.replace('/upload/', '/upload/w_1000,c_limit,q_auto/');
-        setFormData({ ...formData, image: optimizedUrl });
-        Swal.fire({ icon: 'success', title: 'อัปโหลดรูปสำเร็จ', timer: 1500, showConfirmButton: false, customClass: { popup: 'rounded-[2rem]' } });
-      } else {
-        Swal.fire({ icon: 'error', title: 'อัปโหลดไม่สำเร็จ', text: json.error?.message || 'กรุณาลองใหม่อีกครั้ง' });
-      }
-    } catch (error) {
-      Swal.fire({ icon: 'error', title: 'เชื่อมต่อ Cloudinary ล้มเหลว' });
-    } finally {
-      setIsUploading(false);
+    if (file.size > 5 * 1024 * 1024) {
+      Swal.fire({ icon: 'warning', title: 'ไฟล์ใหญ่เกินไป', text: 'กรุณาอัปโหลดรูปขนาดไม่เกิน 5MB', customClass: { popup: 'rounded-[2rem]' }});
+      return;
     }
+
+    setIsUploading(true);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      // เอา Base64 ไปเก็บในสเตท เตรียมส่งให้ API หลังบ้านจัดการ
+      setFormData({ ...formData, image: reader.result as string });
+      setIsUploading(false);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSave = async (statusToSave: string) => {
@@ -155,7 +140,7 @@ export default function AdminNewsManagement() {
           category: formData.category,
           content: formData.content,
           status: statusToSave,
-          sendLine: true, 
+          sendLine: statusToSave === 'PUBLISHED', // 🌟 ส่ง LINE เฉพาะตอนกดเผยแพร่
           imageUrl: formData.image
         })
       });
@@ -295,7 +280,6 @@ export default function AdminNewsManagement() {
                       <div className="flex items-start gap-3">
                         {n.isPinned ? <Pin size={16} className="text-blue-500 mt-1 shrink-0" /> : <FileText size={16} className="text-slate-300 mt-1 shrink-0" />}
                         <div>
-                          {/* ❌ เอาส่วนยอดวิวกับคอมเมนต์ออกไปแล้ว */}
                           <p className="font-bold text-slate-800 text-base mt-0.5">{n.title}</p>
                         </div>
                       </div>
@@ -383,17 +367,12 @@ export default function AdminNewsManagement() {
                   <label className="block text-sm font-bold text-slate-700 mb-2">แนบรูปภาพ (Cover)</label>
                   <input type="file" id="upload-image" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={isUploading} />
                   <label htmlFor="upload-image" className={`w-full h-32 border-2 border-dashed ${formData.image ? 'border-emerald-400 bg-emerald-50' : 'border-slate-300 bg-slate-50'} rounded-xl flex flex-col items-center justify-center text-slate-400 hover:bg-slate-100 cursor-pointer overflow-hidden relative transition-colors`}>
-                    {isUploading ? (
-                      <div className="flex flex-col items-center gap-2">
-                        <div className="animate-spin w-6 h-6 border-2 border-slate-400 border-t-transparent rounded-full"></div>
-                        <span className="text-xs font-bold text-slate-500">กำลังอัปโหลดขึ้นเซิร์ฟเวอร์...</span>
-                      </div>
-                    ) : formData.image ? (
+                    {formData.image ? (
                       <>
                         <img src={formData.image} alt="Preview" className="absolute inset-0 w-full h-full object-cover opacity-40" />
                         <div className="relative z-10 flex flex-col items-center bg-white/90 px-4 py-2 rounded-xl shadow-sm border border-emerald-100">
                           <CheckCircle size={24} className="text-emerald-500 mb-1" />
-                          <span className="text-xs font-bold text-emerald-700">อัปโหลดสำเร็จ (คลิกเปลี่ยนรูป)</span>
+                          <span className="text-xs font-bold text-emerald-700">อัปโหลดรูปตัวอย่างแล้ว (คลิกเปลี่ยนรูป)</span>
                         </div>
                       </>
                     ) : (
@@ -408,7 +387,7 @@ export default function AdminNewsManagement() {
               </div>
             </div>
 
-            {/* 🌟 Settings & Preview Section (ปรับใหม่เป็นหน้าจอ LINE จำลอง) 🌟 */}
+            {/* Settings & Preview Section */}
             <div className="w-full md:w-80 bg-slate-100 p-6 md:p-8 flex flex-col relative border-l border-slate-200">
               <button onClick={() => setIsModalOpen(false)} className="hidden md:block absolute top-6 right-6 text-slate-400 hover:text-slate-600 z-10"><X size={24}/></button>
               
