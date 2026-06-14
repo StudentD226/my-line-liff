@@ -1,7 +1,15 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import { v2 as cloudinary } from 'cloudinary'; // 🌟 1. นำเข้า Cloudinary
 
 const prisma = new PrismaClient();
+
+// 🌟 2. ตั้งค่าการเชื่อมต่อ Cloudinary ด้วยคีย์ใน .env
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 // ========================================================
 // 🌟 1. [GET] ระบบดึงประวัติการแจ้งเรื่องของลูกบ้าน
@@ -40,7 +48,7 @@ export async function GET(request: Request) {
         reportedDate: r.createdAt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }),
         expectedDate: extraData.expectedDate,
         history: extraData.history,
-        imageUrl: r.imageUrl,
+        imageUrl: r.imageUrl, // 🌟 ตรงนี้จะคืนค่าเป็น URL ของ Cloudinary แทน Base64 แล้ว
       };
     });
 
@@ -52,7 +60,7 @@ export async function GET(request: Request) {
 }
 
 // ========================================================
-// 🌟 2. [POST] ระบบบันทึกการแจ้งเรื่องใหม่
+// 🌟 2. [POST] ระบบบันทึกการแจ้งเรื่องใหม่ (พร้อมอัปโหลดรูป)
 // ========================================================
 export async function POST(req: Request) {
   try {
@@ -67,6 +75,24 @@ export async function POST(req: Request) {
 
     if (!user || !user.residentHouse) {
       return NextResponse.json({ success: false, error: 'ไม่พบข้อมูลบ้านในระบบ กรุณาลงทะเบียนข้อมูลบ้านก่อนครับ' }, { status: 400 });
+    }
+
+    // 🌟 3. คัดแยกและอัปโหลดรูปเข้า Cloudinary
+    let databaseImageUrl = null;
+    
+    // ตรวจสอบว่ามีการแนบรูปมา และเป็นไฟล์ Base64 จริงๆ
+    if (imageUrl && imageUrl.startsWith('data:image')) {
+      try {
+        // ยิงรูปขึ้น Cloudinary ไปเก็บไว้ในโฟลเดอร์ village_maintenance
+        const uploadResponse = await cloudinary.uploader.upload(imageUrl, {
+          folder: 'village_maintenance',
+        });
+        // สกัดเอาลิงก์ URL ปลอดภัยมาใช้งาน
+        databaseImageUrl = uploadResponse.secure_url;
+      } catch (uploadError) {
+        console.error("Cloudinary Upload Fail:", uploadError);
+        return NextResponse.json({ success: false, error: 'อัปโหลดรูปภาพไม่สำเร็จ กรุณาลองใหม่' }, { status: 500 });
+      }
     }
 
     // 2. สร้างเลขที่แจ้งซ่อม (Ticket No) แบบสุ่ม
@@ -90,7 +116,7 @@ export async function POST(req: Request) {
         ]
     });
 
-    // 4. บันทึกเข้าตาราง Report (ฟิลด์ imageUrl จะเก็บข้อความ Base64 ของรูปภาพลง DB ทันที)
+    // 4. บันทึกเข้าตาราง Report
     const newReport = await prisma.report.create({
       data: {
         ticketNo: ticketNo,
@@ -100,7 +126,7 @@ export async function POST(req: Request) {
         location: location,
         title: title,
         description: description,
-        imageUrl: imageUrl, 
+        imageUrl: databaseImageUrl, // 🌟 เซฟลิงก์สั้นๆ ลง Database (ประหยัดพื้นที่ 99%)
         residentHouseId: user.residentHouse.id,
         status: "PENDING",
         adminNote: initialAdminNote 
