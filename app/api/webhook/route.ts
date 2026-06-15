@@ -39,7 +39,7 @@ export async function POST(request: Request) {
                       billingYear: { not: 9999 },
                       invoiceNo: { not: { startsWith: 'TR-' } } 
                     },
-                    orderBy: [{ billingYear: 'asc' }, { billingMonth: 'asc' }]
+                    orderBy: [{ billingYear: 'desc' }, { billingMonth: 'desc' }]
                   }
                 }
               }
@@ -157,7 +157,7 @@ export async function POST(request: Request) {
                 tableContents.push({
                   type: "box", layout: "horizontal", margin: "md",
                   contents: [
-                    { type: "text", text: `ยอดค้างชำระปี ${yearNum + 543}`, size: "sm", color: "#EF4444" },
+                    { type: "text", text: `ยอดค้างปี ${yearNum + 543}`, size: "sm", color: "#EF4444" },
                     { type: "text", text: `${pastYearTotals[yearNum].toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end" }
                   ]
                 });

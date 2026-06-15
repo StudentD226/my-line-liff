@@ -1,33 +1,37 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
+import { messagingApi } from '@line/bot-sdk';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
+const client = new messagingApi.MessagingApiClient({
+  channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN || '',
+});
 
 const fullThaiMonths = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
 
-// Helper ตัดทศนิยมทิ้ง
+// 🌟 Helper ตัดทศนิยมทิ้ง 
 const truncateDecimals = (val: number): number => Math.floor(Math.round(val * 10000) / 100) / 100;
 
 function createInvoiceFlexMessage(data: any) {
   const tableContents: any[] = [];
 
   // 🌟 ตั้งค่า Theme สีเริ่มต้น
-  let boxBgColor = "#EBF5FB"; // ฟ้าอ่อน (บิลใหม่)
-  let mainTextColor = "#111827"; // ดำ (ตัวหนังสือหลัก)
-  let itemTextColor = "#059669"; // เขียว (รายการบิลล่าสุด)
+  let boxBgColor = "#EBF5FB"; 
+  let mainTextColor = "#111827"; 
+  let itemTextColor = "#059669"; // สีเขียวสำหรับรายการบิลปกติ
   let mainTitle = "ยอดที่ต้องชำระ";
 
   // 🌟 เปลี่ยน Theme สีตามประเภทบิล
   if (data.type === 'REMINDER') {
-    boxBgColor = "#FFEDD5";     // ส้มอ่อน
-    mainTextColor = "#EA580C";   // ส้มเข้ม
-    itemTextColor = "#EA580C";   // 🌟 รายการบิลล่าสุด เปลี่ยนเป็นสีส้ม
+    boxBgColor = "#FFEDD5";     
+    mainTextColor = "#EA580C";   
+    itemTextColor = "#EA580C";   // เปลี่ยนเป็นสีส้มสำหรับใบเตือน
     mainTitle = "แจ้งเตือนยอดที่ต้องชำระ";
   } else if (data.type === 'OVERDUE' || data.isOverdue) {
-    boxBgColor = "#FDEBEC";     // แดงอ่อน
-    mainTextColor = "#EF4444";   // แดงเข้ม
-    itemTextColor = "#EF4444";   // 🌟 รายการบิลล่าสุด เปลี่ยนเป็นสีแดง
+    boxBgColor = "#FDEBEC";     
+    mainTextColor = "#EF4444";   
+    itemTextColor = "#EF4444";   // เปลี่ยนเป็นสีแดงสำหรับใบแจ้งหนี้เกินกำหนด
     mainTitle = "ยอดค้างชำระ";
   }
 
@@ -43,13 +47,13 @@ function createInvoiceFlexMessage(data: any) {
   }
 
   if (data.pastMonthItems && data.pastMonthItems.length > 0) {
-    // เรียงจากเดือนเก่าที่สุดไปเดือนใหม่ล่าสุด (คงเป็นสีแดงเสมอ)
-    [...data.pastMonthItems].reverse().forEach((item: any) => {
+    // 🌟 แก้ไข: เอา .reverse() ออก เพื่อให้เรียงจากเดือนปัจจุบันลงไปเก่าสุดตามฐานข้อมูลที่เรียง desc ไว้ และเปลี่ยนสีตามธีม
+    data.pastMonthItems.forEach((item: any) => {
       tableContents.push({
         type: "box", layout: "horizontal", margin: "md",
         contents: [
-          { type: "text", text: item.label, size: "sm", color: "#EF4444" },
-          { type: "text", text: `${item.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end" }
+          { type: "text", text: item.label, size: "sm", color: itemTextColor },
+          { type: "text", text: `${item.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: itemTextColor, align: "end" }
         ]
       });
     });
@@ -57,14 +61,14 @@ function createInvoiceFlexMessage(data: any) {
 
   if (data.pastYearTotals) {
     Object.keys(data.pastYearTotals)
-      .sort((a, b) => Number(b) - Number(a))
+      .sort((a, b) => Number(b) - Number(a)) // 🌟 เรียงปีจาก ใหม่ ไป เก่า
       .forEach(yearStr => {
         const yearNum = parseInt(yearStr);
         tableContents.push({
           type: "box", layout: "horizontal", margin: "md",
           contents: [
-            { type: "text", text: `ยอดค้างชำระปี ${yearNum + 543}`, size: "sm", color: "#EF4444" },
-            { type: "text", text: `${data.pastYearTotals[yearNum].toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end" }
+            { type: "text", text: `ยอดค้างปี ${yearNum + 543}`, size: "sm", color: itemTextColor }, // 🌟 เปลี่ยนสีตามธีม
+            { type: "text", text: `${data.pastYearTotals[yearNum].toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: itemTextColor, align: "end" }
           ]
         });
       });
@@ -74,8 +78,8 @@ function createInvoiceFlexMessage(data: any) {
     tableContents.push({
       type: "box", layout: "horizontal", margin: "md",
       contents: [
-        { type: "text", text: `ค่าปรับ`, size: "sm", color: "#EA580C" },
-        { type: "text", text: `${data.totalPenalty.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EA580C", align: "end" }
+        { type: "text", text: `ค่าปรับ`, size: "sm", color: itemTextColor }, // 🌟 เปลี่ยนสีตามธีม
+        { type: "text", text: `${data.totalPenalty.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: itemTextColor, align: "end" }
       ]
     });
   }
@@ -188,7 +192,6 @@ async function handleRemindCronJob(request: Request) {
     
     const targetTimeStr = config.invoiceGenerateTime || "08:00";
 
-    // เช็คเวลา (ชั่วโมง:นาที)
     if (currentTimeStr !== targetTimeStr) {
       return NextResponse.json({ 
         success: true, 
@@ -198,19 +201,16 @@ async function handleRemindCronJob(request: Request) {
 
     let reminderType: 'NONE' | 'REMINDER' | 'OVERDUE' = 'NONE';
     
-    // 🌟 บั๊กวันทำงาน: เช็คให้ชัวร์ว่าตรงกับวันที่ใน config หรือวันที่ 15 แน่ๆ
     if (currentDay === config.secondReminderDay) {
         reminderType = 'REMINDER';
     } else if (currentDay === config.penaltyStartDay || currentDay === 15) {
         reminderType = 'OVERDUE';
     }
 
-    // 🌟 ถ้าไม่ใช่วันที่กำหนด ให้เด้งออกทันที
     if (reminderType === 'NONE') {
         return NextResponse.json({ success: true, message: `วันนี้ (วันที่ ${currentDay}) ไม่ใช่วันส่งทวงยอดค้างครับ` });
     }
 
-    // 1. ดักจับตั้งแต่ใน DB เลยว่าไม่หยิบบิลทดสอบ TR- มารันส่งทวงหนี้
     const pendingInvoices = await prisma.invoice.findMany({
       where: { 
         status: { in: ['PENDING', 'PARTIAL', 'OVERDUE', 'REJECTED'] as any },
@@ -261,7 +261,6 @@ async function handleRemindCronJob(request: Request) {
     for (const [houseId, invList] of uniqueHouseMap.entries()) {
       const sampleInv = invList[0];
 
-      // 2. ดักบิล TR- ไม่ให้โผล่เข้ามารวมในหนี้ค้างชำระในอดีตของบ้านหลังนั้นๆ
       const allUnpaidForThisHouse = await prisma.invoice.findMany({
         where: { 
           residentHouseId: houseId, 
@@ -271,7 +270,7 @@ async function handleRemindCronJob(request: Request) {
             invoiceNo: { startsWith: 'TR-' }
           }
         },
-        orderBy: [{ billingYear: 'desc' }, { billingMonth: 'desc' }] // เอาใบใหม่ล่าสุดขึ้นก่อน
+        orderBy: [{ billingYear: 'desc' }, { billingMonth: 'desc' }]
       });
 
       if (allUnpaidForThisHouse.length === 0) continue;

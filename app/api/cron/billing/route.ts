@@ -13,69 +13,69 @@ function createInvoiceFlexMessage(data: any) {
   const tableContents: any[] = [];
 
   // 🌟 ตั้งค่า Theme สีเริ่มต้น
-  let boxBgColor = "#EBF5FB"; // ฟ้าอ่อน (บิลใหม่)
-  let mainTextColor = "#111827"; // ดำ (ตัวหนังสือหลัก)
-  let itemTextColor = "#059669"; // เขียว (รายการบิลล่าสุด)
+  let boxBgColor = "#EBF5FB"; 
+  let mainTextColor = "#111827"; 
+  let itemTextColor = "#059669"; // สีเขียวสำหรับรายการบิลปกติ
   let mainTitle = "ยอดที่ต้องชำระ";
 
   // 🌟 เปลี่ยน Theme สีตามประเภทบิล
   if (data.type === 'REMINDER') {
-    boxBgColor = "#FFEDD5";      // ส้มอ่อน
-    mainTextColor = "#EA580C";   // ส้มเข้ม
-    itemTextColor = "#EA580C";   // 🌟 เปลี่ยนรายการบิลล่าสุดเป็นสีส้ม
+    boxBgColor = "#FFEDD5";     
+    mainTextColor = "#EA580C";   
+    itemTextColor = "#EA580C";   // ส้ม
     mainTitle = "แจ้งเตือนยอดที่ต้องชำระ";
   } else if (data.type === 'OVERDUE' || data.isOverdue) {
-    boxBgColor = "#FDEBEC";      // แดงอ่อน
-    mainTextColor = "#EF4444";   // แดงเข้ม
-    itemTextColor = "#EF4444";   // 🌟 เปลี่ยนรายการบิลล่าสุดเป็นสีแดง
+    boxBgColor = "#FDEBEC";     
+    mainTextColor = "#EF4444";   
+    itemTextColor = "#EF4444";   // แดง
     mainTitle = "ยอดค้างชำระ";
   }
 
-  // 🌟 ใช้ itemTextColor กับบิลเดือนล่าสุด
   if (data.currentInvoiceItem) {
     tableContents.push({
       type: "box", layout: "horizontal", margin: "md",
       contents: [
-        { type: "text", text: data.currentInvoiceItem.label, size: "sm", color: itemTextColor },
-        { type: "text", text: `${data.currentInvoiceItem.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: itemTextColor, align: "end" }
+        { type: "text", text: data.currentInvoiceItem.label, size: "sm", color: itemTextColor }, 
+        { type: "text", text: `${data.currentInvoiceItem.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: itemTextColor, align: "end" } 
       ]
     });
   }
 
   if (data.pastMonthItems && data.pastMonthItems.length > 0) {
-    // 🌟 เอา .reverse() ออก เรียงจากเดือนเก่าไปเดือนใหม่เสมอ (คงเป็นสีแดง)
+    // 🌟 รายการเดือน: เรียงจาก ใหม่ ไป เก่า (desc) + สีตามธีม
     data.pastMonthItems.forEach((item: any) => {
       tableContents.push({
         type: "box", layout: "horizontal", margin: "md",
         contents: [
-          { type: "text", text: item.label, size: "sm", color: "#EF4444" },
-          { type: "text", text: `${item.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end" }
+          { type: "text", text: item.label, size: "sm", color: itemTextColor }, 
+          { type: "text", text: `${item.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: itemTextColor, align: "end" } 
         ]
       });
     });
   }
 
   if (data.pastYearTotals) {
+    // 🌟 รายการปี: เรียงจาก ใหม่ ไป เก่า (desc) + สีตามธีม
     Object.keys(data.pastYearTotals)
-      .sort((a, b) => Number(a) - Number(b)) // 🌟 เรียงปีจาก เก่า ไป ใหม่
+      .sort((a, b) => Number(b) - Number(a)) 
       .forEach(yearStr => {
         const yearNum = parseInt(yearStr);
         tableContents.push({
           type: "box", layout: "horizontal", margin: "md",
           contents: [
-            { type: "text", text: `ยอดค้างชำระปี ${yearNum + 543}`, size: "sm", color: "#EF4444" },
-            { type: "text", text: `${data.pastYearTotals[yearNum].toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end" }
+            { type: "text", text: `ยอดค้างปี ${yearNum + 543}`, size: "sm", color: itemTextColor }, 
+            { type: "text", text: `${data.pastYearTotals[yearNum].toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: itemTextColor, align: "end" } 
           ]
         });
-      });
+    });
   }
 
   if (data.totalPenalty > 0) {
     tableContents.push({
       type: "box", layout: "horizontal", margin: "md",
       contents: [
-        { type: "text", text: `ค่าปรับ`, size: "sm", color: "#EA580C" },
-        { type: "text", text: `${data.totalPenalty.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EA580C", align: "end" }
+        { type: "text", text: `ค่าปรับ`, size: "sm", color: itemTextColor }, 
+        { type: "text", text: `${data.totalPenalty.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: itemTextColor, align: "end" } 
       ]
     });
   }
@@ -107,7 +107,7 @@ function createInvoiceFlexMessage(data: any) {
             {
               type: "box", layout: "horizontal", margin: "sm", alignItems: "flex-end",
               contents: [
-                { type: "text", text: " ", flex: 1 },
+                { type: "text", text: " ", flex: 1 }, 
                 { type: "text", text: data.finalGrandTotal.toLocaleString('th-TH', { minimumFractionDigits: 2 }), size: "xxl", weight: "bold", color: mainTextColor, align: "center", flex: 0, adjustMode: "shrink-to-fit" },
                 { type: "text", text: "บาท", size: "sm", weight: "bold", color: mainTextColor, align: "end", flex: 1 }
               ]
@@ -148,8 +148,8 @@ function createInvoiceFlexMessage(data: any) {
         ...(data.invoiceNo ? [{
           type: "box", layout: "horizontal", margin: "md",
           contents: [
-            { type: "text", text: "PAYMENT ID", size: "xxs", color: "#6B7280", flex: 0 },
-            { type: "text", text: data.invoiceNo, size: "xxs", color: "#6B7280", align: "end", flex: 1 }
+            { type: "text", text: "PAYMENT ID", size: "xxs", color: "#6B7280", weight: "bold", flex: 0 },
+            { type: "text", text: data.invoiceNo, size: "xxs", color: "#6B7280", weight: "bold", align: "end", flex: 1 }
           ]
         }] : [])
       ]
