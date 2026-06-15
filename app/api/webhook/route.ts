@@ -120,7 +120,10 @@ export async function POST(request: Request) {
             let pastYearTotals: Record<number, number> = {};
             let pastMonthItems: { label: string, amount: number }[] = [];
             const currentYear = today.getFullYear();
-            const currentInvoiceId = pendingInvoices[pendingInvoices.length - 1].id;
+            
+            // 🌟 แก้บั๊ก: ดึงบิล index 0 (ใหม่ล่าสุด) มาเป็นยอดปัจจุบันแทนการดึงบิลที่เก่าที่สุด
+            const latestInv = pendingInvoices[0];
+            const currentInvoiceId = latestInv.id;
 
             // จัดกลุ่มยอดบิลแยกเดือน/ปี
             pendingInvoices.forEach(inv => {
@@ -137,57 +140,8 @@ export async function POST(request: Request) {
             });
 
             const finalGrandTotal = truncateDecimals(grandTotalBase + totalPenalty);
-            const tableContents: any[] = [];
-
-            // 1. แถวเดือนปัจจุบัน
-            if (currentInvoiceItem && currentInvoiceItem.amount > 0) {
-              tableContents.push({
-                type: "box", layout: "horizontal", margin: "md",
-                contents: [
-                  { type: "text", text: currentInvoiceItem.label, size: "sm", color: "#059669" },
-                  { type: "text", text: `${currentInvoiceItem.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#111827", align: "end" }
-                ]
-              });
-            }
-
-            // 2. แถวหนี้ข้ามปี
-            Object.keys(pastYearTotals).forEach(yearStr => {
-              const yearNum = parseInt(yearStr);
-              if (pastYearTotals[yearNum] > 0) {
-                tableContents.push({
-                  type: "box", layout: "horizontal", margin: "md",
-                  contents: [
-                    { type: "text", text: `ยอดค้างปี ${yearNum + 543}`, size: "sm", color: "#EF4444" },
-                    { type: "text", text: `${pastYearTotals[yearNum].toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end" }
-                  ]
-                });
-              }
-            });
-
-            // 3. แถวหนี้เดือนเก่าปีนี้
-            pastMonthItems.forEach(item => {
-              if (item.amount > 0) {
-                tableContents.push({
-                  type: "box", layout: "horizontal", margin: "md",
-                  contents: [
-                    { type: "text", text: item.label, size: "sm", color: "#EF4444" },
-                    { type: "text", text: `${item.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end" }
-                  ]
-                });
-              }
-            });
-
-            // 4. แถวค่าปรับ
-            if (totalPenalty > 0) {
-              tableContents.push({
-                type: "box", layout: "horizontal", margin: "md",
-                contents: [
-                  { type: "text", text: `ค่าปรับล่าช้า`, size: "sm", color: "#EA580C" },
-                  { type: "text", text: `${totalPenalty.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EA580C", align: "end" }
-                ]
-              });
-            }
-
+            
+            // 🌟 ย้ายการเช็ค Overdue และเซ็ตธีมสีมาไว้ "ก่อน" สร้างตาราง เพื่อให้สีเปลี่ยนตามสถานะบิล
             const isOverdue = pendingInvoices.some(inv => {
               const dDate = inv.dueDate ? new Date(inv.dueDate) : new Date();
               return today > dDate;
@@ -195,11 +149,64 @@ export async function POST(request: Request) {
 
             let boxBgColor = isOverdue ? "#FDEBEC" : "#EBF5FB";
             let mainTextColor = isOverdue ? "#EF4444" : "#111827";
+            let itemTextColor = isOverdue ? "#EF4444" : "#059669"; // 🌟 เขียวถ้าปกติ, แดงถ้าค้างชำระ
             let mainTitle = isOverdue ? "ยอดค้างชำระทั้งหมด" : "ยอดที่ต้องชำระ";
 
-            const lastInv = pendingInvoices[pendingInvoices.length - 1];
-            const headerBillingMonthText = `${fullThaiMonths[lastInv.billingMonth]} ${lastInv.billingYear + 543}`;
-            const dueDateObj = lastInv.dueDate ? new Date(lastInv.dueDate) : new Date();
+            const tableContents: any[] = [];
+
+            // 1. แถวเดือนปัจจุบัน (ใช้ธีมสีอัตโนมัติ)
+            if (currentInvoiceItem && currentInvoiceItem.amount > 0) {
+              tableContents.push({
+                type: "box", layout: "horizontal", margin: "md",
+                contents: [
+                  { type: "text", text: currentInvoiceItem.label, size: "sm", color: itemTextColor },
+                  { type: "text", text: `${currentInvoiceItem.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: itemTextColor, align: "end" }
+                ]
+              });
+            }
+
+            // 2. แถวหนี้ข้ามปี (เรียงใหม่ไปเก่า + ธีมสีอัตโนมัติ)
+            Object.keys(pastYearTotals)
+              .sort((a, b) => Number(b) - Number(a)) 
+              .forEach(yearStr => {
+              const yearNum = parseInt(yearStr);
+              if (pastYearTotals[yearNum] > 0) {
+                tableContents.push({
+                  type: "box", layout: "horizontal", margin: "md",
+                  contents: [
+                    { type: "text", text: `ยอดค้างปี ${yearNum + 543}`, size: "sm", color: itemTextColor },
+                    { type: "text", text: `${pastYearTotals[yearNum].toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: itemTextColor, align: "end" }
+                  ]
+                });
+              }
+            });
+
+            // 3. แถวหนี้เดือนเก่าปีนี้ (เรียงใหม่ไปเก่า + ธีมสีอัตโนมัติ)
+            pastMonthItems.forEach(item => {
+              if (item.amount > 0) {
+                tableContents.push({
+                  type: "box", layout: "horizontal", margin: "md",
+                  contents: [
+                    { type: "text", text: item.label, size: "sm", color: itemTextColor },
+                    { type: "text", text: `${item.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: itemTextColor, align: "end" }
+                  ]
+                });
+              }
+            });
+
+            // 4. แถวค่าปรับ (ธีมสีอัตโนมัติ)
+            if (totalPenalty > 0) {
+              tableContents.push({
+                type: "box", layout: "horizontal", margin: "md",
+                contents: [
+                  { type: "text", text: `ค่าปรับล่าช้า`, size: "sm", color: itemTextColor },
+                  { type: "text", text: `${totalPenalty.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: itemTextColor, align: "end" }
+                ]
+              });
+            }
+
+            const headerBillingMonthText = `${fullThaiMonths[latestInv.billingMonth]} ${latestInv.billingYear + 543}`;
+            const dueDateObj = latestInv.dueDate ? new Date(latestInv.dueDate) : new Date();
             
             // 🌟 แสดงวันที่แบบไม่มีเครื่องหมาย / (เช่น 07 กรกฎาคม 2569)
             const dueDateText = `${String(dueDateObj.getDate()).padStart(2, '0')} ${fullThaiMonths[dueDateObj.getMonth() + 1]} ${dueDateObj.getFullYear() + 543}`;
@@ -258,9 +265,7 @@ export async function POST(request: Request) {
                             {
                               type: "box", layout: "vertical", margin: "md",
                               contents: [
-                                // 🌟 1. ปรับ "กรุณาชำระภายในวันที่" ให้ใหญ่ขึ้น (size: "sm")
                                 { type: "text", text: "กรุณาชำระภายในวันที่", size: "sm", color: "#4B5563", weight: "bold" },
-                                // 🌟 2. ปรับวันที่ให้เล็กลง (size: "xs") และเอาตัวหนาออก (weight: "regular")
                                 { type: "text", text: dueDateText, size: "xs", color: "#EF4444", weight: "regular", margin: "xs" }
                               ]
                             }
