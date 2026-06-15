@@ -42,11 +42,6 @@ export async function POST(request: Request) {
     let createdCount = 0;
     let skippedCount = 0;
 
-    const now = new Date();
-    const dayStr = String(now.getDate()).padStart(2, '0');
-    const monthStr = String(now.getMonth() + 1).padStart(2, '0');
-    const yearStr = String(now.getFullYear() + 543);
-
     for (const house of houses) {
       const existingInvoice = await prisma.invoice.findFirst({
         where: {
@@ -57,17 +52,17 @@ export async function POST(request: Request) {
         }
       });
 
-      // 🌟 [ย้ายมาตรงนี้] สร้างรหัสบิลรอไว้เลย เพื่อใช้ทั้งตอนสร้างใหม่และอัปเดตของเก่า
-      // ตัวอย่าง: 26-18052569-M05
+      // 🌟 แก้บั๊กเลขบิล: ใช้ "ปีของบิล" มาผสม (เช่น INV-26-012551) ไม่มีทางซ้ำข้ามปี!
+      const targetYearThai = targetYear + 543;
       const monthSuffix = String(targetMonth).padStart(2, '0');
-      const customInvoiceNo = `${house.houseNo}-${dayStr}${monthStr}${yearStr}-M${monthSuffix}`;
+      const customInvoiceNo = `INV-${house.houseNo}-${monthSuffix}${targetYearThai}`;
 
       if (existingInvoice) {
         if (existingInvoice.status === 'PENDING') {
           await prisma.invoice.update({
             where: { id: existingInvoice.id },
             data: {
-              invoiceNo: customInvoiceNo, // 🌟 เพิ่มบรรทัดนี้: เผื่อบิลเก่ามันยังเป็นเลขมั่วๆ (cuid) ให้เขียนทับด้วยเลขสวยๆ ได้เลย
+              invoiceNo: customInvoiceNo, // 🌟 เขียนทับเลขเก่าที่อาจจะมั่วๆ ด้วยเลขสวยๆ
               penaltyAmount: 0,
               totalAmount: existingInvoice.baseAmount,
               scheduledSendAt: scheduledSendAt,
@@ -93,7 +88,7 @@ export async function POST(request: Request) {
 
       await prisma.invoice.create({
         data: {
-          invoiceNo: customInvoiceNo, // 🌟 รหัสบิลสวยๆ
+          invoiceNo: customInvoiceNo, // 🌟 รหัสบิลสวยๆ ไม่ซ้ำ
           billingMonth: targetMonth,
           billingYear: targetYear,
           baseAmount: baseAmount,
@@ -116,7 +111,19 @@ export async function POST(request: Request) {
 
   } catch (error: any) {
     console.error('Generate Invoices Error:', error);
-    // 🌟 ส่งข้อความ Error จริงของฐานข้อมูลเด้งโชว์ที่ป๊อปอัปหน้าบ้านไปเลย!
-    return NextResponse.json({ success: false, error: `ระบบพัง: ${error.message}` }, { status: 500 });
+    
+    // 🌟 ดักจับ Error สร้างบิลซ้ำ (P2002) แล้วโชว์ภาษาไทยแบบสุภาพ
+    if (error.code === 'P2002') {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'มีบิลของเดือนและปีนี้ในระบบอยู่แล้ว ไม่สามารถสร้างซ้ำได้ครับ' 
+      }, { status: 400 });
+    }
+
+    // Error อื่นๆ ทั่วไป
+    return NextResponse.json({ 
+      success: false, 
+      error: 'เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล กรุณาลองใหม่อีกครั้ง' 
+    }, { status: 500 });
   }
 }
