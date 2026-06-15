@@ -199,7 +199,7 @@ export async function POST(request: Request) {
               tableContents.push({
                 type: "box", layout: "horizontal", margin: "md",
                 contents: [
-                  { type: "text", text: `ค่าปรับล่าช้า`, size: "sm", color: itemTextColor },
+                  { type: "text", text: `ค่าปรับล่าช้า`, size: "sm", color: "#F97316" },
                   { type: "text", text: `${totalPenalty.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: itemTextColor, align: "end" }
                 ]
               });

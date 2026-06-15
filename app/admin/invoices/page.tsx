@@ -463,7 +463,7 @@ export default function AdminInvoicesPage() {
   };
 
   // ==========================================
-  // Status Badge (แก้ไขลบ BgColor ออก เหลือแต่สีตัวหนังสือ)
+  // Status Badge
   // ==========================================
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -639,21 +639,18 @@ export default function AdminInvoicesPage() {
 
                         <td className="py-4 px-2 text-slate-700 font-bold text-sm text-center whitespace-nowrap">{thMonth} {inv.billingYear + 543}</td>
 
-                        {/* 🌟 ลบสีพื้นหลัง ออกเหลือแต่สีตัวหนังสือ */}
                         <td className="py-4 px-2 text-center whitespace-nowrap">
                           <div className="flex flex-col items-center font-bold">
                             <span className="text-slate-900 text-base">
                               {displayAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} ฿
                             </span>
 
-                            {/* 🌟 1. ย้ายค่าปรับขึ้นมาไว้ตรงนี้ (ใต้ยอดเงินหลัก) */}
                             {penalty > 0 && (
                               <span className="text-[11px] text-rose-500 font-medium mt-0.5 whitespace-nowrap">
                                 {inv.status === 'PAID' ? '(รวมค่าปรับแล้ว)' : `(รวมค่าปรับ ${penalty.toLocaleString('th-TH')} ฿)`}
                               </span>
                             )}
 
-                            {/* 🌟 2. ย้ายยอดคงเหลือลงมาอยู่ด้านล่างสุด */}
                             {inv.status === 'PARTIAL' && paid > 0 && (
                               <span className="text-[11px] text-orange-600 mt-1 font-black whitespace-nowrap">
                                 ยอดคงเหลือ (จ่ายแล้ว {paid.toLocaleString('th-TH', { minimumFractionDigits: 2 })} ฿)
@@ -662,14 +659,12 @@ export default function AdminInvoicesPage() {
                           </div>
                         </td>
 
-                        {/* 🌟 สถานะ: ลบพื้นหลังให้เหลือแค่สีข้อความ */}
                         <td className="py-4 px-2 text-center whitespace-nowrap">
                           <span className={`text-[12px] font-black uppercase tracking-wider ${getStatusBadge(inv.status)}`}>
                             {inv.status}
                           </span>
                         </td>
 
-                        {/* 🌟 จัดการบิล: ล็อกปุ่มถ้าเป็น PAID */}
                         <td className="py-4 px-4 border-l border-slate-50 text-center whitespace-nowrap">
                           <div className="flex items-center justify-center">
                             <div className="flex bg-slate-50 p-1.5 rounded-xl gap-1.5 border border-slate-200/60 shadow-sm">
@@ -738,11 +733,49 @@ export default function AdminInvoicesPage() {
                           </div>
                         </td>
 
+                        {/* 🌟 จุดที่อัปเดต: ตั้งปุ่มแจ้งเตือนให้ Disable เมื่อเป็น PAID */}
                         <td className="py-4 px-4 border-l border-slate-50 text-center whitespace-nowrap min-w-[320px]">
                           <div className="flex flex-nowrap items-center justify-center gap-1.5">
-                            <button onClick={() => handleNotify(inv.id, 'SEND')} className="flex items-center px-3 py-1.5 bg-blue-50   hover:bg-blue-100   text-blue-600   rounded-xl text-[11px] font-bold transition border border-blue-100   active:scale-95 shadow-sm whitespace-nowrap"><Send size={12} className="mr-1 shrink-0" /> ส่งบิล</button>
-                            <button onClick={() => handleNotify(inv.id, 'REMINDER')} className="flex items-center px-3 py-1.5 bg-orange-50 hover:bg-orange-100 text-orange-600 rounded-xl text-[11px] font-bold transition border border-orange-100 active:scale-95 shadow-sm whitespace-nowrap"><Clock size={12} className="mr-1 shrink-0" /> ทวงล่วงหน้า</button>
-                            <button onClick={() => handleNotify(inv.id, 'OVERDUE')} className="flex items-center px-3 py-1.5 bg-rose-50   hover:bg-rose-100   text-rose-600   rounded-xl text-[11px] font-bold transition border border-rose-100   active:scale-95 shadow-sm whitespace-nowrap"><AlertCircle size={12} className="mr-1 shrink-0" /> ทวงยอดค้าง</button>
+                            
+                            {/* ปุ่มส่งบิล */}
+                            <button 
+                              onClick={() => handleNotify(inv.id, 'SEND')} 
+                              disabled={inv.status === 'PAID'}
+                              className={`flex items-center px-3 py-1.5 rounded-xl text-[11px] font-bold transition border whitespace-nowrap shadow-sm ${
+                                inv.status === 'PAID' 
+                                ? 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed opacity-60' 
+                                : 'bg-blue-50 hover:bg-blue-100 text-blue-600 border-blue-100 active:scale-95'
+                              }`}
+                            >
+                              <Send size={12} className="mr-1 shrink-0" /> ส่งบิล
+                            </button>
+
+                            {/* ปุ่มทวงล่วงหน้า */}
+                            <button 
+                              onClick={() => handleNotify(inv.id, 'REMINDER')} 
+                              disabled={inv.status === 'PAID'}
+                              className={`flex items-center px-3 py-1.5 rounded-xl text-[11px] font-bold transition border whitespace-nowrap shadow-sm ${
+                                inv.status === 'PAID' 
+                                ? 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed opacity-60' 
+                                : 'bg-orange-50 hover:bg-orange-100 text-orange-600 border-orange-100 active:scale-95'
+                              }`}
+                            >
+                              <Clock size={12} className="mr-1 shrink-0" /> ทวงล่วงหน้า
+                            </button>
+
+                            {/* ปุ่มทวงยอดค้าง */}
+                            <button 
+                              onClick={() => handleNotify(inv.id, 'OVERDUE')} 
+                              disabled={inv.status === 'PAID'}
+                              className={`flex items-center px-3 py-1.5 rounded-xl text-[11px] font-bold transition border whitespace-nowrap shadow-sm ${
+                                inv.status === 'PAID' 
+                                ? 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed opacity-60' 
+                                : 'bg-rose-50 hover:bg-rose-100 text-rose-600 border-rose-100 active:scale-95'
+                              }`}
+                            >
+                              <AlertCircle size={12} className="mr-1 shrink-0" /> ทวงยอดค้าง
+                            </button>
+
                           </div>
                         </td>
 

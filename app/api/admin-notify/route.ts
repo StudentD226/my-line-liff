@@ -47,13 +47,13 @@ function createInvoiceFlexMessage(data: any) {
   }
 
   if (data.pastMonthItems && data.pastMonthItems.length > 0) {
-    // 🌟 เอา .reverse() ออก เพื่อให้รายการค้างชำระเรียงจาก "ใหม่ ไป เก่า"
+    // 🌟 เอา .reverse() ออก เพื่อให้รายการค้างชำระเรียงจาก "เก่า ไป ใหม่"
     data.pastMonthItems.forEach((item: any) => {
       tableContents.push({
         type: "box", layout: "horizontal", margin: "md",
         contents: [
-          { type: "text", text: item.label, size: "sm", color: itemTextColor }, // 🌟 ดึงสีตามธีม
-          { type: "text", text: `${item.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: itemTextColor, align: "end" } 
+          { type: "text", text: item.label, size: "sm", color: "#EF4444" },
+          { type: "text", text: `${item.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end" } 
         ]
       });
     });
@@ -61,14 +61,14 @@ function createInvoiceFlexMessage(data: any) {
 
   if (data.pastYearTotals) {
     Object.keys(data.pastYearTotals)
-      .sort((a, b) => Number(b) - Number(a)) // 🌟 เรียงปีจาก ใหม่ ไป เก่า
+      .sort((a, b) => Number(b) - Number(a)) // 🌟 เรียงปีจาก เก่า ไป ใหม่
       .forEach(yearStr => {
         const yearNum = parseInt(yearStr);
         tableContents.push({
           type: "box", layout: "horizontal", margin: "md",
           contents: [
-            { type: "text", text: `ยอดค้างปี ${yearNum + 543}`, size: "sm", color: itemTextColor }, // 🌟 ดึงสีตามธีม
-            { type: "text", text: `${data.pastYearTotals[yearNum].toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: itemTextColor, align: "end" } 
+            { type: "text", text: `ยอดค้างปี ${yearNum + 543}`, size: "sm", color: "#EF4444" },
+            { type: "text", text: `${data.pastYearTotals[yearNum].toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EF4444", align: "end" } 
           ]
         });
     });
@@ -78,8 +78,8 @@ function createInvoiceFlexMessage(data: any) {
     tableContents.push({
       type: "box", layout: "horizontal", margin: "md",
       contents: [
-        { type: "text", text: `ค่าปรับ`, size: "sm", color: itemTextColor }, // 🌟 ดึงสีตามธีม
-        { type: "text", text: `${data.totalPenalty.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: itemTextColor, align: "end" } 
+        { type: "text", text: `ค่าปรับ`, size: "sm", color: "#EA580C" },
+        { type: "text", text: `${data.totalPenalty.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EA580C", align: "end" } 
       ]
     });
   }

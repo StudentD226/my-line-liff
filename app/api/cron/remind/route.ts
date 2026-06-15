@@ -26,7 +26,7 @@ function createInvoiceFlexMessage(data: any) {
   if (data.type === 'REMINDER') {
     boxBgColor = "#FFEDD5";     
     mainTextColor = "#EA580C";   
-    itemTextColor = "#EA580C";   // เปลี่ยนเป็นสีส้มสำหรับใบเตือน
+    itemTextColor = "#ea580c";   // เปลี่ยนเป็นสีส้มสำหรับใบเตือน
     mainTitle = "แจ้งเตือนยอดที่ต้องชำระ";
   } else if (data.type === 'OVERDUE' || data.isOverdue) {
     boxBgColor = "#FDEBEC";     
@@ -78,8 +78,8 @@ function createInvoiceFlexMessage(data: any) {
     tableContents.push({
       type: "box", layout: "horizontal", margin: "md",
       contents: [
-        { type: "text", text: `ค่าปรับ`, size: "sm", color: itemTextColor }, // 🌟 เปลี่ยนสีตามธีม
-        { type: "text", text: `${data.totalPenalty.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: itemTextColor, align: "end" }
+        { type: "text", text: `ค่าปรับ`, size: "sm", color: "#EA580C" }, // 🌟 เปลี่ยนสีตามธีม
+        { type: "text", text: `${data.totalPenalty.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EA580C", align: "end" }
       ]
     });
   }
