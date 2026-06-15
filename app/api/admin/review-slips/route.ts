@@ -27,56 +27,66 @@ async function sendInlineFlexNotify(invoice: any, status: string, note?: string)
     if (lineIds.length === 0) return;
 
     const isApproved = status === 'PAID';
+    
+    // 🎨 ตั้งค่า Theme สีและข้อความ (เขียว = ผ่าน / แดง = ปฏิเสธ)
     const statusBgColor = isApproved ? "#ECFDF5" : "#FEF2F2"; 
     const statusTextColor = isApproved ? "#059669" : "#DC2626"; 
-    const statusIconAndText = isApproved ? "✅ ยืนยันยอดเงินสำเร็จ" : "❌ สลิปถูกปฏิเสธ";
     
+    // ถ้าปฏิเสธ ให้เอา Note (สาเหตุ) มาต่อท้ายข้อความเลย
+    const statusText = isApproved 
+      ? "✅ ยืนยันยอดเงินสำเร็จ" 
+      : `❌ สลิปถูกปฏิเสธ\n${note || 'ข้อมูลไม่ถูกต้อง'}`;
+    
+    // กล่องยอดเงิน
+    const amountBgColor = isApproved ? "#ECFDF5" : "#FDEBEC";
+    const amountTextColor = isApproved ? "#059669" : "#EF4444";
+
     const buttonColor = isApproved ? "#376B64" : "#EF4444";
-    const buttonLabel = isApproved ? "ดูประวัติบิล" : "แนบสลิปใหม่";
+    const buttonLabel = isApproved ? "ดูประวัติและสถานะบิล" : "แนบสลิปใหม่";
     const buttonUri = isApproved ? "/invoices" : "/payment"; 
 
-    const flexBodyContents: any[] = [
-      {
-        type: "box", layout: "horizontal", alignItems: "center",
-        contents: [
-          { type: "text", text: `🏠 บ้านเลขที่ ${house.houseNo || "-"}`, weight: "bold", size: "xl", color: "#111827" }
-        ]
-      },
-      {
-        type: "box", layout: "vertical", margin: "md", backgroundColor: statusBgColor, cornerRadius: "lg", paddingAll: "lg",
-        contents: [
-          { type: "text", text: statusIconAndText, size: "sm", color: statusTextColor, weight: "bold", align: "center" }
-        ]
-      }
-    ];
+    // แปลงวันที่ตรวจสอบ
+    const d = new Date();
+    const fullThaiMonths = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+    const dateStr = `${d.getDate()} ${fullThaiMonths[d.getMonth() + 1]} ${d.getFullYear() + 543}`;
 
-    if (!isApproved && note) {
-      flexBodyContents.push({
-        type: "box", layout: "vertical", margin: "xl", backgroundColor: "#F9FAFB", cornerRadius: "lg", paddingAll: "lg",
-        contents: [
-          { type: "text", text: "สาเหตุที่ปฏิเสธสลิป", size: "xs", color: "#6B7280", weight: "bold", margin: "sm" },
-          { type: "text", text: note, size: "sm", color: "#EF4444", weight: "bold", wrap: true, margin: "sm" }
-        ]
-      });
-    }
-
-    flexBodyContents.push({
-      type: "box", layout: "horizontal", margin: "lg",
-      contents: [
-        { type: "text", text: "ยอดแจ้งโอน", size: "sm", color: "#4B5563" },
-        { type: "text", text: `${Number(invoice.totalAmount).toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#111827", align: "end", weight: "bold" }
-      ]
-    });
-
+    // 🚀 โครงสร้าง Flex Message ตามดีไซน์ของลูกพี่
     const flexMessage: messagingApi.FlexMessage = {
       type: "flex",
-      altText: isApproved ? `ยืนยันรับชำระเงิน บ้านเลขที่ ${house.houseNo}` : `สลิปถูกปฏิเสธ บ้านเลขที่ ${house.houseNo}`,
+      altText: isApproved ? `✅ ยืนยันรับชำระเงิน บ้านเลขที่ ${house.houseNo}` : `❌ สลิปถูกปฏิเสธ บ้านเลขที่ ${house.houseNo}`,
       contents: {
         type: "bubble",
         size: "kilo",
         body: {
           type: "box", layout: "vertical", paddingAll: "xl", backgroundColor: "#FFFFFF",
-          contents: flexBodyContents
+          contents: [
+            {
+              type: "box", layout: "horizontal", alignItems: "center",
+              contents: [
+                { type: "text", text: `🏠 บ้านเลขที่ ${house.houseNo || "-"}`, weight: "bold", size: "xl", color: "#111827" }
+              ]
+            },
+            {
+              type: "box", layout: "vertical", margin: "md", backgroundColor: statusBgColor, cornerRadius: "lg", paddingAll: "lg",
+              contents: [
+                { type: "text", text: statusText, size: "sm", color: statusTextColor, weight: "bold", align: "center", wrap: true }
+              ]
+            },
+            {
+              type: "box", layout: "vertical", margin: "xl", backgroundColor: amountBgColor, cornerRadius: "lg", paddingAll: "lg", alignItems: "center",
+              contents: [
+                { type: "text", text: "ยอดแจ้งโอน", size: "sm", color: amountTextColor, weight: "bold" },
+                { type: "text", text: `${Number(invoice.totalAmount).toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "xl", weight: "bold", color: amountTextColor, margin: "sm" }
+              ]
+            },
+            {
+              type: "box", layout: "horizontal", margin: "lg",
+              contents: [
+                { type: "text", text: "วันที่ตรวจสอบ", size: "sm", color: "#4B5563" },
+                { type: "text", text: dateStr, size: "sm", color: "#111827", align: "end" }
+              ]
+            }
+          ]
         },
         footer: {
           type: "box", layout: "vertical", paddingStart: "xl", paddingEnd: "xl", paddingBottom: "xl",
