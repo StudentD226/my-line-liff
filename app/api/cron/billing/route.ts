@@ -22,8 +22,6 @@ function createInvoiceFlexMessage(data: any) {
   let itemTextColor = "#059669"; // สีเขียวสำหรับรายการบิลปกติ
   let mainTitle = "ยอดที่ต้องชำระ";
 
-  // 🌟 ตัวแปรคุมว่าจะโชว์ประวัติยอดค้างมั้ย? และยอดรวมควรเป็นเท่าไหร่?
-  // เริ่มต้นให้ถือว่าเป็นบิลปกติ โชว์แค่ยอดเดือนนี้เดือนเดียว
   let showHistory = false;
   let displayGrandTotal = data.currentInvoiceItem ? data.currentInvoiceItem.amount : data.finalGrandTotal;
 
@@ -33,18 +31,17 @@ function createInvoiceFlexMessage(data: any) {
     mainTextColor = "#EF4444";   
     itemTextColor = "#EF4444";   // แดง (ค้างชำระ)
     mainTitle = "ยอดค้างชำระ";
-    showHistory = true; // บิลแดง ต้องกางประวัติ
-    displayGrandTotal = data.finalGrandTotal; // ยอดรวมทั้งหมด
+    showHistory = true; 
+    displayGrandTotal = data.finalGrandTotal; 
   } else if (data.type === 'REMINDER') {
     boxBgColor = "#FFEDD5";     
     mainTextColor = "#EA580C";   
     itemTextColor = "#EA580C";   // ส้ม (ทวงล่วงหน้า)
     mainTitle = "แจ้งเตือนยอดที่ต้องชำระ";
-    showHistory = true; // บิลส้ม ต้องกางประวัติ
-    displayGrandTotal = data.finalGrandTotal; // ยอดรวมทั้งหมด
+    showHistory = true; 
+    displayGrandTotal = data.finalGrandTotal; 
   }
 
-  // โชว์รายการของเดือนปัจจุบันเสมอ
   if (data.currentInvoiceItem) {
     tableContents.push({
       type: "box", layout: "horizontal", margin: "md",
@@ -55,7 +52,6 @@ function createInvoiceFlexMessage(data: any) {
     });
   }
 
-  // 🌟 ถ้าเงื่อนไขบังคับให้โชว์ประวัติ (บิลส้ม/แดง) ถึงจะเอาข้อมูลอดีตมาต่อท้าย
   if (showHistory) {
     if (data.pastMonthItems && data.pastMonthItems.length > 0) {
       data.pastMonthItems.forEach((item: any) => {
@@ -172,19 +168,37 @@ function createInvoiceFlexMessage(data: any) {
   };
 }
 
+async function sendAutoLineMessage(lineId: string, flexBubbleStructure: any) {
+  if (!lineId || !process.env.LINE_CHANNEL_ACCESS_TOKEN) return;
+  try {
+    const response = await fetch('https://api.line.me/v2/bot/message/push', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`,
+      },
+      body: JSON.stringify({
+        to: lineId,
+        messages: [{ type: "flex", altText: "ใบแจ้งชำระค่าส่วนกลาง", contents: flexBubbleStructure }]
+      }),
+    });
+    if (response.ok) console.log(`✅ ส่งบิลเข้า LINE สำเร็จ: ${lineId}`);
+  } catch (error) {
+    console.error('❌ Error sending LINE:', error);
+  }
+}
+
 // ==========================================
-// 1. ระบบแอดมินกดส่งบิลเอง (POST)
+// ระบบแอดมินกดส่งบิลเอง (POST) 
+// (มีติดไว้เผื่อเรียกใช้จากหน้าแอดมิน)
 // ==========================================
 async function handleManualSend(request: Request) {
   try {
     const body = await request.json();
-    
     const targetId = body.invoiceId || body.id; 
     const type = body.type;
 
-    if (!targetId) {
-      return NextResponse.json({ success: false, error: 'ไม่พบ ID ของบิล' }, { status: 400 });
-    }
+    if (!targetId) return NextResponse.json({ success: false, error: 'ไม่พบ ID ของบิล' }, { status: 400 });
 
     const invoice = await prisma.invoice.findUnique({
       where: { id: targetId },
@@ -202,7 +216,7 @@ async function handleManualSend(request: Request) {
     const isPastDue = todayObj > dueDateObj;
 
     if (type === 'OVERDUE') {
-      if (todayObj > dueDateObj) {
+      if (isPastDue) {
         const diffTime = todayObj.getTime() - dueDateObj.getTime();
         const overdueDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); 
         const overdueMonths = Math.floor(overdueDays / 30);
@@ -251,7 +265,6 @@ async function handleManualSend(request: Request) {
       const isOlderInvoice = inv.billingYear < targetYear || (inv.billingYear === targetYear && inv.billingMonth < targetMonth);
 
       if (isTargetInvoice || isOlderInvoice) {
-        
         if (!isTargetInvoice && inv.invoiceNo && inv.invoiceNo.startsWith('TR-')) return;
 
         let paid = truncateDecimals(Number(inv.paidAmount || 0));
@@ -288,7 +301,6 @@ async function handleManualSend(request: Request) {
 
     const finalGrandTotal = truncateDecimals(grandTotalBase + totalPenalty);
     const headerBillingMonthText = `${fullThaiMonths[invoice.billingMonth]} ${invoice.billingYear + 543}`;
-    
     const dueDateText = `${String(dueDateObj.getDate()).padStart(2, '0')} ${fullThaiMonths[dueDateObj.getMonth() + 1]} ${dueDateObj.getFullYear() + 543}`;
 
     const flexBubble = createInvoiceFlexMessage({
@@ -322,26 +334,9 @@ async function handleManualSend(request: Request) {
   }
 }
 
-async function sendAutoLineMessage(lineId: string, flexBubbleStructure: any) {
-  if (!lineId || !process.env.LINE_CHANNEL_ACCESS_TOKEN) return;
-  try {
-    const response = await fetch('https://api.line.me/v2/bot/message/push', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`,
-      },
-      body: JSON.stringify({
-        to: lineId,
-        messages: [{ type: "flex", altText: "ใบแจ้งชำระค่าส่วนกลาง", contents: flexBubbleStructure }]
-      }),
-    });
-    if (response.ok) console.log(`✅ ส่งบิลเข้า LINE สำเร็จ: ${lineId}`);
-  } catch (error) {
-    console.error('❌ Error sending LINE:', error);
-  }
-}
-
+// ==========================================
+// 🌟 ระบบหุ่นยนต์ส่งบิลปกติ (Cron Job) 🌟
+// ==========================================
 async function handleCronJob(request: Request) {
   const authHeader = request.headers.get('authorization');
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -369,6 +364,7 @@ async function handleCronJob(request: Request) {
       });
     }
 
+    // 1. สร้างบิลใหม่ถ้าถึงวันที่ตั้งไว้
     if (currentDay === config.invoiceGenerateDay) {
       let targetMonth = bkkTime.getMonth() + 2; 
       let targetYear = bkkTime.getFullYear();
@@ -419,6 +415,7 @@ async function handleCronJob(request: Request) {
       }
     }
 
+    // 2. ดึงเฉพาะบิลใหม่ที่ยังไม่เคยส่ง (isNotified: false)
     const pendingInvoices = await prisma.invoice.findMany({
       where: {
         isNotified: false,
@@ -440,17 +437,17 @@ async function handleCronJob(request: Request) {
 
     const penaltyRatePerMonth = config?.penaltyRatePerDay ? Number(config.penaltyRatePerDay) : 100;
     let stats = { lineSent: 0, updatedInvoices: 0 };
+    const todayObj = new Date(); todayObj.setHours(0, 0, 0, 0);
 
+    // 🌟 3. อัปเดตค่าปรับสำหรับบิลตัวหลัก (ที่ยังไม่เคยส่ง)
     for (const inv of pendingInvoices) {
-      const todayObj = new Date(); todayObj.setHours(0, 0, 0, 0);
       const dueDateObj = new Date(inv.dueDate); dueDateObj.setHours(0, 0, 0, 0);
       let currentPenalty = truncateDecimals(Number(inv.penaltyAmount || 0));
 
-      if (todayObj > dueDateObj) {
-        const diffTime = todayObj.getTime() - dueDateObj.getTime();
-        const overdueDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-        const overdueMonths = Math.ceil(overdueDays / 30);
-        currentPenalty = truncateDecimals(overdueMonths * penaltyRatePerMonth);
+      if (todayObj > dueDateObj && currentPenalty === 0) {
+        let monthsLate = (todayObj.getFullYear() - dueDateObj.getFullYear()) * 12 + (todayObj.getMonth() - dueDateObj.getMonth());
+        if (monthsLate <= 0) monthsLate = 1;
+        currentPenalty = truncateDecimals(monthsLate * penaltyRatePerMonth);
 
         await prisma.invoice.update({
           where: { id: inv.id },
@@ -463,6 +460,7 @@ async function handleCronJob(request: Request) {
       }
     }
 
+    // จัดกลุ่มตามบ้านเพื่อรวมยอดหนี้ค้าง
     const uniqueHouseMap = new Map<string, any[]>();
     pendingInvoices.forEach(inv => {
       const list = uniqueHouseMap.get(inv.residentHouseId) || [];
@@ -473,6 +471,7 @@ async function handleCronJob(request: Request) {
     for (const [houseId, invList] of uniqueHouseMap.entries()) {
       const sampleInv = invList[0];
 
+      // ดึงประวัติค้างชำระทั้งหมดของบ้านนี้
       const allUnpaidForThisHouse = await prisma.invoice.findMany({
         where: {
           residentHouseId: houseId,
@@ -497,10 +496,20 @@ async function handleCronJob(request: Request) {
       const targetYear = latestInv.billingYear;
       const targetMonth = latestInv.billingMonth;
 
+      // 🌟 4. รวมยอด และแอบคำนวณค่าปรับสดๆ ให้บิลเก่า (ที่หลุดรอดมา) ด้วย
       allUnpaidForThisHouse.forEach(uInv => {
         let paid = truncateDecimals(Number(uInv.paidAmount || 0));
         let penalty = truncateDecimals(Number(uInv.penaltyAmount || 0));
         let base = truncateDecimals(Number(uInv.baseAmount || 0));
+
+        const uInvDueDate = uInv.dueDate ? new Date(uInv.dueDate) : new Date();
+        uInvDueDate.setHours(0, 0, 0, 0);
+
+        if (todayObj > uInvDueDate && penalty === 0) {
+          let monthsLate = (todayObj.getFullYear() - uInvDueDate.getFullYear()) * 12 + (todayObj.getMonth() - uInvDueDate.getMonth());
+          if (monthsLate <= 0) monthsLate = 1;
+          penalty = truncateDecimals(monthsLate * penaltyRatePerMonth);
+        }
 
         if (paid > 0) {
           if (paid >= penalty) {
@@ -531,7 +540,6 @@ async function handleCronJob(request: Request) {
       const finalGrandTotal = truncateDecimals(grandTotalBase + totalPenalty);
       
       const due = new Date(latestInv.dueDate); due.setHours(0, 0, 0, 0);
-      const todayObj = new Date(); todayObj.setHours(0, 0, 0, 0);
       const isPastDue = todayObj > due;
       
       const isOverdue = latestInv.status === 'OVERDUE' || allUnpaidForThisHouse.some(u => u.status === 'OVERDUE') || totalPenalty > 0 || isPastDue;
