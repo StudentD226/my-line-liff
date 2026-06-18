@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'; // 🌟 เพิ่มบรรทัดนี้สำคัญมาก! ห้าม Vercel จำ Cache เด็ดขาด
+
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 
@@ -19,6 +21,10 @@ export async function GET(request: Request) {
         residentHouse: {
           include: {
             invoices: {
+              // 🌟 เพิ่มเงื่อนไขตัดบิลทดสอบ TR- ออกไปเลย จะได้ไม่ไปโผล่กวนใจลูกบ้าน
+              where: {
+                invoiceNo: { not: { startsWith: 'TR-' } }
+              },
               orderBy: [{ billingYear: 'asc' }, { billingMonth: 'asc' }]
             }
           }
@@ -34,7 +40,7 @@ export async function GET(request: Request) {
     const config = await prisma.systemConfig.findFirst();
     
     // 🌟 ดึงเรทค่าปรับเหมาจ่ายรายเดือนจากระบบส่วนกลาง (ถ้าไม่มีใช้ 100 บาท)
-    let flatPenaltyPerMonth = config?.penaltyRatePerDay || 100;
+    let flatPenaltyPerMonth = config?.penaltyRatePerDay ? Number(config.penaltyRatePerDay) : 100;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -44,9 +50,10 @@ export async function GET(request: Request) {
     const updatedInvoices = house.invoices.map((inv) => {
       let base = Number(inv.baseAmount || 0);
       let penalty = Number(inv.penaltyAmount || 0);
+      let paid = Number(inv.paidAmount || 0);
 
       // ถ้าเป็นบิลค้างชำระ ให้ทำการ Re-calculate ค่าปรับใหม่เรียลไทม์
-      if (['PENDING', 'OVERDUE', 'REJECTED'].includes(inv.status)) {
+      if (['PENDING', 'OVERDUE', 'REJECTED', 'PARTIAL'].includes(inv.status)) {
         const dueDate = new Date(inv.dueDate);
         dueDate.setHours(0, 0, 0, 0);
 
@@ -56,10 +63,14 @@ export async function GET(request: Request) {
           const overdueMonths = Math.floor(overdueDays / 30);
           
           penalty = overdueMonths * flatPenaltyPerMonth;
-          inv.status = 'OVERDUE';
+          inv.status = inv.status === 'PARTIAL' ? 'PARTIAL' : 'OVERDUE';
         }
-        // สมทบยอดรวมก้อนใหญ่ชำระจริงบนหน้าแอป LIFF
-        totalUnpaid += (base + penalty);
+        
+        // สมทบยอดรวมก้อนใหญ่ชำระจริงบนหน้าแอป LIFF (หักลบยอดที่เคยจ่ายไปแล้วด้วย)
+        let outstanding = (base + penalty) - paid;
+        if (outstanding > 0) {
+          totalUnpaid += outstanding;
+        }
       }
 
       return {

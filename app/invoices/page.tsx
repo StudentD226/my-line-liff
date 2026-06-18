@@ -38,7 +38,15 @@ export default function InvoicesPage() {
 
   const fetchData = async (lineId: string, pictureUrl: string) => {
     try {
-      const res = await fetch(`/api/user-invoices?lineId=${lineId}&t=${Date.now()}`);
+      // 🌟 เพิ่ม { cache: 'no-store' } เพื่อสั่ง Next.js ว่าห้ามจำข้อมูลเก่าเด็ดขาด!
+      const res = await fetch(`/api/user-invoices?lineId=${lineId}&t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+      
       const result = await res.json();
 
       if (result.success) {
