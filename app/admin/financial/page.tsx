@@ -8,7 +8,7 @@ import {
 import { 
   TrendingUp, TrendingDown, Wallet, Plus, Info, Upload, 
   ArrowUpDown, X, CheckCircle, AlertCircle, FileText, Calendar, Tag,
-  Edit, Trash2, AlertTriangle, Settings, Save, Loader2, ChevronLeft, ChevronRight
+  Edit, Trash2, AlertTriangle, Settings, Save, Loader2, ChevronLeft, ChevronRight, Search, Download
 } from "lucide-react";
 
 const COLORS = [
@@ -52,6 +52,9 @@ export default function FinancialDashboard() {
   
   const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+
+  // 🌟 เพิ่ม State สำหรับช่องค้นหา
+  const [searchTerm, setSearchTerm] = useState("");
 
   const [formData, setFormData] = useState({
     type: "EXPENSE", title: "", categoryId: "", newCategoryName: "", amount: "",
@@ -106,12 +109,25 @@ export default function FinancialDashboard() {
   useEffect(() => { 
     fetchData(); 
     setCurrentPage(1); 
+    setSearchTerm(""); // เคลียร์ช่องค้นหาเมื่อเปลี่ยนเดือน/ปี
   }, [selectedMonth, selectedYear]);
 
-  const sortedData = useMemo(() => {
-    let sortableItems = [...data];
+  // 🌟 Logic ค้นหาและจัดเรียงข้อมูล
+  const filteredAndSortedData = useMemo(() => {
+    let items = [...data];
+
+    // 1. ค้นหาจากชื่อรายการ หรือ หมวดหมู่
+    if (searchTerm) {
+      const lowerTerm = searchTerm.toLowerCase();
+      items = items.filter(tx => 
+        tx.title.toLowerCase().includes(lowerTerm) || 
+        (tx.category?.name && tx.category.name.toLowerCase().includes(lowerTerm))
+      );
+    }
+
+    // 2. จัดเรียง
     if (sortConfig !== null) {
-      sortableItems.sort((a, b) => {
+      items.sort((a, b) => {
         let aValue = a[sortConfig.key];
         let bValue = b[sortConfig.key];
         if (sortConfig.key === 'category') {
@@ -122,8 +138,8 @@ export default function FinancialDashboard() {
         return 0;
       });
     }
-    return sortableItems;
-  }, [data, sortConfig]);
+    return items;
+  }, [data, sortConfig, searchTerm]);
 
   const requestSort = (key: string) => {
     let direction: 'asc' | 'desc' = 'asc';
@@ -132,8 +148,9 @@ export default function FinancialDashboard() {
     setCurrentPage(1);
   };
 
-  const totalPages = Math.max(1, Math.ceil(sortedData.length / rowsPerPage));
-  const paginatedData = sortedData.slice(
+  // 🌟 อัปเดตการแบ่งหน้าให้ใช้ข้อมูลที่ผ่านการกรองแล้ว
+  const totalPages = Math.max(1, Math.ceil(filteredAndSortedData.length / rowsPerPage));
+  const paginatedData = filteredAndSortedData.slice(
     (currentPage - 1) * rowsPerPage, 
     currentPage * rowsPerPage
   );
@@ -323,6 +340,44 @@ export default function FinancialDashboard() {
     }
   };
 
+  // 🌟 ฟังก์ชันส่งออกเป็น Excel (CSV)
+  const handleExportExcel = () => {
+    if (filteredAndSortedData.length === 0) {
+      return showAlert("ไม่มีข้อมูลสำหรับส่งออก", "warning");
+    }
+    try {
+      // สร้าง Header
+      let csvContent = "วันที่,รายการ,หมวดหมู่,ประเภท,จำนวนเงิน(บาท),หมายเหตุ\n";
+      
+      // วนลูปข้อมูล (ข้อมูลที่กรองและเรียงแล้ว)
+      filteredAndSortedData.forEach(tx => {
+        const date = new Date(tx.date).toLocaleDateString('th-TH');
+        const title = `"${tx.title.replace(/"/g, '""')}"`;
+        const category = `"${tx.category?.name || 'ไม่ได้ระบุ'}"`;
+        const type = tx.type === 'INCOME' ? 'รายรับ' : 'รายจ่าย';
+        const amount = tx.amount;
+        const note = tx.isAuto ? 'ดึงอัตโนมัติจากบิลค่าส่วนกลาง' : 'บันทึกเอง';
+        
+        csvContent += `${date},${title},${category},${type},${amount},${note}\n`;
+      });
+
+      // ใส่ BOM \uFEFF ให้ Excel อ่านภาษาไทยออก
+      const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", `บัญชี_รอบบิล_${selectedMonth}_${selectedYear + 543}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      showAlert("ส่งออกไฟล์ Excel สำเร็จ!", "success");
+    } catch (error) {
+      console.error("Export Error:", error);
+      showAlert("เกิดข้อผิดพลาดในการส่งออกไฟล์", "error");
+    }
+  };
+
   const pieData = categories.filter(c => c.type === 'EXPENSE').map(cat => {
     const total = data.filter(tx => tx.type === 'EXPENSE' && tx.category?.name === cat.name).reduce((sum, tx) => sum + tx.amount, 0);
     return { name: cat.name, value: total };
@@ -462,7 +517,6 @@ export default function FinancialDashboard() {
                     </div>
                   </div>
 
-                  {/* 🌟 เปลี่ยน Grid ให้สลับเป็นแนวตั้งบนจอมือถือเล็กๆ จะได้ไม่อึดอัด */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-bold text-gray-700 mb-1">จำนวนเงิน (บาท) <span className="text-red-500">*</span></label>
@@ -548,7 +602,7 @@ export default function FinancialDashboard() {
         </div>
       )}
 
-      {/* 🌟 Header Section */}
+      {/* Header Section */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 sm:mb-8 gap-4 w-full">
         <div>
           <div className="flex items-center flex-wrap">
@@ -558,7 +612,6 @@ export default function FinancialDashboard() {
           <p className="text-xs sm:text-sm text-gray-500 mt-1">รายละเอียดรายรับ-รายจ่ายของหมู่บ้าน</p>
         </div>
         
-        {/* 🌟 ปรับให้ Dropdown และ Button กางเต็มจอในมือถือ เพื่อกดง่ายขึ้น */}
         <div className="flex flex-col sm:flex-row flex-wrap items-center gap-2 sm:gap-3 w-full md:w-auto">
           <div className="flex gap-2 w-full sm:w-auto">
             <select 
@@ -589,7 +642,7 @@ export default function FinancialDashboard() {
         </div>
       </div>
 
-      {/* 🌟 Summary Cards */}
+      {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
         <div className="bg-white p-5 sm:p-6 rounded-[1.5rem] shadow-sm border border-gray-100 flex flex-col justify-center">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
@@ -618,7 +671,7 @@ export default function FinancialDashboard() {
         </div>
       </div>
 
-      {/* 🌟 Charts */}
+      {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
         <div className="bg-white p-4 sm:p-6 rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden flex flex-col">
           <h3 className="font-bold text-gray-800 mb-4 sm:mb-6 flex items-center text-sm sm:text-base">สถิติรายรับ - รายจ่าย รายปี <InfoTooltip text={`ข้อมูลสรุปรวมตั้งแต่ ม.ค. - ธ.ค. ปี พ.ศ. ${selectedYear + 543}`} /></h3>
@@ -663,28 +716,55 @@ export default function FinancialDashboard() {
         </div>
       </div>
 
-      {/* 🌟 Table Section */}
+      {/* 🌟 Table Section (อัปเดตระบบค้นหา และปุ่ม Export) */}
       <div className="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden flex flex-col w-full">
-        <div className="p-4 sm:p-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-gray-50/50 gap-3">
-          <h3 className="font-bold text-gray-800 flex items-center text-sm sm:text-base">รายการบัญชีรอบบิลนี้ <InfoTooltip text="กดที่หัวตารางเพื่อจัดเรียงลำดับข้อมูล" /></h3>
+        <div className="p-4 sm:p-6 border-b border-gray-100 flex flex-col lg:flex-row justify-between items-start lg:items-center bg-gray-50/50 gap-4">
+          <h3 className="font-bold text-gray-800 flex items-center text-sm sm:text-base shrink-0">
+            รายการบัญชีรอบบิลนี้ <InfoTooltip text="กดที่หัวตารางเพื่อจัดเรียงลำดับข้อมูล" />
+          </h3>
           
-          <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm w-full sm:w-auto">
-            <span className="text-gray-500 font-medium">แสดง:</span>
-            <select 
-              value={rowsPerPage} 
-              onChange={(e) => { setRowsPerPage(Number(e.target.value)); setCurrentPage(1); }}
-              className="border border-gray-200 rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-[#1A534B] font-bold text-gray-700 bg-white"
+          <div className="flex flex-col sm:flex-row flex-wrap items-center gap-3 w-full lg:w-auto">
+            {/* 🌟 ช่องค้นหา */}
+            <div className="relative w-full sm:w-auto">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+              <input 
+                type="text" 
+                placeholder="ค้นหารายการ, หมวดหมู่..." 
+                value={searchTerm}
+                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                className="w-full sm:w-64 pl-9 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#1A534B] outline-none text-sm transition-all font-medium"
+              />
+            </div>
+            
+            {/* เลือกว่าจะโชว์กี่แถว */}
+            <div className="flex items-center gap-2 text-xs sm:text-sm shrink-0">
+              <span className="text-gray-500 font-medium">แสดง:</span>
+              <select 
+                value={rowsPerPage} 
+                onChange={(e) => { setRowsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+                className="border border-gray-200 rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-[#1A534B] font-bold text-gray-700 bg-white"
+              >
+                <option value={10}>10 รายการ</option>
+                <option value={20}>20 รายการ</option>
+                <option value={50}>50 รายการ</option>
+                <option value={100}>100 รายการ</option>
+              </select>
+            </div>
+            
+            <span className="text-gray-500 bg-gray-100 px-3 py-1.5 rounded-xl font-bold whitespace-nowrap text-xs sm:text-sm shrink-0">
+              รวม {filteredAndSortedData.length} รายการ
+            </span>
+
+            {/* 🌟 ปุ่ม Export Excel */}
+            <button 
+              onClick={handleExportExcel}
+              className="flex items-center justify-center w-full sm:w-auto px-4 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 font-bold rounded-xl transition-colors text-sm shrink-0 border border-emerald-100 active:scale-95"
             >
-              <option value={10}>10 รายการ</option>
-              <option value={20}>20 รายการ</option>
-              <option value={50}>50 รายการ</option>
-              <option value={100}>100 รายการ</option>
-            </select>
-            <span className="text-gray-500 bg-gray-100 px-3 py-1.5 rounded-full font-bold whitespace-nowrap">รวม {summary.totalTransactions} รายการ</span>
+              <Download size={16} className="mr-1.5" /> ส่งออก Excel
+            </button>
           </div>
         </div>
         
-        {/* 🌟 บังคับตารางไม่ให้บีบตัวจนพัง โดยใช้ min-w-[800px] และ overflow-x-auto */}
         <div className="overflow-x-auto custom-scrollbar flex-1 w-full">
           <table className="w-full text-sm text-left relative min-w-[800px]">
             <thead className="bg-gray-50 text-gray-500 sticky top-0 z-10 shadow-sm">
@@ -721,7 +801,6 @@ export default function FinancialDashboard() {
                           </a>
                         )}
                       </div>
-                      {tx.isAuto && <span className="inline-flex items-center mt-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#1A534B]/10 text-[#1A534B] whitespace-nowrap">ดึงอัตโนมัติจากบิลค่าส่วนกลาง</span>}
                     </td>
                     <td className="px-4 sm:px-6 py-4 text-gray-600 font-medium whitespace-nowrap">{tx.category?.name}</td>
                     <td className="px-4 sm:px-6 py-4 text-center whitespace-nowrap">
@@ -749,7 +828,11 @@ export default function FinancialDashboard() {
                   </tr>
                 ))
               ) : (
-                <tr><td colSpan={6} className="px-6 py-10 text-center text-gray-400 font-bold bg-white">ไม่มีรายการบัญชีในรอบบิลนี้</td></tr>
+                <tr>
+                  <td colSpan={6} className="px-6 py-10 text-center text-gray-400 font-bold bg-white">
+                    {searchTerm ? `ไม่พบรายการที่ตรงกับคำค้นหา "${searchTerm}"` : 'ไม่มีรายการบัญชีในรอบบิลนี้'}
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>

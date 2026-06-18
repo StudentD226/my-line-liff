@@ -124,17 +124,14 @@ export default function AdminDashboardHome() {
   }
 
   return (
-    /* 🌟 ปรับ p-4 สำหรับจอเล็กสุด และ sm:p-6 */
     <div className="p-4 sm:p-6 lg:p-10 max-w-7xl mx-auto bg-[#F8FAFC] min-h-screen font-sans w-full overflow-x-hidden">
       
-      {/* 🌟 Header Section: ใช้ flex-wrap และ gap เพื่อให้ไม่ล้นจอ */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-8 gap-4 sm:gap-0 w-full">
         <div className="w-full sm:w-auto">
           <h1 className="text-xl sm:text-2xl font-bold text-gray-800">ภาพรวมระบบ (Dashboard)</h1>
           <p className="text-sm text-gray-500 mt-1">สรุปข้อมูลการเงินทั้งหมดประจำปี พ.ศ. {selectedYear + 543}</p>
         </div>
         
-        {/* 🌟 Dropdown: บนมือถือให้กางเต็ม w-full */}
         <div className="flex items-center gap-2 sm:gap-3 bg-white p-2.5 rounded-xl shadow-sm border border-gray-100 w-full sm:w-auto overflow-hidden">
           <Calendar className="text-[#1A534B] shrink-0" size={20} />
           <span className="text-sm font-bold text-gray-600 shrink-0">เลือกปีงบประมาณ:</span>
@@ -152,7 +149,6 @@ export default function AdminDashboardHome() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
         
-        {/* ฝั่งซ้าย: สรุปตัวเลข */}
         <div className="lg:col-span-1 flex flex-col gap-4 sm:gap-6">
           <div className="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-gray-100 flex-1 flex flex-col justify-center">
             <div className="flex items-center justify-between mb-4">
@@ -181,7 +177,6 @@ export default function AdminDashboardHome() {
           </div>
         </div>
 
-        {/* ฝั่งขวา: กราฟวงกลม */}
         <div className="lg:col-span-2 bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
           <h3 className="font-bold text-gray-800 mb-2 flex items-center text-sm sm:text-base">สัดส่วนรายจ่ายตามหมวดหมู่ (ปี พ.ศ. {selectedYear + 543})</h3>
           <div className="flex-1 min-h-[250px] sm:min-h-[300px] flex items-center justify-center relative w-full">
@@ -209,7 +204,6 @@ export default function AdminDashboardHome() {
       </div>
 
       <div className="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden flex flex-col w-full">
-        {/* 🌟 ปรับให้ Dropdown จำนวนแถวตัดขึ้นบรรทัดใหม่ได้ถ้าหน้าจอแคบ */}
         <div className="p-4 sm:p-6 border-b border-gray-100 flex flex-col lg:flex-row justify-between items-start lg:items-center bg-gray-50/50 gap-3">
           <h3 className="font-bold text-gray-800 flex items-center text-sm sm:text-base"><FileText className="mr-2 text-[#1A534B] shrink-0" size={20}/> ประวัติรายการบัญชีทั้งหมดของปีนี้</h3>
           
@@ -229,7 +223,6 @@ export default function AdminDashboardHome() {
           </div>
         </div>
         
-        {/* 🌟 ตารางรองรับการเลื่อนซ้ายขวาบนมือถือ */}
         <div className="overflow-x-auto custom-scrollbar flex-1 w-full">
           <table className="w-full text-sm text-left relative min-w-[800px]">
             <thead className="bg-white text-gray-500 sticky top-0 z-10 border-b border-gray-100">
@@ -257,15 +250,8 @@ export default function AdminDashboardHome() {
                   <tr key={idx} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 sm:px-6 py-4 text-gray-600 font-medium whitespace-nowrap">{new Date(tx.date).toLocaleDateString('th-TH')}</td>
                     <td className="px-4 sm:px-6 py-4">
-                      <div className="flex items-center space-x-2">
-                        <p className="font-bold text-gray-800 whitespace-nowrap">{tx.title}</p>
-                        {tx.receiptUrl && (
-                          <a href={tx.receiptUrl} target="_blank" rel="noreferrer" title="ดูหลักฐาน" className="text-blue-500 hover:text-blue-700 bg-blue-50 p-1.5 rounded-lg transition-colors shrink-0">
-                            <FileText size={14} className="shrink-0" />
-                          </a>
-                        )}
-                      </div>
-                      {tx.isAuto && <span className="inline-flex items-center mt-1.5 px-2 py-0.5 rounded text-[10px] font-bold bg-[#1A534B]/10 text-[#1A534B] whitespace-nowrap">ดึงอัตโนมัติจากบิลค่าส่วนกลาง</span>}
+                      {/* 🌟 ลบ Tag และ Icon ออก เหลือแต่ชื่อรายการเพียวๆ */}
+                      <p className="font-bold text-gray-800 whitespace-nowrap">{tx.title}</p>
                     </td>
                     <td className="px-4 sm:px-6 py-4 text-gray-600 font-medium whitespace-nowrap">{tx.category?.name}</td>
                     <td className="px-4 sm:px-6 py-4 text-center whitespace-nowrap">
@@ -285,7 +271,6 @@ export default function AdminDashboardHome() {
           </table>
         </div>
 
-        {/* 🌟 Pagination */}
         {totalPages > 1 && (
           <div className="p-4 border-t border-gray-100 flex flex-wrap items-center justify-between bg-white rounded-b-2xl gap-3">
             <span className="text-sm text-gray-500 font-medium whitespace-nowrap">
