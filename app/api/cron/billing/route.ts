@@ -1,8 +1,12 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
+import { messagingApi } from '@line/bot-sdk';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
+const client = new messagingApi.MessagingApiClient({
+  channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN || '',
+});
 
 const fullThaiMonths = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
 
@@ -12,25 +16,35 @@ const truncateDecimals = (val: number): number => Math.floor(Math.round(val * 10
 function createInvoiceFlexMessage(data: any) {
   const tableContents: any[] = [];
 
-  // 🌟 ตั้งค่า Theme สีเริ่มต้น
+  // 🌟 ตั้งค่า Theme สีเริ่มต้น (สีฟ้า - บิลปกติ)
   let boxBgColor = "#EBF5FB"; 
   let mainTextColor = "#111827"; 
   let itemTextColor = "#059669"; // สีเขียวสำหรับรายการบิลปกติ
   let mainTitle = "ยอดที่ต้องชำระ";
 
+  // 🌟 ตัวแปรคุมว่าจะโชว์ประวัติยอดค้างมั้ย? และยอดรวมควรเป็นเท่าไหร่?
+  // เริ่มต้นให้ถือว่าเป็นบิลปกติ โชว์แค่ยอดเดือนนี้เดือนเดียว
+  let showHistory = false;
+  let displayGrandTotal = data.currentInvoiceItem ? data.currentInvoiceItem.amount : data.finalGrandTotal;
+
   // 🌟 เปลี่ยน Theme สีตามประเภทบิล
-  if (data.type === 'REMINDER') {
-    boxBgColor = "#FFEDD5";     
-    mainTextColor = "#EA580C";   
-    itemTextColor = "#EA580C";   // ส้ม
-    mainTitle = "แจ้งเตือนยอดที่ต้องชำระ";
-  } else if (data.type === 'OVERDUE' || data.isOverdue) {
+  if (data.type === 'OVERDUE' || data.isOverdue) {
     boxBgColor = "#FDEBEC";     
     mainTextColor = "#EF4444";   
-    itemTextColor = "#EF4444";   // แดง
+    itemTextColor = "#EF4444";   // แดง (ค้างชำระ)
     mainTitle = "ยอดค้างชำระ";
+    showHistory = true; // บิลแดง ต้องกางประวัติ
+    displayGrandTotal = data.finalGrandTotal; // ยอดรวมทั้งหมด
+  } else if (data.type === 'REMINDER') {
+    boxBgColor = "#FFEDD5";     
+    mainTextColor = "#EA580C";   
+    itemTextColor = "#EA580C";   // ส้ม (ทวงล่วงหน้า)
+    mainTitle = "แจ้งเตือนยอดที่ต้องชำระ";
+    showHistory = true; // บิลส้ม ต้องกางประวัติ
+    displayGrandTotal = data.finalGrandTotal; // ยอดรวมทั้งหมด
   }
 
+  // โชว์รายการของเดือนปัจจุบันเสมอ
   if (data.currentInvoiceItem) {
     tableContents.push({
       type: "box", layout: "horizontal", margin: "md",
@@ -41,43 +55,44 @@ function createInvoiceFlexMessage(data: any) {
     });
   }
 
-  if (data.pastMonthItems && data.pastMonthItems.length > 0) {
-    // 🌟 รายการเดือน: เรียงจาก ใหม่ ไป เก่า (desc) + สีตามธีม
-    data.pastMonthItems.forEach((item: any) => {
-      tableContents.push({
-        type: "box", layout: "horizontal", margin: "md",
-        contents: [
-          { type: "text", text: item.label, size: "sm", color: itemTextColor }, 
-          { type: "text", text: `${item.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: itemTextColor, align: "end" } 
-        ]
-      });
-    });
-  }
-
-  if (data.pastYearTotals) {
-    // 🌟 รายการปี: เรียงจาก ใหม่ ไป เก่า (desc) + สีตามธีม
-    Object.keys(data.pastYearTotals)
-      .sort((a, b) => Number(b) - Number(a)) 
-      .forEach(yearStr => {
-        const yearNum = parseInt(yearStr);
+  // 🌟 ถ้าเงื่อนไขบังคับให้โชว์ประวัติ (บิลส้ม/แดง) ถึงจะเอาข้อมูลอดีตมาต่อท้าย
+  if (showHistory) {
+    if (data.pastMonthItems && data.pastMonthItems.length > 0) {
+      data.pastMonthItems.forEach((item: any) => {
         tableContents.push({
           type: "box", layout: "horizontal", margin: "md",
           contents: [
-            { type: "text", text: `ยอดค้างปี ${yearNum + 543}`, size: "sm", color: itemTextColor }, 
-            { type: "text", text: `${data.pastYearTotals[yearNum].toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: itemTextColor, align: "end" } 
+            { type: "text", text: item.label, size: "sm", color: itemTextColor }, 
+            { type: "text", text: `${item.amount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: itemTextColor, align: "end" } 
           ]
         });
-    });
-  }
+      });
+    }
 
-  if (data.totalPenalty > 0) {
-    tableContents.push({
-      type: "box", layout: "horizontal", margin: "md",
-      contents: [
-        { type: "text", text: `ค่าปรับ`, size: "sm", color: "#EA580C" }, 
-        { type: "text", text: `${data.totalPenalty.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EA580C", align: "end" } 
-      ]
-    });
+    if (data.pastYearTotals) {
+      Object.keys(data.pastYearTotals)
+        .sort((a, b) => Number(b) - Number(a)) 
+        .forEach(yearStr => {
+          const yearNum = parseInt(yearStr);
+          tableContents.push({
+            type: "box", layout: "horizontal", margin: "md",
+            contents: [
+              { type: "text", text: `ยอดค้างปี ${yearNum + 543}`, size: "sm", color: itemTextColor }, 
+              { type: "text", text: `${data.pastYearTotals[yearNum].toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: itemTextColor, align: "end" } 
+            ]
+          });
+      });
+    }
+
+    if (data.totalPenalty > 0) {
+      tableContents.push({
+        type: "box", layout: "horizontal", margin: "md",
+        contents: [
+          { type: "text", text: `ค่าปรับ`, size: "sm", color: "#EA580C" }, 
+          { type: "text", text: `${data.totalPenalty.toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "sm", color: "#EA580C", align: "end" } 
+        ]
+      });
+    }
   }
 
   return {
@@ -108,7 +123,7 @@ function createInvoiceFlexMessage(data: any) {
               type: "box", layout: "horizontal", margin: "sm", alignItems: "flex-end",
               contents: [
                 { type: "text", text: " ", flex: 1 }, 
-                { type: "text", text: data.finalGrandTotal.toLocaleString('th-TH', { minimumFractionDigits: 2 }), size: "xxl", weight: "bold", color: mainTextColor, align: "center", flex: 0, adjustMode: "shrink-to-fit" },
+                { type: "text", text: displayGrandTotal.toLocaleString('th-TH', { minimumFractionDigits: 2 }), size: "xxl", weight: "bold", color: mainTextColor, align: "center", flex: 0, adjustMode: "shrink-to-fit" },
                 { type: "text", text: "บาท", size: "sm", weight: "bold", color: mainTextColor, align: "end", flex: 1 }
               ]
             }
@@ -155,6 +170,156 @@ function createInvoiceFlexMessage(data: any) {
       ]
     }
   };
+}
+
+// ==========================================
+// 1. ระบบแอดมินกดส่งบิลเอง (POST)
+// ==========================================
+async function handleManualSend(request: Request) {
+  try {
+    const body = await request.json();
+    
+    const targetId = body.invoiceId || body.id; 
+    const type = body.type;
+
+    if (!targetId) {
+      return NextResponse.json({ success: false, error: 'ไม่พบ ID ของบิล' }, { status: 400 });
+    }
+
+    const invoice = await prisma.invoice.findUnique({
+      where: { id: targetId },
+      include: { house: { include: { residents: true, owner: true } } }
+    });
+    const config = await prisma.systemConfig.findFirst();
+
+    if (!invoice) return NextResponse.json({ success: false, error: 'ไม่พบบิล' }, { status: 404 });
+
+    let displayPenalty = 0;
+    let penaltyRatePerMonth = config?.penaltyRatePerDay ? Number(config.penaltyRatePerDay) : 100;
+
+    const todayObj = new Date(); todayObj.setHours(0, 0, 0, 0);
+    const dueDateObj = new Date(invoice.dueDate); dueDateObj.setHours(0, 0, 0, 0);
+    const isPastDue = todayObj > dueDateObj;
+
+    if (type === 'OVERDUE') {
+      if (todayObj > dueDateObj) {
+        const diffTime = todayObj.getTime() - dueDateObj.getTime();
+        const overdueDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); 
+        const overdueMonths = Math.floor(overdueDays / 30);
+        displayPenalty = truncateDecimals(overdueMonths * penaltyRatePerMonth);
+        
+        await prisma.invoice.update({
+          where: { id: targetId },
+          data: { 
+            penaltyAmount: displayPenalty, 
+            totalAmount: truncateDecimals(Number(invoice.baseAmount) + displayPenalty), 
+            status: 'OVERDUE' 
+          }
+        });
+      }
+    } else if (type === 'SEND' || type === 'REMINDER') {
+      displayPenalty = truncateDecimals(Number(invoice.penaltyAmount || 0));
+    }
+
+    const targetLineIds: string[] = [];
+    invoice.house.residents.forEach(user => { if (user.lineId) targetLineIds.push(user.lineId); });
+    if (invoice.house.owner?.lineId) targetLineIds.push(invoice.house.owner.lineId);
+    const uniqueLineIds = [...new Set(targetLineIds)];
+
+    if (uniqueLineIds.length === 0) return NextResponse.json({ success: false, error: 'ไม่มีลูกบ้านผูก LINE' }, { status: 400 });
+
+    const allUnpaidInvoices = await prisma.invoice.findMany({
+      where: {
+        residentHouseId: invoice.residentHouseId,
+        status: { in: ['PENDING', 'OVERDUE', 'REJECTED', 'PARTIAL'] as any }, 
+        billingYear: { not: 9999 } 
+      },
+      orderBy: [{ billingYear: 'desc' }, { billingMonth: 'desc' }]
+    });
+
+    let currentInvoiceItem: any = null;
+    let pastYearTotals: Record<number, number> = {};
+    let pastMonthItems: { label: string, amount: number }[] = [];
+    let totalPenalty = 0;
+    let grandTotalBase = 0;
+
+    const targetYear = invoice.billingYear;
+    const targetMonth = invoice.billingMonth;
+
+    allUnpaidInvoices.forEach(inv => {
+      const isTargetInvoice = inv.id === invoice.id;
+      const isOlderInvoice = inv.billingYear < targetYear || (inv.billingYear === targetYear && inv.billingMonth < targetMonth);
+
+      if (isTargetInvoice || isOlderInvoice) {
+        
+        if (!isTargetInvoice && inv.invoiceNo && inv.invoiceNo.startsWith('TR-')) return;
+
+        let paid = truncateDecimals(Number(inv.paidAmount || 0));
+        let penalty = isTargetInvoice ? displayPenalty : truncateDecimals(Number(inv.penaltyAmount || 0));
+        let base = truncateDecimals(Number(inv.baseAmount || 0));
+
+        if (paid > 0) {
+          if (paid >= penalty) {
+            base = truncateDecimals(base - (paid - penalty));
+            penalty = 0;
+          } else {
+            penalty = truncateDecimals(penalty - paid);
+          }
+        }
+
+        if (base > 0 || penalty > 0) {
+          grandTotalBase += base;
+          totalPenalty += penalty;
+
+          const label = `${fullThaiMonths[inv.billingMonth]} ${inv.billingYear + 543}`;
+
+          if (isTargetInvoice) {
+            currentInvoiceItem = { label, amount: base };
+          } else {
+            if (inv.billingYear < targetYear) {
+              pastYearTotals[inv.billingYear] = truncateDecimals((pastYearTotals[inv.billingYear] || 0) + base);
+            } else {
+              pastMonthItems.push({ label, amount: base });
+            }
+          }
+        }
+      }
+    });
+
+    const finalGrandTotal = truncateDecimals(grandTotalBase + totalPenalty);
+    const headerBillingMonthText = `${fullThaiMonths[invoice.billingMonth]} ${invoice.billingYear + 543}`;
+    
+    const dueDateText = `${String(dueDateObj.getDate()).padStart(2, '0')} ${fullThaiMonths[dueDateObj.getMonth() + 1]} ${dueDateObj.getFullYear() + 543}`;
+
+    const flexBubble = createInvoiceFlexMessage({
+      type: type,
+      houseNo: invoice.house.houseNo,
+      headerBillingMonthText,
+      currentInvoiceItem,
+      pastYearTotals,
+      pastMonthItems,
+      totalPenalty,
+      finalGrandTotal,
+      isOverdue: type === 'OVERDUE' || totalPenalty > 0 || isPastDue || invoice.status === 'OVERDUE',
+      dueDateText,
+      invoiceNo: invoice.invoiceNo || invoice.id 
+    });
+
+    const flexMessage: messagingApi.FlexMessage = {
+      type: 'flex',
+      altText: `ใบเสร็จเรียกเก็บเงิน บ้านเลขที่ ${invoice.house.houseNo}`,
+      contents: flexBubble as any
+    };
+
+    for (const lineId of uniqueLineIds) {
+      await client.pushMessage({ to: lineId, messages: [flexMessage] }).catch(err => console.error("Line push err:", err));
+    }
+
+    return NextResponse.json({ success: true, message: 'ส่งแจ้งเตือนสำเร็จ' });
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json({ success: false, error: 'เกิดข้อผิดพลาดในการส่ง' }, { status: 500 });
+  }
 }
 
 async function sendAutoLineMessage(lineId: string, flexBubbleStructure: any) {
@@ -213,7 +378,11 @@ async function handleCronJob(request: Request) {
       }
 
       const existingInvoice = await prisma.invoice.findFirst({
-        where: { billingMonth: targetMonth, billingYear: targetYear }
+        where: { 
+          billingMonth: targetMonth, 
+          billingYear: targetYear,
+          invoiceNo: { not: { startsWith: 'TR-' } }
+        }
       });
 
       if (!existingInvoice) {
@@ -250,7 +419,6 @@ async function handleCronJob(request: Request) {
       }
     }
 
-    // 🌟 1. ดักจับตั้งแต่ใน DB เลยว่าไม่หยิบบิลทดสอบ TR- มารันส่งออโต้รอบแรก
     const pendingInvoices = await prisma.invoice.findMany({
       where: {
         isNotified: false,
@@ -274,12 +442,12 @@ async function handleCronJob(request: Request) {
     let stats = { lineSent: 0, updatedInvoices: 0 };
 
     for (const inv of pendingInvoices) {
-      const today = new Date(); today.setHours(0, 0, 0, 0);
-      const dueDate = new Date(inv.dueDate); dueDate.setHours(0, 0, 0, 0);
+      const todayObj = new Date(); todayObj.setHours(0, 0, 0, 0);
+      const dueDateObj = new Date(inv.dueDate); dueDateObj.setHours(0, 0, 0, 0);
       let currentPenalty = truncateDecimals(Number(inv.penaltyAmount || 0));
 
-      if (today > dueDate) {
-        const diffTime = today.getTime() - dueDate.getTime();
+      if (todayObj > dueDateObj) {
+        const diffTime = todayObj.getTime() - dueDateObj.getTime();
         const overdueDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
         const overdueMonths = Math.ceil(overdueDays / 30);
         currentPenalty = truncateDecimals(overdueMonths * penaltyRatePerMonth);
@@ -305,7 +473,6 @@ async function handleCronJob(request: Request) {
     for (const [houseId, invList] of uniqueHouseMap.entries()) {
       const sampleInv = invList[0];
 
-      // 🌟 2. ดักบิล TR- ไม่ให้โผล่เข้ามารวมในหนี้ค้างชำระในอดีตของบ้านหลังนั้นๆ
       const allUnpaidForThisHouse = await prisma.invoice.findMany({
         where: {
           residentHouseId: houseId,
@@ -362,16 +529,20 @@ async function handleCronJob(request: Request) {
       });
 
       const finalGrandTotal = truncateDecimals(grandTotalBase + totalPenalty);
-      const isOverdue = latestInv.status === 'OVERDUE' || allUnpaidForThisHouse.some(u => u.status === 'OVERDUE') || totalPenalty > 0;
+      
+      const due = new Date(latestInv.dueDate); due.setHours(0, 0, 0, 0);
+      const todayObj = new Date(); todayObj.setHours(0, 0, 0, 0);
+      const isPastDue = todayObj > due;
+      
+      const isOverdue = latestInv.status === 'OVERDUE' || allUnpaidForThisHouse.some(u => u.status === 'OVERDUE') || totalPenalty > 0 || isPastDue;
 
-      const due = new Date(latestInv.dueDate);
       const dueDateText = `${String(due.getDate()).padStart(2, '0')} ${fullThaiMonths[due.getMonth() + 1]} ${due.getFullYear() + 543}`;
       const headerBillingMonthText = `${fullThaiMonths[latestInv.billingMonth]} ${latestInv.billingYear + 543}`;
 
       for (const resident of sampleInv.house.residents) {
         if (resident.lineId) {
           const flexMsg = createInvoiceFlexMessage({
-            type: latestInv.status === 'OVERDUE' ? 'OVERDUE' : 'SEND',
+            type: isOverdue ? 'OVERDUE' : 'SEND',
             houseNo: sampleInv.house.houseNo,
             headerBillingMonthText: headerBillingMonthText,
             currentInvoiceItem: currentInvoiceItem,
@@ -406,4 +577,4 @@ async function handleCronJob(request: Request) {
 }
 
 export async function GET(request: Request) { return handleCronJob(request); }
-export async function POST(request: Request) { return handleCronJob(request); }
+export async function POST(request: Request) { return handleManualSend(request); }
