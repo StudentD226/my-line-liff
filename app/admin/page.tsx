@@ -169,7 +169,7 @@ export default function AdminDashboardHome() {
                     wrapperStyle={{ fontSize: '12px' }}
                   />
                   {/* ปรับฟอนต์ตัวอธิบายกราฟให้เล็กลงบนจอมือถือป้องกันตัวหนังสือเบียดตัวล้นกรอบ */}
-                  <Legend verticalAlign="bottom" height={40} iconType="circle" wrapperStyle={{ fontSize: '11px', pt: '10px', fontWeight: 'bold' }} />
+                  <Legend verticalAlign="bottom" height={40} iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '10px', fontWeight: 'bold' }} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
