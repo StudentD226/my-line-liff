@@ -53,7 +53,7 @@ export default function FinancialDashboard() {
   const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  // 🌟 เพิ่ม State สำหรับช่องค้นหา
+  // 🌟 State สำหรับช่องค้นหา
   const [searchTerm, setSearchTerm] = useState("");
 
   const [formData, setFormData] = useState({
@@ -116,7 +116,6 @@ export default function FinancialDashboard() {
   const filteredAndSortedData = useMemo(() => {
     let items = [...data];
 
-    // 1. ค้นหาจากชื่อรายการ หรือ หมวดหมู่
     if (searchTerm) {
       const lowerTerm = searchTerm.toLowerCase();
       items = items.filter(tx => 
@@ -125,7 +124,6 @@ export default function FinancialDashboard() {
       );
     }
 
-    // 2. จัดเรียง
     if (sortConfig !== null) {
       items.sort((a, b) => {
         let aValue = a[sortConfig.key];
@@ -148,7 +146,6 @@ export default function FinancialDashboard() {
     setCurrentPage(1);
   };
 
-  // 🌟 อัปเดตการแบ่งหน้าให้ใช้ข้อมูลที่ผ่านการกรองแล้ว
   const totalPages = Math.max(1, Math.ceil(filteredAndSortedData.length / rowsPerPage));
   const paginatedData = filteredAndSortedData.slice(
     (currentPage - 1) * rowsPerPage, 
@@ -346,10 +343,8 @@ export default function FinancialDashboard() {
       return showAlert("ไม่มีข้อมูลสำหรับส่งออก", "warning");
     }
     try {
-      // สร้าง Header
       let csvContent = "วันที่,รายการ,หมวดหมู่,ประเภท,จำนวนเงิน(บาท),หมายเหตุ\n";
       
-      // วนลูปข้อมูล (ข้อมูลที่กรองและเรียงแล้ว)
       filteredAndSortedData.forEach(tx => {
         const date = new Date(tx.date).toLocaleDateString('th-TH');
         const title = `"${tx.title.replace(/"/g, '""')}"`;
@@ -361,7 +356,6 @@ export default function FinancialDashboard() {
         csvContent += `${date},${title},${category},${type},${amount},${note}\n`;
       });
 
-      // ใส่ BOM \uFEFF ให้ Excel อ่านภาษาไทยออก
       const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement("a");
       const url = URL.createObjectURL(blob);
@@ -671,11 +665,11 @@ export default function FinancialDashboard() {
         </div>
       </div>
 
-      {/* Charts */}
+      {/* 🌟 Charts: ล็อกความสูงไว้ก่อนให้ชัวร์ๆ แล้วค่อย Responsive */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
-        <div className="bg-white p-4 sm:p-6 rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+        <div className="bg-white p-4 sm:p-6 rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden flex flex-col w-full">
           <h3 className="font-bold text-gray-800 mb-4 sm:mb-6 flex items-center text-sm sm:text-base">สถิติรายรับ - รายจ่าย รายปี <InfoTooltip text={`ข้อมูลสรุปรวมตั้งแต่ ม.ค. - ธ.ค. ปี พ.ศ. ${selectedYear + 543}`} /></h3>
-          <div className="h-56 sm:h-64 w-full flex-1">
+          <div className="w-full h-[300px] sm:h-[350px] min-h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={yearlyChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
@@ -690,9 +684,9 @@ export default function FinancialDashboard() {
           </div>
         </div>
 
-        <div className="bg-white p-4 sm:p-6 rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+        <div className="bg-white p-4 sm:p-6 rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden flex flex-col w-full">
           <h3 className="font-bold text-gray-800 mb-2 flex items-center text-sm sm:text-base">สัดส่วนรายจ่ายรอบบิลปัจจุบัน <InfoTooltip text={`วิเคราะห์รายจ่ายแยกตามหมวดหมู่ ของรอบบิล ${fullThaiMonths[selectedMonth]} ${selectedYear + 543}`} /></h3>
-          <div className="flex items-center justify-center h-56 sm:h-64 relative w-full flex-1">
+          <div className="w-full h-[300px] sm:h-[350px] min-h-[300px] relative flex items-center justify-center">
             {pieData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -706,7 +700,7 @@ export default function FinancialDashboard() {
                     }} 
                     wrapperStyle={{ fontSize: '12px' }}
                   />
-                  <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '11px', fontWeight: 'bold' }} />
+                  <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '10px', fontWeight: 'bold' }} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
@@ -716,7 +710,7 @@ export default function FinancialDashboard() {
         </div>
       </div>
 
-      {/* 🌟 Table Section (อัปเดตระบบค้นหา และปุ่ม Export) */}
+      {/* 🌟 Table Section */}
       <div className="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden flex flex-col w-full">
         <div className="p-4 sm:p-6 border-b border-gray-100 flex flex-col lg:flex-row justify-between items-start lg:items-center bg-gray-50/50 gap-4">
           <h3 className="font-bold text-gray-800 flex items-center text-sm sm:text-base shrink-0">
@@ -724,7 +718,7 @@ export default function FinancialDashboard() {
           </h3>
           
           <div className="flex flex-col sm:flex-row flex-wrap items-center gap-3 w-full lg:w-auto">
-            {/* 🌟 ช่องค้นหา */}
+            {/* ช่องค้นหา */}
             <div className="relative w-full sm:w-auto">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
               <input 
@@ -755,7 +749,7 @@ export default function FinancialDashboard() {
               รวม {filteredAndSortedData.length} รายการ
             </span>
 
-            {/* 🌟 ปุ่ม Export Excel */}
+            {/* ปุ่ม Export Excel */}
             <button 
               onClick={handleExportExcel}
               className="flex items-center justify-center w-full sm:w-auto px-4 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 font-bold rounded-xl transition-colors text-sm shrink-0 border border-emerald-100 active:scale-95"
