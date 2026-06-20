@@ -231,3 +231,12 @@ model AdminReminder {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
+
+model AdminUser {
+  id        String   @id @default(cuid())
+  name      String   // ชื่อพนักงาน
+  email     String   @unique // ใช้อีเมลเป็น Username
+  password  String   // รหัสผ่าน (เดี๋ยวเราจะเข้ารหัสก่อนบันทึก)
+  role      String   @default("NITI") // สิทธิ์การใช้งาน: SUPER_ADMIN, ADMIN, NITI
+  createdAt DateTime @default(now())
+}

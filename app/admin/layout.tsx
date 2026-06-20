@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
   Home, FileText, CheckCircle, Users, LayoutDashboard, 
-  Wrench, Bell, UserCircle, PieChart, Menu, X, Megaphone 
+  Wrench, Bell, UserCircle, PieChart, Menu, X, Megaphone, Shield 
 } from 'lucide-react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -30,6 +30,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { icon: CheckCircle, label: 'ตรวจสอบการโอน', href: '/admin/review-slips' },
     { icon: PieChart, label: 'รายงานการเงิน', href: '/admin/financial' },
     { icon: Users, label: 'สมาชิกลูกบ้าน', href: '/admin/users' },
+    { icon: Shield, label: 'จัดการทีมงาน', href: '/admin/staff' }, // 🌟 เพิ่มเมนูจัดการทีมงานตรงนี้
   ];
 
   return (
