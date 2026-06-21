@@ -10,10 +10,10 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // 🌟 เพิ่ม State สำหรับเก็บข้อความแจ้งเตือนใต้ Textbox แต่ละช่อง
+  // State สำหรับเก็บข้อความแจ้งเตือนใต้ Textbox แต่ละช่อง
   const [fieldErrors, setFieldErrors] = useState({ email: "", password: "" });
 
-  // 🌟 ฟังก์ชันตรวจสอบอีเมลแบบ Real-time
+  // ฟังก์ชันตรวจสอบอีเมลแบบ Real-time
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setFormData({ ...formData, email: value });
@@ -27,7 +27,7 @@ export default function LoginPage() {
     }
   };
 
-  // 🌟 ฟังก์ชันตรวจสอบรหัสผ่านแบบ Real-time
+  // ฟังก์ชันตรวจสอบรหัสผ่านแบบ Real-time
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setFormData({ ...formData, password: value });
@@ -44,7 +44,7 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // 🌟 ดักไว้ก่อน: ถ้ายังมี Error ค้างอยู่ หรือยังไม่กรอกข้อมูล ห้ามกด Submit
+    // ดักไว้ก่อน: ถ้ายังมี Error ค้างอยู่ หรือยังไม่กรอกข้อมูล ห้ามกด Submit
     if (fieldErrors.email || fieldErrors.password || !formData.email || !formData.password) {
       if (!formData.email) setFieldErrors(prev => ({ ...prev, email: "กรุณากรอกอีเมล" }));
       if (!formData.password) setFieldErrors(prev => ({ ...prev, password: "กรุณากรอกรหัสผ่าน" }));
@@ -65,7 +65,8 @@ export default function LoginPage() {
         setError("อีเมลหรือรหัสผ่านไม่ถูกต้อง");
         setIsLoading(false);
       } else {
-        router.push("/admin");
+        // 🌟 จุดสำคัญ: ใช้ replace แทน push เพื่อปิดหน้า Login ทิ้งไปจากประวัติเบราว์เซอร์ ดึงเข้าหน้าแรกทันที
+        router.replace("/admin");
         router.refresh();
       }
     } catch (error) {
@@ -100,7 +101,7 @@ export default function LoginPage() {
           )}
 
           <form className="space-y-6" onSubmit={handleSubmit} noValidate>
-            {/* 🌟 ช่องอีเมล */}
+            {/* ช่องอีเมล */}
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-2">
                 อีเมล
@@ -118,7 +119,7 @@ export default function LoginPage() {
                   onChange={handleEmailChange}
                 />
               </div>
-              {/* 🌟 ข้อความเตือนใต้อีเมล */}
+              {/* ข้อความเตือนใต้อีเมล */}
               {fieldErrors.email && (
                 <div className="mt-1.5 flex items-center text-red-500 text-sm font-medium animate-in fade-in slide-in-from-top-1">
                   <AlertCircle size={14} className="mr-1" />
@@ -127,7 +128,7 @@ export default function LoginPage() {
               )}
             </div>
 
-            {/* 🌟 ช่องรหัสผ่าน */}
+            {/* ช่องรหัสผ่าน */}
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-2">
                 รหัสผ่าน
@@ -145,7 +146,7 @@ export default function LoginPage() {
                   onChange={handlePasswordChange}
                 />
               </div>
-              {/* 🌟 ข้อความเตือนใต้รหัสผ่าน */}
+              {/* ข้อความเตือนใต้รหัสผ่าน */}
               {fieldErrors.password && (
                 <div className="mt-1.5 flex items-center text-red-500 text-sm font-medium animate-in fade-in slide-in-from-top-1">
                   <AlertCircle size={14} className="mr-1" />
