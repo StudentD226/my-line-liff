@@ -3,28 +3,36 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import liff from '@line/liff';
 
-export default function LiffIndexPage() {
+export default function RootPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const initLiff = async () => {
+    const initSystem = async () => {
       try {
         await liff.init({ liffId: "2009290251-UZlxLIQJ" });
         
-        if (!liff.isLoggedIn()) {
-          liff.login();
+        // 🌟 เซ็นเซอร์แยกคน: ตรวจสอบว่าเปิดเว็บจากในแอป LINE หรือไม่?
+        if (liff.isInClient()) {
+          // 📱 ฝั่งลูกบ้าน: เปิดจากแอป LINE -> บังคับล็อกอิน LIFF
+          if (!liff.isLoggedIn()) {
+            liff.login();
+          } else {
+            router.push('/dashboard'); // (เปลี่ยนเป็นหน้าหลักของลูกบ้านได้เลย)
+          }
         } else {
-          // 🌟 วาร์ปผู้ใช้ไปหน้าหลักของระบบ (ลูกพี่เปลี่ยน "/dashboard" เป็นหน้าเว็บของลูกบ้านได้เลยครับ)
-          router.push('/dashboard'); 
+          // 💻 ฝั่งแอดมิน: เปิดจากเว็บปกติ -> วาร์ปหนีไปหน้า Login หลังบ้านทันที!!
+          router.push('/admin/login');
         }
       } catch (err) {
-        console.error("LIFF Initialization failed", err);
+        // ถ้า LIFF มีปัญหา หรือรันใน Localhost คอมพิวเตอร์ ให้วาร์ปไปหน้าแอดมินเลย
+        console.error(err);
+        router.push('/admin/login');
       }
     };
 
-    initLiff();
+    initSystem();
   }, [router]);
 
-  // 🌟 จุดสำคัญ: คืนค่า null เพื่อไม่ให้วาด UI อะไรบนหน้าจอเลย (จะเห็นแค่หน้าขาวแวบเดียวแล้ววาร์ปทันที)
+  // คืนค่า null เพื่อไม่ให้แสดง UI อะไรเลย (เห็นแค่หน้าขาวเสี้ยววินาทีแล้ววาร์ปทันที)
   return null; 
 }
