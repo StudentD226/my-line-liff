@@ -2,15 +2,15 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useSession, signOut } from 'next-auth/react'; // 🌟 1. ดึงระบบ Login มาใช้ใน Layout
+import { useSession, signOut } from 'next-auth/react';
 import {
   Home, FileText, CheckCircle, Users, LayoutDashboard,
   Wrench, Bell, UserCircle, PieChart, Menu, X, Megaphone, Shield, LogOut
-} from 'lucide-react'; // 🌟 เพิ่มไอคอน LogOut
+} from 'lucide-react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { data: session } = useSession(); // 🌟 2. ดึงข้อมูลคนล็อกอินมาใช้
+  const { data: session } = useSession();
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
@@ -19,6 +19,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       setIsSidebarOpen(false);
     }
   }, []);
+
+  // 🌟 ---------------- จุดที่แก้ไข ---------------- 🌟
+  // ดักไว้ตรงนี้: ถ้าเป็นหน้า Login ให้คืนค่าแค่หน้า Login เพียวๆ (children) ไม่ต้องวาดเมนู
+  if (pathname === '/admin/login') {
+    return <>{children}</>;
+  }
+  // 🌟 --------------------------------------------- 🌟
 
   const menuItems = [
     { icon: LayoutDashboard, label: 'ภาพรวมระบบ', href: '/admin' },
@@ -96,7 +103,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </nav>
         </div>
 
-        {/* 🌟 3. เปลี่ยน Footer เมนูด้านล่าง เป็นปุ่ม Logout สีแดงสวยๆ */}
         <div className="p-5 border-t border-slate-100 shrink-0">
           <button
             onClick={() => signOut({ callbackUrl: '/admin/login' })}
@@ -133,7 +139,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <UserCircle size={24} strokeWidth={1.5} />
               </div>
               <div className="flex flex-col hidden sm:flex text-right">
-                {/* 🌟 4. ดึงชื่อคนล็อกอินมาแสดงบน Header มุมขวาบนอัตโนมัติ */}
                 <span className="text-sm font-extrabold text-slate-700 leading-none">
                   {session?.user?.name || "กำลังโหลด..."}
                 </span>
