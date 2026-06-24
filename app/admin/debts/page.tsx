@@ -200,35 +200,9 @@ export default function DebtTrackerPage() {
         </div>
       </div>
 
-      {/* 🌟 พระเอกอยู่ตรงนี้ครับ! สลับร่างระหว่างช่องค้นหากับแถบเครื่องมือสีเข้ม */}
-      {selectedIds.length > 0 ? (
-        <div className="bg-[#1e293b] p-4 rounded-3xl shadow-md mb-4 flex items-center justify-between animate-in fade-in zoom-in-95 duration-200">
-          <div className="flex items-center gap-3 pl-2">
-            <div className="bg-[#376b64] text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shadow-inner border border-[#4a8a81]">
-              {selectedIds.length}
-            </div>
-            <span className="text-white font-medium text-sm sm:text-base">รายการที่เลือก</span>
-          </div>
-
-          <div className="flex gap-2 sm:gap-3 pr-2">
-            <button 
-              onClick={() => setSelectedIds([])} 
-              className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-xs sm:text-sm font-medium transition-colors border border-slate-600"
-            >
-              ยกเลิก
-            </button>
-            <button 
-              onClick={handleBulkNotify} 
-              className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-colors shadow-lg shadow-rose-600/20"
-            >
-              <AlertCircle size={16} /> 
-              <span className="hidden sm:inline-block">ทวงยอดค้างที่เลือก</span>
-              <span className="sm:hidden">ทวงหนี้</span>
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 mb-4 flex flex-col sm:flex-row gap-4 items-center justify-between">
+      {/* 🌟 ช่องค้นหาและตัวกรอง (จะซ่อนเมื่อมีการติ๊ก Checkbox) */}
+      {selectedIds.length === 0 && (
+        <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 mb-4 flex flex-col sm:flex-row gap-4 items-center justify-between transition-all">
           <div className="relative w-full max-w-md">
             <Search className="absolute left-4 top-3 text-slate-400" size={18} />
             <input
@@ -256,8 +230,39 @@ export default function DebtTrackerPage() {
         </div>
       )}
 
-      {/* 🌟 ตารางข้อมูล */}
-      <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+      {/* 🌟 กล่องตารางหลัก */}
+      <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden transition-all">
+        
+        {/* 🌟 แถบเครื่องมือ Contextual แนบติดหัวตารางแบบรูปที่ 1 (แสดงเมื่อเลือก) */}
+        {selectedIds.length > 0 && (
+          <div className="bg-[#111827] px-4 sm:px-6 py-3.5 flex flex-wrap gap-4 items-center justify-between animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="flex items-center gap-3">
+              <div className="bg-[#376b64] text-white w-7 h-7 rounded-full flex items-center justify-center font-bold text-sm shadow-sm">
+                {selectedIds.length}
+              </div>
+              <span className="text-white font-bold text-sm sm:text-base">รายการที่เลือก</span>
+            </div>
+
+            <div className="flex gap-2 sm:gap-3">
+              <button 
+                onClick={() => setSelectedIds([])} 
+                className="px-4 py-2 bg-transparent hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl text-xs sm:text-sm font-medium transition-colors border border-slate-700"
+              >
+                ยกเลิก
+              </button>
+              <button 
+                onClick={handleBulkNotify} 
+                className="px-4 py-2 bg-[#E11D48] hover:bg-[#BE123C] text-white rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-colors shadow-lg shadow-rose-900/50"
+              >
+                <AlertCircle size={16} /> 
+                <span className="hidden sm:inline-block">ทวงยอดค้างที่เลือก</span>
+                <span className="sm:hidden">ทวงหนี้</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 🌟 ส่วนของตารางข้อมูล */}
         <div className="overflow-x-auto custom-scrollbar">
           <table className="w-full text-left border-collapse min-w-[800px]">
             <thead>
