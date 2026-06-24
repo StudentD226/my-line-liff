@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { 
   DollarSign, Home, AlertTriangle, Search, 
-  Calendar, User, Phone, Loader2, AlertCircle, ArrowUpDown, CheckSquare
+  Calendar, User, Phone, Loader2, AlertCircle, ArrowUpDown
 } from "lucide-react";
 import Swal from "sweetalert2";
 
@@ -11,8 +11,6 @@ export default function DebtTrackerPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("debt-desc"); 
-  
-  // 🌟 State สำหรับเก็บรายการที่ถูกติ๊ก Checkbox
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   useEffect(() => {
@@ -33,14 +31,13 @@ export default function DebtTrackerPage() {
       });
   };
 
-  // 🌟 ฟังก์ชันทวงหนี้แบบ "รายบุคคล" (ปุ่มขวาสุดในตาราง)
   const handleNotifyDebt = async (item: any) => {
     const result = await Swal.fire({
       title: 'ยืนยันการทวงยอดค้าง?',
       html: `ต้องการส่งแจ้งเตือนผ่าน LINE ไปยังบ้านเลขที่ <b>${item.houseNumber}</b> ใช่หรือไม่?`,
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonColor: '#EF4444', 
+      confirmButtonColor: '#376b64', 
       cancelButtonColor: '#F3F4F6', 
       confirmButtonText: 'ตกลง, ส่งแจ้งเตือน',
       cancelButtonText: '<span style="color: #4B5563">ยกเลิก</span>',
@@ -52,7 +49,6 @@ export default function DebtTrackerPage() {
     }
   };
 
-  // 🌟 ฟังก์ชันทวงหนี้แบบ "กลุ่ม" (ปุ่มจากแถบด้านล่าง)
   const handleBulkNotify = async () => {
     const itemsToNotify = debts.filter(d => selectedIds.includes(d.id));
     
@@ -61,7 +57,7 @@ export default function DebtTrackerPage() {
       html: `คุณกำลังจะส่งแจ้งเตือนไปยังบ้าน <b>${itemsToNotify.length} หลัง</b> ยืนยันหรือไม่?`,
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonColor: '#EF4444', 
+      confirmButtonColor: '#376b64', 
       cancelButtonColor: '#F3F4F6', 
       confirmButtonText: `ตกลง, ส่ง ${itemsToNotify.length} รายการ`,
       cancelButtonText: '<span style="color: #4B5563">ยกเลิก</span>',
@@ -70,11 +66,10 @@ export default function DebtTrackerPage() {
 
     if (result.isConfirmed) {
       await processNotification(itemsToNotify);
-      setSelectedIds([]); // เคลียร์ค่าที่เลือกหลังจากส่งเสร็จ
+      setSelectedIds([]); 
     }
   };
 
-  // 🌟 ฟังก์ชันตัวกลางสำหรับยิง API ไปหา LINE
   const processNotification = async (items: any[]) => {
     Swal.fire({
       title: 'กำลังส่งแจ้งเตือน...',
@@ -107,8 +102,6 @@ export default function DebtTrackerPage() {
       } catch (err) {
         failCount++;
       }
-      
-      // อัปเดตสถานะบนหน้าจอโหลด
       Swal.update({ text: `ส่งแล้ว ${i + 1} / ${items.length} รายการ` });
     }
 
@@ -146,7 +139,6 @@ export default function DebtTrackerPage() {
     return 0;
   });
 
-  // 🌟 จัดการ Checkbox Select All
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
       setSelectedIds(sortedDebts.map(item => item.id));
@@ -155,7 +147,6 @@ export default function DebtTrackerPage() {
     }
   };
 
-  // 🌟 จัดการ Checkbox ทีละอัน
   const handleSelectOne = (e: React.ChangeEvent<HTMLInputElement>, id: string) => {
     if (e.target.checked) {
       setSelectedIds(prev => [...prev, id]);
@@ -174,7 +165,7 @@ export default function DebtTrackerPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto bg-[#F8FAFC] min-h-screen w-full relative pb-24">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto bg-[#F8FAFC] min-h-screen w-full relative">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
           <AlertTriangle className="text-rose-500" size={28} />
@@ -209,43 +200,72 @@ export default function DebtTrackerPage() {
         </div>
       </div>
 
-      <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 mb-4 flex flex-col sm:flex-row gap-4 items-center justify-between">
-        <div className="relative w-full max-w-md">
-          <Search className="absolute left-4 top-3 text-slate-400" size={18} />
-          <input
-            type="text"
-            placeholder="ค้นหาเลขที่บ้าน หรือชื่อลูกบ้าน..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-11 pr-4 py-2 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-[#1A534B] outline-none transition-all font-medium bg-slate-50"
-          />
-        </div>
+      {/* 🌟 พระเอกอยู่ตรงนี้ครับ! สลับร่างระหว่างช่องค้นหากับแถบเครื่องมือสีเข้ม */}
+      {selectedIds.length > 0 ? (
+        <div className="bg-[#1e293b] p-4 rounded-3xl shadow-md mb-4 flex items-center justify-between animate-in fade-in zoom-in-95 duration-200">
+          <div className="flex items-center gap-3 pl-2">
+            <div className="bg-[#376b64] text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shadow-inner border border-[#4a8a81]">
+              {selectedIds.length}
+            </div>
+            <span className="text-white font-medium text-sm sm:text-base">รายการที่เลือก</span>
+          </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <ArrowUpDown size={16} className="text-slate-400" />
-          <select 
-            value={sortBy} 
-            onChange={(e) => setSortBy(e.target.value)}
-            className="w-full sm:w-auto bg-slate-50 border border-slate-200 text-slate-600 text-sm rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-[#1A534B] cursor-pointer"
-          >
-            <option value="debt-desc">ยอดหนี้ (มากไปน้อย)</option>
-            <option value="debt-asc">ยอดหนี้ (น้อยไปมาก)</option>
-            <option value="month-desc">เดือนที่ค้าง (มากไปน้อย)</option>
-            <option value="house-asc">เลขที่บ้าน (ก - ฮ)</option>
-          </select>
+          <div className="flex gap-2 sm:gap-3 pr-2">
+            <button 
+              onClick={() => setSelectedIds([])} 
+              className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-xs sm:text-sm font-medium transition-colors border border-slate-600"
+            >
+              ยกเลิก
+            </button>
+            <button 
+              onClick={handleBulkNotify} 
+              className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-colors shadow-lg shadow-rose-600/20"
+            >
+              <AlertCircle size={16} /> 
+              <span className="hidden sm:inline-block">ทวงยอดค้างที่เลือก</span>
+              <span className="sm:hidden">ทวงหนี้</span>
+            </button>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 mb-4 flex flex-col sm:flex-row gap-4 items-center justify-between">
+          <div className="relative w-full max-w-md">
+            <Search className="absolute left-4 top-3 text-slate-400" size={18} />
+            <input
+              type="text"
+              placeholder="ค้นหาเลขที่บ้าน หรือชื่อลูกบ้าน..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-11 pr-4 py-2 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-[#1A534B] outline-none transition-all font-medium bg-slate-50"
+            />
+          </div>
 
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <ArrowUpDown size={16} className="text-slate-400" />
+            <select 
+              value={sortBy} 
+              onChange={(e) => setSortBy(e.target.value)}
+              className="w-full sm:w-auto bg-slate-50 border border-slate-200 text-slate-600 text-sm rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-[#1A534B] cursor-pointer"
+            >
+              <option value="debt-desc">ยอดหนี้ (มากไปน้อย)</option>
+              <option value="debt-asc">ยอดหนี้ (น้อยไปมาก)</option>
+              <option value="month-desc">เดือนที่ค้าง (มากไปน้อย)</option>
+              <option value="house-asc">เลขที่บ้าน (ก - ฮ)</option>
+            </select>
+          </div>
+        </div>
+      )}
+
+      {/* 🌟 ตารางข้อมูล */}
       <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
         <div className="overflow-x-auto custom-scrollbar">
           <table className="w-full text-left border-collapse min-w-[800px]">
             <thead>
               <tr className="bg-slate-50/70 border-b border-slate-100 text-slate-400 text-xs font-bold uppercase tracking-wider">
-                {/* 🌟 Checkbox ส่วนหัวตาราง */}
                 <th className="p-4 sm:p-5 w-12 text-center">
                   <input 
                     type="checkbox" 
-                    className="w-4 h-4 cursor-pointer accent-[#376B64] rounded"
+                    className="w-4 h-4 cursor-pointer accent-[#376B64] rounded border-slate-300"
                     checked={sortedDebts.length > 0 && selectedIds.length === sortedDebts.length}
                     onChange={handleSelectAll}
                   />
@@ -261,11 +281,10 @@ export default function DebtTrackerPage() {
               {sortedDebts.length > 0 ? (
                 sortedDebts.map((item) => (
                   <tr key={item.id} className={`hover:bg-slate-50/50 transition-colors ${selectedIds.includes(item.id) ? 'bg-[#376b64]/5' : ''}`}>
-                    {/* 🌟 Checkbox แต่ละรายการ */}
                     <td className="p-4 sm:p-5 text-center">
                       <input 
                         type="checkbox" 
-                        className="w-4 h-4 cursor-pointer accent-[#376B64] rounded"
+                        className="w-4 h-4 cursor-pointer accent-[#376B64] rounded border-slate-300"
                         checked={selectedIds.includes(item.id)}
                         onChange={(e) => handleSelectOne(e, item.id)}
                       />
@@ -336,39 +355,6 @@ export default function DebtTrackerPage() {
           </table>
         </div>
       </div>
-
-      {/* 🌟 Floating Action Bar (แถบเมนูด้านล่างสุด จะเด้งขึ้นมาเมื่อมีรายการถูกเลือก) */}
-      {selectedIds.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-[#1e293b] p-4 flex items-center justify-between z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] border-t border-slate-700 transition-all duration-300">
-          <div className="flex items-center justify-between w-full max-w-7xl mx-auto px-2 sm:px-6">
-            
-            <div className="flex items-center gap-3">
-              <div className="bg-[#376b64] text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shadow-md">
-                {selectedIds.length}
-              </div>
-              <span className="text-white font-medium text-sm sm:text-base hidden sm:inline-block">รายการที่เลือก</span>
-            </div>
-
-            <div className="flex gap-2 sm:gap-3">
-              <button 
-                onClick={() => setSelectedIds([])} 
-                className="px-4 py-2 sm:py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-xs sm:text-sm font-medium transition-colors"
-              >
-                ยกเลิก
-              </button>
-              <button 
-                onClick={handleBulkNotify} 
-                className="px-4 py-2 sm:py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-colors shadow-lg shadow-rose-500/30"
-              >
-                <AlertCircle size={16} /> 
-                <span className="hidden sm:inline-block">ทวงยอดค้างที่เลือก</span>
-                <span className="sm:hidden">ส่งทวงหนี้</span>
-              </button>
-            </div>
-            
-          </div>
-        </div>
-      )}
     </div>
   );
 }
