@@ -58,7 +58,27 @@ const handler = NextAuth({
   pages: {
     signIn: '/admin/login', // 🌟 บอกระบบว่าหน้าต่าง Login เราอยู่ไหน
   },
-  session: { strategy: "jwt" },
+  
+  // 🌟 จุดที่เพิ่มเข้ามาที่ 1: ตั้งเวลาหมดอายุ
+  session: { 
+    strategy: "jwt",
+    maxAge: 2 * 60 * 60, // ⏰ บังคับเตะออกอัตโนมัติหากปล่อยทิ้งไว้ 2 ชั่วโมง
+  },
+
+  // 🌟 จุดที่เพิ่มเข้ามาที่ 2: ตั้งค่า Cookie ให้เป็นแบบ "Session" แท้ๆ
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === 'production' ? '__Secure-next-auth.session-token' : 'next-auth.session-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+        // ❌ ไม่ใส่คำสั่ง maxAge ในนี้! เพื่อให้เบราว์เซอร์ลบคุกกี้ทิ้งทันทีที่กดปิด (X)
+      }
+    }
+  },
+
   secret: process.env.NEXTAUTH_SECRET,
 });
 

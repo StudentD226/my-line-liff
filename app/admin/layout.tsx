@@ -20,8 +20,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   }, []);
 
-  // 🌟 ---------------- จุดที่แก้ไข ---------------- 🌟
-  // ดักไว้ตรงนี้: ถ้าเป็นหน้า Login ให้คืนค่าแค่หน้า Login เพียวๆ (children) ไม่ต้องวาดเมนู
   if (pathname === '/admin/login') {
     return <>{children}</>;
   }
@@ -35,7 +33,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { icon: FileText, label: 'จัดการบิล/เรียกเก็บ', href: '/admin/invoices' },
     { icon: CheckCircle, label: 'ตรวจสอบการโอน', href: '/admin/review-slips' },
     { icon: PieChart, label: 'รายงานการเงิน', href: '/admin/financial' },
-    { icon: Users, label: 'สมาชิกลูกบ้าน', href: '/admin/users' },
+    { icon: Users, label: 'บัญชีลูกหนี้', href: '/admin/debts' },
     { icon: Shield, label: 'จัดการทีมงาน', href: '/admin/staff' },
   ];
 
