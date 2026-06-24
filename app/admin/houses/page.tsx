@@ -123,6 +123,7 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
     <div className="min-h-screen bg-slate-50 font-sans p-4 sm:p-6 md:p-8 w-full overflow-x-hidden">
       <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-500 pb-20 w-full">
         
+        {/* โหลด Library ปกติ 1 ครั้ง */}
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
         {/* 🌟 Top Action Card */}
@@ -429,131 +430,139 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
       )}
 
       {/* =======================================================
-          🌟 ระบบควบคุม (JS) 
+          🌟 ระบบควบคุม (JS) - แก้ไขบัคหน่วงและปุ่มซ้ายเสมอ
           ======================================================= */}
-      <script dangerouslySetInnerHTML={{ __html: `
-        const urlParams = new URLSearchParams(window.location.search);
-        const alertType = urlParams.get('alert');
-        
-        if (alertType) {
-          let title = 'สำเร็จ!';
-          let text = 'ดำเนินการเรียบร้อยแล้ว';
+      <script key={alertMessage || 'init'} dangerouslySetInnerHTML={{ __html: `
+        (function() {
+          const urlParams = new URLSearchParams(window.location.search);
+          const alertType = urlParams.get('alert');
           
-          if (alertType === 'add_success') text = 'เพิ่มข้อมูลยูนิตใหม่เรียบร้อยแล้ว';
-          if (alertType === 'update_success') text = 'อัปเดตข้อมูลยูนิตเรียบร้อยแล้ว';
-          if (alertType === 'delete_success') text = 'ลบข้อมูลบ้าน ลูกบ้าน และประวัติทั้งหมดเรียบร้อยแล้ว';
-          if (alertType === 'delete_multiple_success') text = 'ลบรายการบ้าน ลูกบ้าน และประวัติที่เลือกเรียบร้อยแล้ว';
-          if (alertType === 'remove_success') text = 'ลบสมาชิกลูกบ้านออกจากระบบถาวรเรียบร้อยแล้ว';
-          if (alertType === 'generate_multiple_success') text = 'สร้างรหัสลับใหม่ให้ยูนิตที่เลือกเรียบร้อยแล้ว';
-
-          Swal.fire({
-            icon: 'success', title: title, text: text,
-            confirmButtonColor: '#376B64', timer: 3000, timerProgressBar: true,
-            customClass: { popup: 'rounded-[2rem]' }
-          });
-
-          const newUrl = new URL(window.location.href);
-          newUrl.searchParams.delete('alert');
-          window.history.replaceState({}, '', newUrl);
-        }
-
-        if (!window.adminHouseEventsBound) {
-          window.adminHouseEventsBound = true;
-
-          function updateSelection() {
-            const checkboxes = document.querySelectorAll('.house-checkbox');
-            const bulkBar = document.getElementById('bulkActionBar');
-            const selectAllBtn = document.getElementById('selectAllBtn');
-            const selectedCount = document.getElementById('selectedCount');
+          if (alertType) {
+            let title = 'สำเร็จ!';
+            let text = 'ดำเนินการเรียบร้อยแล้ว';
             
-            const checkedBoxes = Array.from(checkboxes).filter(cb => cb.checked);
-            const allChecked = checkboxes.length > 0 && checkedBoxes.length === checkboxes.length;
-            
-            if (bulkBar) {
-              if (checkedBoxes.length > 0) {
-                bulkBar.style.display = 'flex';
-              } else {
-                bulkBar.style.display = 'none';
-              }
-            }
-            if (selectedCount) {
-              selectedCount.textContent = checkedBoxes.length;
-            }
-            if (selectAllBtn) {
-              selectAllBtn.checked = allChecked;
-            }
+            if (alertType === 'add_success') text = 'เพิ่มข้อมูลยูนิตใหม่เรียบร้อยแล้ว';
+            if (alertType === 'update_success') text = 'อัปเดตข้อมูลยูนิตเรียบร้อยแล้ว';
+            if (alertType === 'delete_success') text = 'ลบข้อมูลบ้าน ลูกบ้าน และประวัติทั้งหมดเรียบร้อยแล้ว';
+            if (alertType === 'delete_multiple_success') text = 'ลบรายการบ้าน ลูกบ้าน และประวัติที่เลือกเรียบร้อยแล้ว';
+            if (alertType === 'remove_success') text = 'ลบสมาชิกลูกบ้านออกจากระบบถาวรเรียบร้อยแล้ว';
+            if (alertType === 'generate_multiple_success') text = 'สร้างรหัสลับใหม่ให้ยูนิตที่เลือกเรียบร้อยแล้ว';
 
-            checkboxes.forEach(cb => {
-              const row = cb.closest('tr');
-              if (row) {
-                if (cb.checked) {
-                  row.style.backgroundColor = 'rgba(55, 107, 100, 0.05)';
+            Swal.fire({
+              icon: 'success', 
+              title: title, 
+              text: text,
+              confirmButtonText: 'ตกลง',    
+              reverseButtons: false, // 🌟 เปลี่ยนเป็น false เพื่อให้ปุ่มตกลงอยู่ด้านซ้ายมือ
+              confirmButtonColor: '#376B64', 
+              timer: 3000, 
+              timerProgressBar: true,
+              customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl font-bold px-8' }
+            });
+
+            const newUrl = new URL(window.location.href);
+            newUrl.searchParams.delete('alert');
+            window.history.replaceState({}, '', newUrl);
+          }
+
+          if (!window.adminHouseEventsBound) {
+            window.adminHouseEventsBound = true;
+
+            function updateSelection() {
+              const checkboxes = document.querySelectorAll('.house-checkbox');
+              const bulkBar = document.getElementById('bulkActionBar');
+              const selectAllBtn = document.getElementById('selectAllBtn');
+              const selectedCount = document.getElementById('selectedCount');
+              
+              const checkedBoxes = Array.from(checkboxes).filter(cb => cb.checked);
+              const allChecked = checkboxes.length > 0 && checkedBoxes.length === checkboxes.length;
+              
+              if (bulkBar) {
+                if (checkedBoxes.length > 0) {
+                  bulkBar.style.display = 'flex';
                 } else {
-                  row.style.backgroundColor = '';
+                  bulkBar.style.display = 'none';
                 }
+              }
+              if (selectedCount) {
+                selectedCount.textContent = checkedBoxes.length;
+              }
+              if (selectAllBtn) {
+                selectAllBtn.checked = allChecked;
+              }
+
+              checkboxes.forEach(cb => {
+                const row = cb.closest('tr');
+                if (row) {
+                  if (cb.checked) {
+                    row.style.backgroundColor = 'rgba(55, 107, 100, 0.05)';
+                  } else {
+                    row.style.backgroundColor = '';
+                  }
+                }
+              });
+            }
+
+            document.addEventListener('change', function(e) {
+              if (e.target.id === 'selectAllBtn') {
+                const checkboxes = document.querySelectorAll('.house-checkbox');
+                checkboxes.forEach(cb => cb.checked = e.target.checked);
+                updateSelection();
+              } 
+              else if (e.target.classList.contains('house-checkbox')) {
+                updateSelection();
+              }
+            });
+
+            document.addEventListener('click', function(e) {
+              // 🌟 จัดการปุ่มลบ 
+              const deleteBtn = e.target.closest('.delete-btn');
+              if (deleteBtn) {
+                e.preventDefault();
+                Swal.fire({
+                  title: 'ยืนยันการลบแบบถาวร?',
+                  text: "ข้อมูลจะถูกลบเกลี้ยง และไม่สามารถกู้คืนได้!",
+                  icon: 'warning',
+                  showCancelButton: true,
+                  reverseButtons: false, // 🌟 เปลี่ยนเป็น false เพื่อให้ปุ่มตกลง(ใช่) อยู่ด้านซ้ายมือ
+                  confirmButtonText: 'ใช่, ลบให้หมด!',
+                  cancelButtonText: 'ยกเลิก',
+                  confirmButtonColor: '#ef4444',
+                  cancelButtonColor: '#94a3b8',
+                  customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl font-bold px-6 py-2.5', cancelButton: 'rounded-xl font-bold px-6 py-2.5' }
+                }).then((result) => {
+                  if (result.isConfirmed) {
+                    const hiddenBtn = deleteBtn.parentElement.querySelector('.hidden-submit-delete, .hidden-submit');
+                    if (hiddenBtn) hiddenBtn.click();
+                  }
+                });
+              }
+
+              // 🌟 จัดการปุ่มสุ่มรหัสผ่านหลายรายการ
+              const generateBtn = e.target.closest('.generate-passcode-btn');
+              if (generateBtn) {
+                e.preventDefault();
+                Swal.fire({
+                  title: 'สุ่มรหัสลับใหม่?',
+                  text: "ระบบจะสร้างรหัสลับชุดใหม่ให้ยูนิตที่เลือกทั้งหมด รหัสเก่าจะใช้งานไม่ได้ทันที!",
+                  icon: 'warning',
+                  showCancelButton: true,
+                  reverseButtons: false, // 🌟 เปลี่ยนเป็น false เพื่อให้ปุ่มตกลงอยู่ด้านซ้ายมือ
+                  confirmButtonText: 'ตกลง, สุ่มรหัสใหม่',
+                  cancelButtonText: 'ยกเลิก',
+                  confirmButtonColor: '#EA580C',
+                  cancelButtonColor: '#94a3b8',
+                  customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl font-bold px-6 py-2.5', cancelButton: 'rounded-xl font-bold px-6 py-2.5' }
+                }).then((result) => {
+                  if (result.isConfirmed) {
+                    const hiddenBtn = generateBtn.parentElement.querySelector('.hidden-submit-generate');
+                    if (hiddenBtn) hiddenBtn.click();
+                  }
+                });
               }
             });
           }
-
-          document.addEventListener('change', function(e) {
-            if (e.target.id === 'selectAllBtn') {
-              const checkboxes = document.querySelectorAll('.house-checkbox');
-              checkboxes.forEach(cb => cb.checked = e.target.checked);
-              updateSelection();
-            } 
-            else if (e.target.classList.contains('house-checkbox')) {
-              updateSelection();
-            }
-          });
-
-          document.addEventListener('click', function(e) {
-            // 🌟 จัดการปุ่มลบ (ปุ่มตกลงอยู่ด้านขวา)
-            const deleteBtn = e.target.closest('.delete-btn');
-            if (deleteBtn) {
-              e.preventDefault();
-              Swal.fire({
-                title: 'ยืนยันการลบแบบถาวร?',
-                text: "ข้อมูลจะถูกลบเกลี้ยง และไม่สามารถกู้คืนได้!",
-                icon: 'warning',
-                showCancelButton: true,
-                reverseButtons: true, // 🌟 อันนี้คือตัวทำให้ตกลงไปอยู่ขวา
-                confirmButtonColor: '#ef4444',
-                cancelButtonColor: '#94a3b8',
-                confirmButtonText: 'ใช่, ลบให้หมด!',
-                cancelButtonText: 'ยกเลิก',
-                customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl font-bold px-6 py-2.5', cancelButton: 'rounded-xl font-bold px-6 py-2.5' }
-              }).then((result) => {
-                if (result.isConfirmed) {
-                  const hiddenBtn = deleteBtn.parentElement.querySelector('.hidden-submit-delete, .hidden-submit');
-                  if (hiddenBtn) hiddenBtn.click();
-                }
-              });
-            }
-
-            // 🌟 จัดการปุ่มสุ่มรหัสผ่านหลายรายการ (ปุ่มตกลงอยู่ด้านขวา)
-            const generateBtn = e.target.closest('.generate-passcode-btn');
-            if (generateBtn) {
-              e.preventDefault();
-              Swal.fire({
-                title: 'สุ่มรหัสลับใหม่?',
-                text: "ระบบจะสร้างรหัสลับชุดใหม่ให้ยูนิตที่เลือกทั้งหมด รหัสเก่าจะใช้งานไม่ได้ทันที!",
-                icon: 'warning',
-                showCancelButton: true,
-                reverseButtons: true, // 🌟 อันนี้คือตัวทำให้ตกลงไปอยู่ขวา
-                confirmButtonColor: '#EA580C',
-                cancelButtonColor: '#94a3b8',
-                confirmButtonText: 'ตกลง, สุ่มรหัสใหม่',
-                cancelButtonText: 'ยกเลิก',
-                customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl font-bold px-6 py-2.5', cancelButton: 'rounded-xl font-bold px-6 py-2.5' }
-              }).then((result) => {
-                if (result.isConfirmed) {
-                  const hiddenBtn = generateBtn.parentElement.querySelector('.hidden-submit-generate');
-                  if (hiddenBtn) hiddenBtn.click();
-                }
-              });
-            }
-          });
-        }
+        })();
       `}} />
 
       <style dangerouslySetInnerHTML={{__html: `
