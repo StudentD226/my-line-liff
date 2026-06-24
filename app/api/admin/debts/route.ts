@@ -27,26 +27,28 @@ export async function GET() {
     });
 
     const formattedDebts = houses.map((house) => {
-      // 🌟 คัดกรองเอาเฉพาะที่เป็น "หนี้" จริงๆ คือ OVERDUE และ PARTIAL เท่านั้น! (เตะ PENDING ทิ้ง)
+      // 🌟 1. ดึงเฉพาะบิลที่เป็น "หนี้" จริงๆ (OVERDUE และ PARTIAL) ไม่เอาบิลใหม่ (PENDING) ไม่เอาบิลทดสอบ (TR-)
       const unpaidInvoices = house.invoices.filter(
         (inv) => ['OVERDUE', 'PARTIAL'].includes(inv.status) &&
                  inv.billingYear !== 9999 &&
                  !(inv.invoiceNo && inv.invoiceNo.startsWith('TR-'))
       );
       
+      // ดึงบิลที่จ่ายครบแล้วเอาไว้เช็กประวัติจ่ายล่าสุด
       const paidInvoices = house.invoices.filter((inv) => inv.status === 'PAID');
 
-      // ดึงรายชื่อเดือนที่ค้างชำระมาเก็บไว้เป็น Array
+      // ดึงรายชื่อเดือนที่ค้างชำระมาเก็บไว้แสดงผล
       const overdueMonths = unpaidInvoices.map((inv) => 
         `${thaiMonths[inv.billingMonth - 1]} ${inv.billingYear + 543}`
       );
       
-      // ยอดเงินรวม = ยอดเต็มที่ต้องจ่าย (รวมค่าปรับ) ลบด้วย ยอดที่ลูกบ้านจ่ายมาแล้วบางส่วน
+      // 🌟 2. คำนวณหนี้ทั้งหมด = เอาหนี้สุทธิของแต่ละบิล (ยอดเต็มรวมค่าปรับ - ยอดที่จ่ายมาแล้ว) มาบวกกัน
       const totalOwed = unpaidInvoices.reduce((sum, inv) => {
         const debt = Number(inv.totalAmount || 0) - Number(inv.paidAmount || 0);
         return sum + (debt > 0 ? debt : 0);
       }, 0);
       
+      // หาเดือนล่าสุดที่บ้านหลังนี้จ่ายครบ
       const lastPaidMonth = paidInvoices.length > 0 
         ? `${thaiMonths[paidInvoices[0].billingMonth - 1]} ${paidInvoices[0].billingYear + 543}` 
         : 'ยังไม่เคยชำระ';
@@ -57,12 +59,13 @@ export async function GET() {
         houseNumber: house.houseNo,
         ownerName: house.owner?.name || "-",
         phone: house.owner?.phone || "-",
-        overdueCount: unpaidInvoices.length,
-        overdueMonths: overdueMonths,
-        totalOwed: totalOwed,
+        overdueCount: unpaidInvoices.length, // จำนวนงวดที่ค้าง
+        overdueMonths: overdueMonths,        // รายชื่อเดือนที่ค้าง
+        totalOwed: totalOwed,                // ยอดหนี้สุทธิรวมทั้งหมด
         lastPaidMonth: lastPaidMonth,
       };
-    }).filter((house) => house.overdueCount > 0 && house.totalOwed > 0); // โชว์เฉพาะที่ค้างจริงและยอดหนี้มากกว่า 0
+    }).filter((house) => house.overdueCount > 0 && house.totalOwed > 0); 
+    // 🌟 3. กรองจังหวะสุดท้าย โชว์เฉพาะบ้านที่มียอดหนี้ค้างมากกว่า 0 บาทจริงๆ
 
     return NextResponse.json({ success: true, data: formattedDebts });
   } catch (error) {
