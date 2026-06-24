@@ -1,7 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { 
   Plus, MapPin, Home, Maximize2, Pencil, Trash2, 
-  X, UserMinus, Calculator, Coins, Search, Phone, Key // 🌟 เพิ่ม Key icon
+  X, UserMinus, Calculator, Coins, Search, Phone, Key 
 } from 'lucide-react';
 import Link from "next/link";
 import { addHouse, updateHouse, autoGenerateHouses } from './actions';
@@ -92,7 +92,6 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
     }
   };
 
-  // 🌟 ฟังก์ชันสุ่มรหัสแบบกลุ่ม
   const generateMultiplePasscodes = async (formData: FormData) => {
     'use server';
     const ids = formData.getAll('houseIds') as string[];
@@ -168,8 +167,8 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
           </form>
         </div>
 
-        {/* 🌟 Table Card */}
-        <form className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden relative w-full">
+        {/* 🌟 Table Card (ใส่ action กลับเข้ามาให้ระบบทำงานสมบูรณ์) */}
+        <form action={deleteMultipleHouses} className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden relative w-full">
           
           {/* Bulk Action Bar */}
           <div id="bulkActionBar" className="hidden bg-slate-900 text-white px-4 sm:px-6 py-4 flex-col sm:flex-row justify-between items-start sm:items-center gap-4 animate-in slide-in-from-top duration-300 z-10 relative">
@@ -178,16 +177,17 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
             </span>
             <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
               
-              {/* 🌟 ปุ่มสุ่มรหัสลับแบบกลุ่ม */}
               <button type="button" className="generate-passcode-btn flex items-center justify-center w-full sm:w-auto px-4 py-2 bg-[#EA580C] hover:bg-orange-700 text-white text-xs font-bold rounded-xl transition shadow-sm active:scale-[0.98] whitespace-nowrap">
                 <Key size={14} className="mr-1.5 shrink-0" /> สุ่มรหัสลับให้ยูนิตที่เลือก
               </button>
+              {/* ปุ่มนี้จะ Override การทำงานหลักไปเป็นสุ่มรหัส */}
               <button formAction={generateMultiplePasscodes} type="submit" className="hidden hidden-submit-generate" />
 
               <button type="button" className="delete-btn flex items-center justify-center w-full sm:w-auto px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition shadow-sm active:scale-[0.98] whitespace-nowrap">
                 <Trash2 size={14} className="mr-1.5 shrink-0" /> ลบยูนิตที่เลือกทั้งหมด
               </button>
-              <button formAction={deleteMultipleHouses} type="submit" className="hidden hidden-submit-delete" />
+              {/* ปุ่มลบหลัก */}
+              <button type="submit" className="hidden hidden-submit-delete" />
             </div>
           </div>
 
@@ -205,10 +205,7 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
                   </th>
                   <th className="py-4 px-2 text-sm font-bold tracking-wide text-center whitespace-nowrap">{unitLabel}</th>
                   <th className="py-4 px-2 text-sm font-bold tracking-wide text-center whitespace-nowrap">ขนาดพื้นที่</th>
-                  
-                  {/* 🌟 คอลัมน์รหัสลับแก้สีกลับเป็นเทาแล้ว */}
                   <th className="py-4 px-2 text-sm font-bold tracking-wide text-center whitespace-nowrap">รหัสลับ (Passcode)</th>
-                  
                   <th className="py-4 px-2 text-sm font-bold tracking-wide text-center whitespace-nowrap">รูปแบบการคิดเงิน</th>
                   <th className="py-4 px-2 text-sm font-bold tracking-wide text-center whitespace-nowrap">อัตราเรทราคา</th>
                   <th className="py-4 px-4 text-sm font-bold tracking-wide text-center border-l border-slate-100 whitespace-nowrap">ข้อมูลติดต่อ</th>
@@ -244,7 +241,6 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
                         {house.houseSize} <span className="text-slate-400 font-normal">{sizeLabel}</span>
                       </td>
 
-                      {/* 🌟 ช่องแสดงรหัสลับ */}
                       <td className="py-4 px-2 text-center whitespace-nowrap">
                         <div className="flex justify-center">
                           <PasscodeCell houseId={house.id} houseNo={house.houseNo} passcode={house.passcode || null} />
@@ -314,7 +310,7 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
       </div>
 
       {/* =======================================================
-          🌟 ระบบ POPUP (MODAL) - ยืดหยุ่นบนมือถือ
+          🌟 ระบบ POPUP (MODAL)
           ======================================================= */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
@@ -435,7 +431,7 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
       )}
 
       {/* =======================================================
-          🌟 ระบบควบคุม (JS)
+          🌟 ระบบควบคุม (JS) แก้ไขการจับคู่คลาสให้ลบได้สมบูรณ์
           ======================================================= */}
       <script dangerouslySetInnerHTML={{ __html: `
         const urlParams = new URLSearchParams(window.location.search);
@@ -513,13 +509,13 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
           });
 
           document.addEventListener('click', function(e) {
-            // 🌟 จัดการปุ่มลบ
+            // 🌟 จัดการปุ่มลบ (แก้ไขคลาสให้รองรับการลบทุกรูปแบบ)
             const deleteBtn = e.target.closest('.delete-btn');
             if (deleteBtn) {
               e.preventDefault();
               Swal.fire({
                 title: 'ยืนยันการลบแบบถาวร?',
-                text: "ข้อมูลยูนิตและลูกบ้านทั้งหมดจะถูกลบเกลี้ยง และไม่สามารถกู้คืนได้!",
+                text: "ข้อมูลจะถูกลบเกลี้ยง และไม่สามารถกู้คืนได้!",
                 icon: 'warning',
                 showCancelButton: true,
                 reverseButtons: true,
@@ -530,7 +526,8 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
                 customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl font-bold px-6 py-2.5', cancelButton: 'rounded-xl font-bold px-6 py-2.5' }
               }).then((result) => {
                 if (result.isConfirmed) {
-                  const hiddenBtn = deleteBtn.parentElement.querySelector('.hidden-submit-delete');
+                  // ค้นหาปุ่ม submit ที่ซ่อนอยู่ รองรับทั้งลบลูกบ้าน(.hidden-submit) และลบบ้าน(.hidden-submit-delete)
+                  const hiddenBtn = deleteBtn.parentElement.querySelector('.hidden-submit-delete, .hidden-submit');
                   if (hiddenBtn) hiddenBtn.click();
                 }
               });
