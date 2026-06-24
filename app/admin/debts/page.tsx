@@ -41,7 +41,7 @@ export default function DebtTrackerPage() {
       cancelButtonColor: '#F3F4F6', // สีเทาอ่อน
       confirmButtonText: 'ตกลง, ส่งแจ้งเตือน',
       cancelButtonText: '<span style="color: #4B5563">ยกเลิก</span>',
-      reverseButtons: true, // 🌟 บังคับปุ่มตกลงไปอยู่ด้านขวา
+      
     });
 
     if (result.isConfirmed) {
