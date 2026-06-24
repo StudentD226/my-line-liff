@@ -10,7 +10,7 @@ export default function DebtTrackerPage() {
   const [debts, setDebts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortBy, setSortBy] = useState("debt-desc"); // 🌟 State สำหรับจัดการ Sorting
+  const [sortBy, setSortBy] = useState("debt-desc"); 
 
   useEffect(() => {
     fetchDebts();
@@ -30,25 +30,25 @@ export default function DebtTrackerPage() {
       });
   };
 
-  // 🌟 ฟังก์ชันกดทวงหนี้ + SweetAlert2 (ปุ่มตกลงอยู่ขวา)
   const handleNotifyDebt = async (item: any) => {
     const result = await Swal.fire({
       title: 'ยืนยันการทวงยอดค้าง?',
       html: `ต้องการส่งแจ้งเตือนผ่าน LINE ไปยังบ้านเลขที่ <b>${item.houseNumber}</b> ใช่หรือไม่?`,
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonColor: '#EF4444', // สีแดง
-      cancelButtonColor: '#F3F4F6', // สีเทาอ่อน
+      confirmButtonColor: '#EF4444', 
+      cancelButtonColor: '#F3F4F6', 
       confirmButtonText: 'ตกลง, ส่งแจ้งเตือน',
       cancelButtonText: '<span style="color: #4B5563">ยกเลิก</span>',
-      
+      customClass: { popup: 'rounded-[2rem]' }
     });
 
     if (result.isConfirmed) {
       Swal.fire({
         title: 'กำลังส่งแจ้งเตือน...',
         allowOutsideClick: false,
-        didOpen: () => { Swal.showLoading(); }
+        didOpen: () => { Swal.showLoading(); },
+        customClass: { popup: 'rounded-[2rem]' }
       });
 
       try {
@@ -56,8 +56,8 @@ export default function DebtTrackerPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ 
-            id: item.latestInvoiceId, // ส่ง ID ของบิลที่ค้างล่าสุดไป
-            type: "OVERDUE"           // ส่ง type ไปให้โค้ดการ์ดส้ม/แดง ทำงาน
+            id: item.latestInvoiceId,
+            type: "OVERDUE"
           }),
         });
 
@@ -69,6 +69,7 @@ export default function DebtTrackerPage() {
             title: 'ส่งแจ้งเตือนสำเร็จ!',
             text: `ทวงยอดค้างบ้าน ${item.houseNumber} เรียบร้อยแล้ว`,
             confirmButtonColor: '#376B64',
+            customClass: { popup: 'rounded-[2rem]' }
           });
         } else {
           throw new Error(data.error || "ไม่สามารถส่งแจ้งเตือนได้");
@@ -79,6 +80,7 @@ export default function DebtTrackerPage() {
           title: 'เกิดข้อผิดพลาด',
           text: err.message,
           confirmButtonColor: '#EF4444',
+          customClass: { popup: 'rounded-[2rem]' }
         });
       }
     }
@@ -87,12 +89,10 @@ export default function DebtTrackerPage() {
   const totalAmountToCollect = debts.reduce((sum, item) => sum + item.totalOwed, 0);
   const totalHousesInDebt = debts.length;
 
-  // 🌟 ระบบค้นหา
   const filteredDebts = debts.filter((item) =>
     item.houseNumber.includes(searchTerm) || (item.ownerName && item.ownerName.includes(searchTerm))
   );
 
-  // 🌟 ระบบ Sorting
   const sortedDebts = [...filteredDebts].sort((a, b) => {
     if (sortBy === "debt-desc") return b.totalOwed - a.totalOwed;
     if (sortBy === "debt-asc") return a.totalOwed - b.totalOwed;
@@ -146,7 +146,6 @@ export default function DebtTrackerPage() {
         </div>
       </div>
 
-      {/* 🌟 แถบเครื่องมือ: ค้นหา + เรียงลำดับ */}
       <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 mb-4 flex flex-col sm:flex-row gap-4 items-center justify-between">
         <div className="relative w-full max-w-md">
           <Search className="absolute left-4 top-3 text-slate-400" size={18} />
@@ -174,7 +173,6 @@ export default function DebtTrackerPage() {
         </div>
       </div>
 
-      {/* 🌟 ตาราง (แก้ Responsive ให้เลื่อนซ้ายขวาได้ ไม่บีบคำ) */}
       <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
         <div className="overflow-x-auto custom-scrollbar">
           <table className="w-full text-left border-collapse min-w-[800px]">
@@ -205,6 +203,7 @@ export default function DebtTrackerPage() {
                       </div>
                     </td>
                     <td className="p-4 sm:p-5 text-center whitespace-nowrap">
+                      {/* 🌟 ปรับตรงนี้ เพิ่ม Tooltip ให้โชว์เดือนที่ค้าง */}
                       <div className="relative inline-block group">
                         <span className={`cursor-pointer px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm ${
                           item.overdueCount >= 3 
@@ -213,6 +212,18 @@ export default function DebtTrackerPage() {
                         }`}>
                           ค้าง {item.overdueCount} เดือน ⚠️
                         </span>
+                        
+                        {/* 🌟 กล่อง Tooltip ที่จะเด้งขึ้นมาตอนเอาเมาส์ชี้ */}
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-max min-w-[140px] p-3 bg-slate-800 text-white text-xs rounded-xl shadow-xl z-50 text-center leading-relaxed font-medium">
+                          {item.overdueMonths && item.overdueMonths.length > 0 ? (
+                            item.overdueMonths.map((m: string, i: number) => (
+                              <div key={i} className="py-0.5 border-b border-slate-700 last:border-0">{m}</div>
+                            ))
+                          ) : (
+                            "ไม่ระบุเดือน"
+                          )}
+                          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-800"></div>
+                        </div>
                       </div>
                     </td>
                     <td className="p-4 sm:p-5 text-right whitespace-nowrap font-black text-rose-600 text-base">
@@ -225,7 +236,6 @@ export default function DebtTrackerPage() {
                       </span>
                     </td>
                     <td className="p-4 sm:p-5 text-center whitespace-nowrap">
-                      {/* 🌟 ปุ่มทวงยอดค้างสีแดงแบบคลีนๆ */}
                       <button 
                         onClick={() => handleNotifyDebt(item)}
                         className="flex items-center justify-center gap-1.5 mx-auto px-3 py-2 bg-rose-50 text-rose-600 hover:bg-rose-500 hover:text-white rounded-xl text-xs font-bold transition-all border border-rose-100 hover:border-rose-500 active:scale-95"

@@ -14,12 +14,10 @@ const thaiMonths = [
 
 export async function GET() {
   try {
-    // 1. ดึงข้อมูลบ้านทั้งหมด พร้อมข้อมูลเจ้าของบ้าน (owner) และบิล (invoices) ทั้งหมดที่มี
     const houses = await prisma.house.findMany({
       include: {
-        owner: true, // ดึงข้อมูลชื่อและเบอร์โทรจากโมเดล User
+        owner: true,
         invoices: {
-          // เรียงลำดับจากปีและเดือนล่าสุดลงไป เพื่อหาเดือนล่าสุดที่จ่ายเงินง่ายๆ
           orderBy: [
             { billingYear: 'desc' },
             { billingMonth: 'desc' }
@@ -28,44 +26,44 @@ export async function GET() {
       }
     });
 
-    // 2. นำข้อมูลมาวนลูปจัดการโครงสร้าง (Mapping) ให้ตรงกับหน้าเว็บหน้าบ้าน
     const formattedDebts = houses.map((house) => {
-      // คัดกรองเฉพาะบิลที่ค้างจ่าย (สถานะ PENDING หรือ OVERDUE)
+      // 🌟 คัดกรองเอาเฉพาะที่เป็น "หนี้" จริงๆ คือ OVERDUE และ PARTIAL เท่านั้น! (เตะ PENDING ทิ้ง)
       const unpaidInvoices = house.invoices.filter(
-        (inv) => inv.status === 'PENDING' || inv.status === 'OVERDUE'
+        (inv) => ['OVERDUE', 'PARTIAL'].includes(inv.status) &&
+                 inv.billingYear !== 9999 &&
+                 !(inv.invoiceNo && inv.invoiceNo.startsWith('TR-'))
       );
       
-      // คัดกรองเฉพาะบิลที่จ่ายเงินเรียบร้อยแล้ว (สถานะ PAID)
       const paidInvoices = house.invoices.filter((inv) => inv.status === 'PAID');
 
-      // แปลงตัวเลข billingMonth และ billingYear ของบิลที่ค้างชำระเป็นข้อความภาษาไทย (เช่น "มกราคม 2569")
+      // ดึงรายชื่อเดือนที่ค้างชำระมาเก็บไว้เป็น Array
       const overdueMonths = unpaidInvoices.map((inv) => 
         `${thaiMonths[inv.billingMonth - 1]} ${inv.billingYear + 543}`
       );
       
-      // รวมยอดเงินที่ค้างชำระทั้งหมดของบ้านหลังนี้จากบิลทุกใบที่ค้าง
-      const totalOwed = unpaidInvoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
+      // ยอดเงินรวม = ยอดเต็มที่ต้องจ่าย (รวมค่าปรับ) ลบด้วย ยอดที่ลูกบ้านจ่ายมาแล้วบางส่วน
+      const totalOwed = unpaidInvoices.reduce((sum, inv) => {
+        const debt = Number(inv.totalAmount || 0) - Number(inv.paidAmount || 0);
+        return sum + (debt > 0 ? debt : 0);
+      }, 0);
       
-      // ค้นหาเดือนล่าสุดที่บ้านหลังนี้จ่ายเงินสำเร็จ
       const lastPaidMonth = paidInvoices.length > 0 
         ? `${thaiMonths[paidInvoices[0].billingMonth - 1]} ${paidInvoices[0].billingYear + 543}` 
         : 'ยังไม่เคยชำระ';
 
-      // ส่งกลับ Object ข้อมูลที่เรียบร้อยแล้ว
       return {
         id: house.id,
         latestInvoiceId: unpaidInvoices[0]?.id,
-        houseNumber: house.houseNo,          // ดึงเลขที่บ้านจากฟิลด์ houseNo
-        ownerName: house.owner?.name || "-", // ดึงชื่อเจ้าของบ้าน ถ้าไม่มีขึ้นเป็นเครื่องหมาย -
-        phone: house.owner?.phone || "-",    // ดึงเบอร์โทรศัพท์ ถ้าไม่มีขึ้นเป็นเครื่องหมาย -
-        overdueCount: unpaidInvoices.length, // จำนวนงวด/เดือนที่ค้าง
-        overdueMonths: overdueMonths,        // อาร์เรย์รายชื่อเดือนที่ค้างชำระทั้งหมด
-        totalOwed: totalOwed,                // ยอดเงินรวมที่ค้างชำระ
-        lastPaidMonth: lastPaidMonth,        // สรุปเดือนล่าสุดที่จ่ายเงิน
+        houseNumber: house.houseNo,
+        ownerName: house.owner?.name || "-",
+        phone: house.owner?.phone || "-",
+        overdueCount: unpaidInvoices.length,
+        overdueMonths: overdueMonths,
+        totalOwed: totalOwed,
+        lastPaidMonth: lastPaidMonth,
       };
-    }).filter((house) => house.overdueCount > 0); // 🌟 คัดกรองเอาเฉพาะบ้านที่มียอดค้างชำระจริงมาแสดงผล
+    }).filter((house) => house.overdueCount > 0 && house.totalOwed > 0); // โชว์เฉพาะที่ค้างจริงและยอดหนี้มากกว่า 0
 
-    // ส่งข้อมูลกลับไปหา Frontend
     return NextResponse.json({ success: true, data: formattedDebts });
   } catch (error) {
     console.error("Fetch API error:", error);
