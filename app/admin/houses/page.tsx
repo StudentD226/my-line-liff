@@ -1,15 +1,25 @@
 import { PrismaClient } from "@prisma/client";
 import { 
   Plus, MapPin, Home, Maximize2, Pencil, Trash2, 
-  X, UserMinus, Calculator, Coins, Search, Phone 
+  X, UserMinus, Calculator, Coins, Search, Phone, Key // 🌟 เพิ่ม Key icon
 } from 'lucide-react';
 import Link from "next/link";
 import { addHouse, updateHouse, autoGenerateHouses } from './actions';
 import AutoGenerateButton from './AutoGenerateButton';
-import PasscodeCell from "./_components/PasscodeCell"; // 🌟 นำเข้า Component รหัสลับ
+import PasscodeCell from "./_components/PasscodeCell";
 import { redirect } from "next/navigation";
 
 const prisma = new PrismaClient();
+
+// 🌟 ฟังก์ชันสุ่มรหัสใช้สำหรับทำงานแบบกลุ่ม
+function generatePasscodeInline(houseNo: string) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let randomPart = '';
+  for (let i = 0; i < 4; i++) {
+    randomPart += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return `${houseNo}-${randomPart}`;
+}
 
 export default async function AdminHousePage(props: { searchParams: Promise<{ edit?: string, add?: string, q?: string, alert?: string }> }) {
   const searchParams = await props.searchParams;
@@ -82,6 +92,25 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
     }
   };
 
+  // 🌟 ฟังก์ชันสุ่มรหัสแบบกลุ่ม
+  const generateMultiplePasscodes = async (formData: FormData) => {
+    'use server';
+    const ids = formData.getAll('houseIds') as string[];
+    if (ids.length > 0) {
+      const targetHouses = await prisma.house.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, houseNo: true }
+      });
+      for (const h of targetHouses) {
+        await prisma.house.update({
+          where: { id: h.id },
+          data: { passcode: generatePasscodeInline(h.houseNo) }
+        });
+      }
+      redirect('/admin/houses?alert=generate_multiple_success');
+    }
+  };
+
   const deleteSingleHouse = async (id: string) => {
     'use server';
     await prisma.invoice.deleteMany({ where: { residentHouseId: id } });
@@ -140,7 +169,7 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
         </div>
 
         {/* 🌟 Table Card */}
-        <form action={deleteMultipleHouses} className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden relative w-full">
+        <form className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden relative w-full">
           
           {/* Bulk Action Bar */}
           <div id="bulkActionBar" className="hidden bg-slate-900 text-white px-4 sm:px-6 py-4 flex-col sm:flex-row justify-between items-start sm:items-center gap-4 animate-in slide-in-from-top duration-300 z-10 relative">
@@ -148,16 +177,23 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
               <span id="selectedCount" className="flex items-center justify-center bg-[#376B64] text-white w-6 h-6 rounded-full text-xs shadow-sm font-black shrink-0">0</span> รายการที่เลือก
             </span>
             <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+              
+              {/* 🌟 ปุ่มสุ่มรหัสลับแบบกลุ่ม */}
+              <button type="button" className="generate-passcode-btn flex items-center justify-center w-full sm:w-auto px-4 py-2 bg-[#EA580C] hover:bg-orange-700 text-white text-xs font-bold rounded-xl transition shadow-sm active:scale-[0.98] whitespace-nowrap">
+                <Key size={14} className="mr-1.5 shrink-0" /> สุ่มรหัสลับให้ยูนิตที่เลือก
+              </button>
+              <button formAction={generateMultiplePasscodes} type="submit" className="hidden hidden-submit-generate" />
+
               <button type="button" className="delete-btn flex items-center justify-center w-full sm:w-auto px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition shadow-sm active:scale-[0.98] whitespace-nowrap">
                 <Trash2 size={14} className="mr-1.5 shrink-0" /> ลบยูนิตที่เลือกทั้งหมด
               </button>
-              <button type="submit" className="hidden hidden-submit" />
+              <button formAction={deleteMultipleHouses} type="submit" className="hidden hidden-submit-delete" />
             </div>
           </div>
 
           {/* 🌟 Table Container */}
           <div className="overflow-x-auto w-full custom-scrollbar">
-            <table className="w-full border-collapse min-w-[1000px]">
+            <table className="w-full border-collapse min-w-[1050px]">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-100 text-slate-500">
                   <th className="p-4 w-12 text-center">
@@ -170,8 +206,8 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
                   <th className="py-4 px-2 text-sm font-bold tracking-wide text-center whitespace-nowrap">{unitLabel}</th>
                   <th className="py-4 px-2 text-sm font-bold tracking-wide text-center whitespace-nowrap">ขนาดพื้นที่</th>
                   
-                  {/* 🌟 คอลัมน์รหัสลับใหม่ */}
-                  <th className="py-4 px-2 text-sm font-bold tracking-wide text-center whitespace-nowrap text-[#EA580C]">รหัสลับ (Passcode)</th>
+                  {/* 🌟 คอลัมน์รหัสลับแก้สีกลับเป็นเทาแล้ว */}
+                  <th className="py-4 px-2 text-sm font-bold tracking-wide text-center whitespace-nowrap">รหัสลับ (Passcode)</th>
                   
                   <th className="py-4 px-2 text-sm font-bold tracking-wide text-center whitespace-nowrap">รูปแบบการคิดเงิน</th>
                   <th className="py-4 px-2 text-sm font-bold tracking-wide text-center whitespace-nowrap">อัตราเรทราคา</th>
@@ -208,7 +244,7 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
                         {house.houseSize} <span className="text-slate-400 font-normal">{sizeLabel}</span>
                       </td>
 
-                      {/* 🌟 ช่องแสดงรหัสลับ (เรียกใช้ PasscodeCell Component) */}
+                      {/* 🌟 ช่องแสดงรหัสลับ */}
                       <td className="py-4 px-2 text-center whitespace-nowrap">
                         <div className="flex justify-center">
                           <PasscodeCell houseId={house.id} houseNo={house.houseNo} passcode={house.passcode || null} />
@@ -263,7 +299,7 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
                               <button type="button" className="delete-btn p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all shadow-sm hover:shadow">
                                 <Trash2 size={16} className="shrink-0" />
                               </button>
-                              <button formAction={deleteSingleHouse.bind(null, house.id)} type="submit" className="hidden hidden-submit" />
+                              <button formAction={deleteSingleHouse.bind(null, house.id)} type="submit" className="hidden hidden-submit-delete" />
                             </div>
                           </div>
                         </div>
@@ -414,6 +450,7 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
           if (alertType === 'delete_success') text = 'ลบข้อมูลบ้าน ลูกบ้าน และประวัติทั้งหมดเรียบร้อยแล้ว';
           if (alertType === 'delete_multiple_success') text = 'ลบรายการบ้าน ลูกบ้าน และประวัติที่เลือกเรียบร้อยแล้ว';
           if (alertType === 'remove_success') text = 'ลบสมาชิกลูกบ้านออกจากระบบถาวรเรียบร้อยแล้ว';
+          if (alertType === 'generate_multiple_success') text = 'สร้างรหัสลับใหม่ให้ยูนิตที่เลือกเรียบร้อยแล้ว';
 
           Swal.fire({
             icon: 'success', title: title, text: text,
@@ -476,6 +513,7 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
           });
 
           document.addEventListener('click', function(e) {
+            // 🌟 จัดการปุ่มลบ
             const deleteBtn = e.target.closest('.delete-btn');
             if (deleteBtn) {
               e.preventDefault();
@@ -484,7 +522,7 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
                 text: "ข้อมูลยูนิตและลูกบ้านทั้งหมดจะถูกลบเกลี้ยง และไม่สามารถกู้คืนได้!",
                 icon: 'warning',
                 showCancelButton: true,
-                reverseButtons: true, // 🌟 สลับปุ่มให้ ตกลง อยู่ซ้าย ยกเลิก อยู่ขวา
+                reverseButtons: true,
                 confirmButtonColor: '#ef4444',
                 cancelButtonColor: '#94a3b8',
                 confirmButtonText: 'ใช่, ลบให้หมด!',
@@ -492,7 +530,30 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
                 customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl font-bold px-6 py-2.5', cancelButton: 'rounded-xl font-bold px-6 py-2.5' }
               }).then((result) => {
                 if (result.isConfirmed) {
-                  const hiddenBtn = deleteBtn.parentElement.querySelector('.hidden-submit');
+                  const hiddenBtn = deleteBtn.parentElement.querySelector('.hidden-submit-delete');
+                  if (hiddenBtn) hiddenBtn.click();
+                }
+              });
+            }
+
+            // 🌟 จัดการปุ่มสุ่มรหัสผ่านหลายรายการ
+            const generateBtn = e.target.closest('.generate-passcode-btn');
+            if (generateBtn) {
+              e.preventDefault();
+              Swal.fire({
+                title: 'สุ่มรหัสลับใหม่?',
+                text: "ระบบจะสร้างรหัสลับชุดใหม่ให้ยูนิตที่เลือกทั้งหมด รหัสเก่าจะใช้งานไม่ได้ทันที!",
+                icon: 'warning',
+                showCancelButton: true,
+                reverseButtons: true,
+                confirmButtonColor: '#EA580C',
+                cancelButtonColor: '#94a3b8',
+                confirmButtonText: 'ตกลง, สุ่มรหัสใหม่',
+                cancelButtonText: 'ยกเลิก',
+                customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl font-bold px-6 py-2.5', cancelButton: 'rounded-xl font-bold px-6 py-2.5' }
+              }).then((result) => {
+                if (result.isConfirmed) {
+                  const hiddenBtn = generateBtn.parentElement.querySelector('.hidden-submit-generate');
                   if (hiddenBtn) hiddenBtn.click();
                 }
               });
