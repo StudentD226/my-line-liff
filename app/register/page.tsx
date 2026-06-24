@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import liff from '@line/liff';
 import Swal from 'sweetalert2';
-import { User, Phone, Home, Lock, ShieldCheck, CheckCircle2, AlertCircle } from 'lucide-react';
+import { User, Phone, Home, Lock, ShieldCheck, CheckCircle2, AlertCircle, Key } from 'lucide-react';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -17,6 +17,7 @@ export default function RegisterPage() {
   const [name, setName] = useState('');
   const [houseNo, setHouseNo] = useState('');
   const [phone, setPhone] = useState('');
+  const [passcode, setPasscode] = useState(''); // 🌟 State สำหรับรหัสลับ
   
   const [loading, setLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
@@ -71,6 +72,29 @@ export default function RegisterPage() {
     setLoading(true);
     
     try {
+      // 🌟 1. ตรวจสอบรหัสลับก่อน (ถ้าเป็นลูกบ้านใหม่ที่ยังไม่มีบ้าน)
+      if (!hasExistingHouse) {
+        const verifyRes = await fetch('/api/auth/verify-passcode', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ houseNo, passcode }),
+        });
+        const verifyData = await verifyRes.json();
+
+        if (!verifyData.success) {
+          Swal.fire({
+            icon: 'error',
+            title: 'รหัสไม่ถูกต้อง',
+            text: verifyData.message,
+            confirmButtonColor: '#e11d48',
+            customClass: { popup: 'rounded-[2rem]' }
+          });
+          setLoading(false);
+          return; // 🌟 หยุดการทำงาน ไม่ให้เซฟลง Database
+        }
+      }
+
+      // 🌟 2. ถ้ารหัสผ่าน หรือเป็นลูกบ้านเก่า ให้เซฟข้อมูลตามปกติ
       const res = await fetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -83,7 +107,7 @@ export default function RegisterPage() {
           icon: 'success', 
           title: 'บันทึกข้อมูลสำเร็จ!', 
           text: 'ข้อมูลของคุณถูกบันทึกเข้าระบบเรียบร้อยแล้ว',
-          confirmButtonColor: '#376B64', // 🌟 ปรับสีปุ่ม Alert
+          confirmButtonColor: '#376B64',
           customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl font-bold px-8' }
         });
         liff.closeWindow(); // ปิดหน้าต่างกลับไปที่แชท
@@ -208,6 +232,24 @@ export default function RegisterPage() {
               )}
             </div>
 
+            {/* 🌟 4. ช่องกรอกรหัสลับประจำบ้าน (โชว์เฉพาะบ้านใหม่) */}
+            {!hasExistingHouse && (
+              <div className="space-y-1.5 pt-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                <label className="block text-[13px] font-bold text-slate-700 uppercase tracking-wide text-rose-500">รหัสลับประจำบ้าน *</label>
+                <div className="relative flex items-center">
+                  <Key size={18} className="absolute left-4 text-rose-400" />
+                  <input 
+                    type="text" required placeholder="เช่น 99/1-A1B2" 
+                    value={passcode} onChange={(e) => setPasscode(e.target.value)}
+                    className="w-full pl-11 pr-4 py-3.5 bg-rose-50 border border-rose-200 rounded-2xl focus:bg-white focus:outline-none focus:border-rose-400 focus:ring-4 focus:ring-rose-400/10 text-sm font-bold transition-all placeholder:text-rose-300 placeholder:font-normal text-rose-700 uppercase" 
+                  />
+                </div>
+                <p className="text-[11px] text-rose-400 font-medium mt-1.5 flex items-center gap-1">
+                  <ShieldCheck size={12} /> ขอรับรหัสนี้ได้จากนิติบุคคลหรือเจ้าของบ้าน
+                </p>
+              </div>
+            )}
+
             {/* ปุ่มยืนยัน */}
             <button 
               type="submit" disabled={loading}
@@ -219,7 +261,7 @@ export default function RegisterPage() {
               ) : (
                 <CheckCircle2 size={20} />
               )}
-              {loading ? 'กำลังบันทึกข้อมูล...' : 'บันทึกข้อมูลการลงทะเบียน'}
+              {loading ? 'กำลังตรวจสอบข้อมูล...' : 'บันทึกข้อมูลการลงทะเบียน'}
             </button>
             
           </form>

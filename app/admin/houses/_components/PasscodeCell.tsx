@@ -7,7 +7,7 @@ import Swal from "sweetalert2";
 
 export default function PasscodeCell({ houseId, houseNo, passcode }: { houseId: string; houseNo: string; passcode: string | null }) {
   const [copied, setCopied] = useState(false);
-  const [isVisible, setIsVisible] = useState(false); // 🌟 State ควบคุมการซ่อน/แสดงรหัส
+  const [isVisible, setIsVisible] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const handleCopy = async () => {
@@ -27,7 +27,7 @@ export default function PasscodeCell({ houseId, houseNo, passcode }: { houseId: 
       text: `ต้องการยกเลิกรหัสเดิม แล้วสร้างรหัสลับใหม่ให้บ้านเลขที่ ${houseNo} ใช่หรือไม่?`,
       icon: "warning",
       showCancelButton: true,
-      reverseButtons: true, // 🌟 ปุ่มตกลงอยู่ซ้าย ยกเลิกอยู่ขวา
+      reverseButtons: true, // 🌟 เพิ่มบรรทัดนี้ ให้ปุ่มตกลงอยู่ด้านขวา
       confirmButtonColor: "#EA580C", 
       cancelButtonColor: "#F3F4F6",
       confirmButtonText: "ตกลง, เปลี่ยนรหัส",
@@ -49,7 +49,7 @@ export default function PasscodeCell({ houseId, houseNo, passcode }: { houseId: 
           confirmButtonColor: "#376B64",
           customClass: { popup: 'rounded-[2rem]' }
         });
-        setIsVisible(false); // ซ่อนรหัสกลับอัตโนมัติเมื่อสุ่มใหม่เสร็จ
+        setIsVisible(false);
       });
     }
   };
@@ -59,13 +59,11 @@ export default function PasscodeCell({ houseId, houseNo, passcode }: { houseId: 
   return (
     <div className="flex items-center justify-between bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl w-max font-mono text-sm font-bold text-slate-700 shadow-sm">
       
-      {/* 🌟 แสดงรหัสลับ หรือ จุดไข่ปลา */}
       <span className="w-24 text-center tracking-widest">
         {isVisible ? passcode : "••••••••"}
       </span>
 
       <div className="flex items-center gap-1 border-l border-slate-200 pl-2 ml-2">
-        {/* 🌟 ปุ่มเปิด/ปิดตา */}
         <button
           type="button"
           onClick={() => setIsVisible(!isVisible)}

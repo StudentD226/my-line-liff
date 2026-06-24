@@ -167,7 +167,7 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
           </form>
         </div>
 
-        {/* 🌟 Table Card (ใส่ action กลับเข้ามาให้ระบบทำงานสมบูรณ์) */}
+        {/* 🌟 Table Card */}
         <form action={deleteMultipleHouses} className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden relative w-full">
           
           {/* Bulk Action Bar */}
@@ -180,13 +180,11 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
               <button type="button" className="generate-passcode-btn flex items-center justify-center w-full sm:w-auto px-4 py-2 bg-[#EA580C] hover:bg-orange-700 text-white text-xs font-bold rounded-xl transition shadow-sm active:scale-[0.98] whitespace-nowrap">
                 <Key size={14} className="mr-1.5 shrink-0" /> สุ่มรหัสลับให้ยูนิตที่เลือก
               </button>
-              {/* ปุ่มนี้จะ Override การทำงานหลักไปเป็นสุ่มรหัส */}
               <button formAction={generateMultiplePasscodes} type="submit" className="hidden hidden-submit-generate" />
 
               <button type="button" className="delete-btn flex items-center justify-center w-full sm:w-auto px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition shadow-sm active:scale-[0.98] whitespace-nowrap">
                 <Trash2 size={14} className="mr-1.5 shrink-0" /> ลบยูนิตที่เลือกทั้งหมด
               </button>
-              {/* ปุ่มลบหลัก */}
               <button type="submit" className="hidden hidden-submit-delete" />
             </div>
           </div>
@@ -431,7 +429,7 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
       )}
 
       {/* =======================================================
-          🌟 ระบบควบคุม (JS) แก้ไขการจับคู่คลาสให้ลบได้สมบูรณ์
+          🌟 ระบบควบคุม (JS) 
           ======================================================= */}
       <script dangerouslySetInnerHTML={{ __html: `
         const urlParams = new URLSearchParams(window.location.search);
@@ -509,7 +507,7 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
           });
 
           document.addEventListener('click', function(e) {
-            // 🌟 จัดการปุ่มลบ (แก้ไขคลาสให้รองรับการลบทุกรูปแบบ)
+            // 🌟 จัดการปุ่มลบ (ปุ่มตกลงอยู่ด้านขวา)
             const deleteBtn = e.target.closest('.delete-btn');
             if (deleteBtn) {
               e.preventDefault();
@@ -518,7 +516,7 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
                 text: "ข้อมูลจะถูกลบเกลี้ยง และไม่สามารถกู้คืนได้!",
                 icon: 'warning',
                 showCancelButton: true,
-                reverseButtons: true,
+                reverseButtons: true, // 🌟 อันนี้คือตัวทำให้ตกลงไปอยู่ขวา
                 confirmButtonColor: '#ef4444',
                 cancelButtonColor: '#94a3b8',
                 confirmButtonText: 'ใช่, ลบให้หมด!',
@@ -526,14 +524,13 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
                 customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl font-bold px-6 py-2.5', cancelButton: 'rounded-xl font-bold px-6 py-2.5' }
               }).then((result) => {
                 if (result.isConfirmed) {
-                  // ค้นหาปุ่ม submit ที่ซ่อนอยู่ รองรับทั้งลบลูกบ้าน(.hidden-submit) และลบบ้าน(.hidden-submit-delete)
                   const hiddenBtn = deleteBtn.parentElement.querySelector('.hidden-submit-delete, .hidden-submit');
                   if (hiddenBtn) hiddenBtn.click();
                 }
               });
             }
 
-            // 🌟 จัดการปุ่มสุ่มรหัสผ่านหลายรายการ
+            // 🌟 จัดการปุ่มสุ่มรหัสผ่านหลายรายการ (ปุ่มตกลงอยู่ด้านขวา)
             const generateBtn = e.target.closest('.generate-passcode-btn');
             if (generateBtn) {
               e.preventDefault();
@@ -542,7 +539,7 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
                 text: "ระบบจะสร้างรหัสลับชุดใหม่ให้ยูนิตที่เลือกทั้งหมด รหัสเก่าจะใช้งานไม่ได้ทันที!",
                 icon: 'warning',
                 showCancelButton: true,
-                reverseButtons: true,
+                reverseButtons: true, // 🌟 อันนี้คือตัวทำให้ตกลงไปอยู่ขวา
                 confirmButtonColor: '#EA580C',
                 cancelButtonColor: '#94a3b8',
                 confirmButtonText: 'ตกลง, สุ่มรหัสใหม่',
