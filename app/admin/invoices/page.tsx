@@ -1,9 +1,15 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Link from 'next/link';
-import { Settings, Trash2, Plus, Edit, RefreshCw, Send, AlertCircle, Clock, Search, Filter, CheckCircle2, Receipt, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { 
+  Settings, Trash2, Plus, Edit, RefreshCw, Send, AlertCircle, Clock, 
+  Search, Filter, CheckCircle2, Receipt, X, ChevronLeft, ChevronRight, ChevronDown 
+} from 'lucide-react';
 import Swal from 'sweetalert2';
+
+// --- Types & Constants ---
+type Role = 'SUPERADMIN' | 'JURISTIC';
 
 const thaiMonths = [
   { num: 1, full: 'มกราคม', short: 'ม.ค.' },
@@ -32,7 +38,74 @@ const Toast = Swal.mixin({
   },
 });
 
+// --- Components ---
+const CustomDropdown = React.memo(({ 
+  value, options, onChange, placeholder, icon: Icon, className 
+}: { 
+  value: string | number; 
+  options: { label: string, value: string | number }[]; 
+  onChange: (val: string | number) => void; 
+  placeholder?: string; 
+  icon?: any; 
+  className?: string;
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const selectedOption = options.find(opt => String(opt.value) === String(value));
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div className={`relative ${className}`} ref={dropdownRef}>
+      {Icon && <Icon className="absolute left-4 top-1/2 -translate-y-1/2 text-[#376B64] shrink-0" size={16} />}
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full text-left flex items-center justify-between outline-none transition-all ${Icon ? 'pl-11' : 'pl-4'} pr-10 py-3 rounded-[1.25rem] border border-slate-200 bg-slate-50 hover:border-[#376B64]/30 focus:border-[#376B64] focus:ring-2 focus:ring-[#376B64]/10 cursor-pointer`}
+      >
+        <span className={`block truncate ${!selectedOption ? 'text-slate-400 font-medium text-sm' : 'text-slate-700 font-bold text-sm'}`}>
+          {selectedOption ? selectedOption.label : (placeholder || "เลือกรายการ")}
+        </span>
+        <ChevronDown size={16} className={`absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+
+      {isOpen && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-slate-100 rounded-xl shadow-lg max-h-60 overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-top-2 duration-200">
+          {options.map((opt, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => {
+                onChange(opt.value);
+                setIsOpen(false);
+              }}
+              className={`w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-slate-50 ${String(value) === String(opt.value) ? 'bg-[#376B64]/5 font-bold text-[#376B64]' : 'text-slate-700 font-medium'}`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+});
+CustomDropdown.displayName = "CustomDropdown";
+
+// --- Main Page ---
 export default function AdminInvoicesPage() {
+  // จำลองระบบสิทธิ์ (RBAC)
+  const currentUserRole: Role = 'SUPERADMIN'; 
+  const isSuperAdmin = currentUserRole === 'SUPERADMIN';
+
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedInvoices, setSelectedInvoices] = useState<string[]>([]);
@@ -47,12 +120,7 @@ export default function AdminInvoicesPage() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
 
-  useEffect(() => { fetchInvoices(); }, []);
-
-  // ==========================================
-  // Fetch
-  // ==========================================
-  const fetchInvoices = async () => {
+  const fetchInvoices = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/all-invoices', { cache: 'no-store' });
       if (!res.ok) return;
@@ -71,15 +139,14 @@ export default function AdminInvoicesPage() {
       }
     } catch (err) {
       console.error('Fetch Error:', err);
-      Toast.fire({ icon: 'error', title: 'ไม่สามารถดึงข้อมูลบิลได้' });
+      Toast.fire({ icon: 'error', title: 'ไม่สามารถดึงข้อมูลใบแจ้งหนี้ได้' });
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  // ==========================================
-  // Filter
-  // ==========================================
+  useEffect(() => { fetchInvoices(); }, [fetchInvoices]);
+
   const filteredInvoices = useMemo(() => {
     return invoices.filter(inv => {
       if (inv.invoiceNo && inv.invoiceNo.startsWith('TR-')) return false;
@@ -92,38 +159,57 @@ export default function AdminInvoicesPage() {
     });
   }, [invoices, searchTerm, filterMonth, filterYear, filterStatus]);
 
-  const availableYears = Array.from(new Set(invoices.map(inv => inv.billingYear))).sort((a, b) => b - a);
+  const availableYears = useMemo(() => {
+    return Array.from(new Set(invoices.map(inv => inv.billingYear))).sort((a, b) => b - a);
+  }, [invoices]);
 
-  // ==========================================
-  // Select
-  // ==========================================
-  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Dropdown Options
+  const monthOptions = useMemo(() => [
+    { label: 'ทุกเดือน', value: 0 },
+    ...thaiMonths.map(m => ({ label: m.full, value: m.num }))
+  ], []);
+
+  const yearOptions = useMemo(() => [
+    { label: 'ทุกปี', value: 0 },
+    ...availableYears.map(y => ({ label: `พ.ศ. ${y + 543}`, value: y }))
+  ], [availableYears]);
+
+  const statusOptions = useMemo(() => [
+    { label: 'ทุกสถานะ', value: 'ALL' },
+    { label: 'รอชำระ (PENDING)', value: 'PENDING' },
+    { label: 'ค้างชำระ (OVERDUE)', value: 'OVERDUE' },
+    { label: 'แบ่งจ่าย (PARTIAL)', value: 'PARTIAL' },
+    { label: 'รอตรวจสอบ (CHECKING)', value: 'CHECKING' },
+    { label: 'ชำระแล้ว (PAID)', value: 'PAID' },
+    { label: 'ถูกปฏิเสธ (REJECTED)', value: 'REJECTED' },
+  ], []);
+
+  const handleSelectAll = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) setSelectedInvoices(filteredInvoices.map(inv => inv.id));
     else setSelectedInvoices([]);
-  };
+  }, [filteredInvoices]);
 
-  const handleSelectOne = (id: string) => {
-    if (selectedInvoices.includes(id)) setSelectedInvoices(selectedInvoices.filter(i => i !== id));
-    else setSelectedInvoices([...selectedInvoices, id]);
-  };
+  const handleSelectOne = useCallback((id: string) => {
+    setSelectedInvoices(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  }, []);
 
-  // ==========================================
-  // Create Bill
-  // ==========================================
-  const handleCreateBillChoice = () => {
+  const handleCreateBillChoice = useCallback(() => {
     Swal.fire({
-      title: 'สร้างบิลใหม่',
-      text: 'คุณต้องการสร้างบิลรูปแบบใด?',
+      title: 'สร้างใบแจ้งหนี้ใหม่',
+      text: 'กรุณาเลือูปแบบการสร้างใบแจ้งหนี้',
       icon: 'question',
       showCancelButton: true,
       showDenyButton: true,
       showCloseButton: true,
-      confirmButtonText: 'สร้างให้ทุกบ้าน',
-      denyButtonText: 'เลือกเฉพาะบ้าน',
-      cancelButtonText: 'ยกเลิก',
+      reverseButtons: false, // ยืนยันซ้ายสุด ยกเลิกขวาสุด
+      confirmButtonText: 'สร้างให้ทุกยูนิต',
+      denyButtonText: 'ระบุยูนิตเป้าหมาย',
+      cancelButtonText: 'ยกเลิกการทำรายการ',
       confirmButtonColor: '#376B64',
-      denyButtonColor: '#2A524C',
-      cancelButtonColor: '#9ca3af',
+      denyButtonColor: '#475569',
+      cancelButtonColor: '#9CA3AF',
       customClass: {
         popup: 'rounded-[2rem] w-auto max-w-[90vw]',
         confirmButton: 'rounded-xl px-4 sm:px-6 py-2.5 font-bold w-full sm:w-auto mb-2 sm:mb-0',
@@ -137,23 +223,24 @@ export default function AdminInvoicesPage() {
         setIsModalOpen(true);
       } else if (result.isDenied) {
         Swal.fire({
-          title: 'ระบุบ้านเลขที่',
+          title: 'ระบุบ้านเลขที่อ้างอิง',
           input: 'text',
-          inputPlaceholder: 'เช่น 123/4',
+          inputPlaceholder: 'ตัวอย่าง: 123/4',
           showCancelButton: true,
           showCloseButton: true,
-          confirmButtonText: 'ถัดไป',
-          cancelButtonText: 'ยกเลิก',
+          reverseButtons: false,
+          confirmButtonText: 'ดำเนินการถัดไป',
+          cancelButtonText: 'ยกเลิกการทำรายการ',
           confirmButtonColor: '#376B64',
-          cancelButtonColor: '#9ca3af',
+          cancelButtonColor: '#9CA3AF',
           customClass: {
             popup: 'rounded-[2rem] w-auto max-w-[90vw]',
-            input: 'rounded-xl border-gray-200 focus:ring-[#376B64] focus:border-[#376B64]',
+            input: 'rounded-xl border-slate-200 focus:ring-[#376B64] focus:border-[#376B64] outline-none px-4 py-3',
             confirmButton: 'rounded-xl px-4 sm:px-6 py-2.5 font-bold w-full sm:w-auto mb-2 sm:mb-0',
             cancelButton: 'rounded-xl px-4 sm:px-6 py-2.5 font-bold w-full sm:w-auto',
             actions: 'flex flex-col sm:flex-row w-full gap-2 px-4'
           },
-          inputValidator: (value) => { if (!value) return 'กรุณาระบุบ้านเลขที่!'; return null; },
+          inputValidator: (value) => { if (!value) return 'กรุณาระบุข้อมูลอ้างอิงให้ครบถ้วน'; return null; },
         }).then((res) => {
           if (res.isConfirmed && res.value) {
             setTargetHouseNo(res.value);
@@ -162,13 +249,13 @@ export default function AdminInvoicesPage() {
         });
       }
     });
-  };
+  }, []);
 
-  const submitGenerateInvoices = async () => {
+  const submitGenerateInvoices = useCallback(async () => {
     setIsModalOpen(false);
     Swal.fire({
-      title: 'กำลังสร้างบิล...',
-      html: 'กรุณารอสักครู่ ระบบกำลังประมวลผล',
+      title: 'กำลังดำเนินการสร้างใบแจ้งหนี้',
+      html: 'กรุณารอสักครู่ ระบบกำลังประมวลผลข้อมูล',
       allowOutsideClick: false,
       showConfirmButton: false,
       didOpen: () => Swal.showLoading(),
@@ -186,55 +273,58 @@ export default function AdminInvoicesPage() {
       if (data.success) {
         Swal.fire({
           icon: 'success',
-          title: 'สร้างบิลสำเร็จ!',
+          title: 'ดำเนินการสำเร็จ',
           text: data.message,
           showCloseButton: true,
           confirmButtonColor: '#376B64',
-          confirmButtonText: 'ตกลง',
+          confirmButtonText: 'รับทราบ',
           customClass: { popup: 'rounded-[2rem] w-auto max-w-[90vw]', confirmButton: 'rounded-xl px-8 py-3 font-bold' },
         });
         fetchInvoices();
       } else {
         Swal.fire({
           icon: 'error',
-          title: 'ไม่สามารถสร้างบิลได้',
-          text: data.error || 'เกิดข้อผิดพลาดบางอย่าง',
+          title: 'ไม่สามารถสร้างใบแจ้งหนี้ได้',
+          text: data.error || 'เกิดข้อผิดพลาดในการเชื่อมต่อระบบ',
           showCloseButton: true,
-          confirmButtonColor: '#e11d48',
-          confirmButtonText: 'ปิด',
+          confirmButtonColor: '#E11D48',
+          confirmButtonText: 'ปิดหน้านี้',
           customClass: { popup: 'rounded-[2rem] w-auto max-w-[90vw]', confirmButton: 'rounded-xl px-8 py-3 font-bold' },
         });
       }
     } catch {
       Swal.fire({
         icon: 'error',
-        title: 'เซิร์ฟเวอร์มีปัญหา',
-        text: 'ไม่สามารถเชื่อมต่อกับระบบได้ กรุณาลองใหม่อีกครั้ง',
+        title: 'ระบบเกิดข้อผิดพลาด',
+        text: 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาลองใหม่อีกครั้ง',
         showCloseButton: true,
-        confirmButtonColor: '#e11d48',
-        confirmButtonText: 'ปิด',
+        confirmButtonColor: '#E11D48',
+        confirmButtonText: 'ปิดหน้านี้',
         customClass: { popup: 'rounded-[2rem] w-auto max-w-[90vw]', confirmButton: 'rounded-xl px-8 py-3 font-bold' },
       });
     }
-  };
+  }, [selectedMonth, selectedYear, targetHouseNo, fetchInvoices]);
 
-  // ==========================================
-  // Delete
-  // ==========================================
-  const handleDelete = async (singleId?: string) => {
+  const handleDelete = useCallback(async (singleId?: string) => {
+    if (!isSuperAdmin) {
+      Toast.fire({ icon: 'warning', title: 'สิทธิ์ไม่เพียงพอในการลบข้อมูล' });
+      return;
+    }
+
     const idsToDelete = singleId ? [singleId] : selectedInvoices;
     if (idsToDelete.length === 0) return;
 
     Swal.fire({
-      title: 'ยืนยันการลบ?',
-      text: `คุณกำลังจะลบบิลจำนวน ${idsToDelete.length} รายการ การกระทำนี้ย้อนกลับไม่ได้!`,
+      title: 'ยืนยันการลบข้อมูล?',
+      text: `ระบบจะดำเนินการลบใบแจ้งหนี้จำนวน ${idsToDelete.length} รายการ การกระทำนี้ไม่สามารถย้อนกลับได้`,
       icon: 'warning',
       showCancelButton: true,
       showCloseButton: true,
-      confirmButtonColor: '#e11d48',
-      cancelButtonColor: '#9ca3af',
-      confirmButtonText: 'ใช่, ลบเลย!',
-      cancelButtonText: 'ยกเลิก',
+      reverseButtons: false,
+      confirmButtonColor: '#E11D48',
+      cancelButtonColor: '#9CA3AF',
+      confirmButtonText: 'ยืนยันการลบ',
+      cancelButtonText: 'ยกเลิกรายการ',
       customClass: {
         popup: 'rounded-[2rem] w-auto max-w-[90vw]',
         confirmButton: 'rounded-xl px-4 sm:px-6 py-2.5 font-bold w-full sm:w-auto mb-2 sm:mb-0',
@@ -243,7 +333,7 @@ export default function AdminInvoicesPage() {
       },
     }).then((result) => {
       if (result.isConfirmed) {
-        Swal.fire({ title: 'กำลังลบ...', allowOutsideClick: false, didOpen: () => Swal.showLoading(), customClass: { popup: 'rounded-[2rem]' } });
+        Swal.fire({ title: 'กำลังดำเนินการลบ...', allowOutsideClick: false, didOpen: () => Swal.showLoading(), customClass: { popup: 'rounded-[2rem]' } });
         try {
           fetch('/api/admin/delete-invoices', {
             method: 'POST',
@@ -251,36 +341,34 @@ export default function AdminInvoicesPage() {
             body: JSON.stringify({ ids: idsToDelete }),
           }).then(r => r.json()).then(data => {
             if (data.success) {
-              Toast.fire({ icon: 'success', title: `ลบเรียบร้อยแล้ว จำนวน ${data.count} ใบ` });
+              Toast.fire({ icon: 'success', title: `ลบข้อมูลสำเร็จจำนวน ${data.count} รายการ` });
               setSelectedInvoices([]);
               fetchInvoices();
             } else {
-              Toast.fire({ icon: 'error', title: 'เกิดข้อผิดพลาดในการลบ' });
+              Toast.fire({ icon: 'error', title: 'เกิดข้อผิดพลาดในการประมวลผล' });
             }
           });
         } catch {
-          Toast.fire({ icon: 'error', title: 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้' });
+          Toast.fire({ icon: 'error', title: 'ไม่สามารถติดต่อเซิร์ฟเวอร์ได้' });
         }
       }
     });
-  };
+  }, [isSuperAdmin, selectedInvoices, fetchInvoices]);
 
-  // ==========================================
-  // Notify (single)
-  // ==========================================
-  const handleNotify = async (invoiceId: string, type: 'SEND' | 'REMINDER' | 'OVERDUE') => {
-    const titles = { SEND: 'ส่งบิลใหม่?', REMINDER: 'ส่งแจ้งเตือนล่วงหน้า?', OVERDUE: 'ส่งแจ้งเตือนเกินกำหนด?' };
+  const handleNotify = useCallback(async (invoiceId: string, type: 'SEND' | 'REMINDER' | 'OVERDUE') => {
+    const titles = { SEND: 'นำส่งใบแจ้งหนี้?', REMINDER: 'ส่งการแจ้งเตือนล่วงหน้า?', OVERDUE: 'ส่งการแจ้งเตือนยอดค้างชำระ?' };
 
     Swal.fire({
       title: titles[type],
-      text: 'ข้อความจะถูกส่งเข้า LINE ของลูกบ้านทันที',
+      text: 'ข้อมูลจะถูกนำส่งไปยังบัญชี LINE ของผู้พักอาศัยโดยตรง',
       icon: 'question',
       showCancelButton: true,
       showCloseButton: true,
+      reverseButtons: false,
       confirmButtonColor: '#376B64',
-      cancelButtonColor: '#9ca3af',
-      confirmButtonText: 'ใช่, ส่งเลย!',
-      cancelButtonText: 'ยกเลิก',
+      cancelButtonColor: '#9CA3AF',
+      confirmButtonText: 'ยืนยันการนำส่ง',
+      cancelButtonText: 'ยกเลิกรายการ',
       customClass: {
         popup: 'rounded-[2rem] w-auto max-w-[90vw]',
         confirmButton: 'rounded-xl px-4 sm:px-6 py-2.5 font-bold w-full sm:w-auto mb-2 sm:mb-0',
@@ -289,7 +377,7 @@ export default function AdminInvoicesPage() {
       },
     }).then((result) => {
       if (result.isConfirmed) {
-        Swal.fire({ title: 'กำลังส่ง...', allowOutsideClick: false, didOpen: () => Swal.showLoading(), customClass: { popup: 'rounded-[2rem]' } });
+        Swal.fire({ title: 'กำลังนำส่งข้อมูล...', allowOutsideClick: false, didOpen: () => Swal.showLoading(), customClass: { popup: 'rounded-[2rem]' } });
         try {
           fetch('/api/admin-notify', {
             method: 'POST',
@@ -297,36 +385,42 @@ export default function AdminInvoicesPage() {
             body: JSON.stringify({ invoiceId, type }),
           }).then(r => r.json()).then(data => {
             if (data.success) {
-              Toast.fire({ icon: 'success', title: 'แจ้งเตือนเข้า LINE เรียบร้อย!' });
+              Toast.fire({ icon: 'success', title: 'จัดส่งการแจ้งเตือนสำเร็จ' });
               if (type === 'OVERDUE') fetchInvoices();
             } else {
-              Swal.fire({ icon: 'info', title: 'ระบบยังไม่พร้อม', text: 'ฟังก์ชันส่ง LINE แจ้งเตือนยังไม่ได้เชื่อมต่อระบบหลังบ้านครับ', showCloseButton: true, confirmButtonColor: '#376B64', customClass: { popup: 'rounded-[2rem] w-auto max-w-[90vw]', confirmButton: 'rounded-xl px-6 py-2.5 font-bold' } });
+              Swal.fire({ 
+                icon: 'info', 
+                title: 'ระบบไม่พร้อมใช้งาน', 
+                text: 'ฟังก์ชันการแจ้งเตือนยังไม่ได้ตั้งค่าการเชื่อมต่อ API', 
+                showCloseButton: true, 
+                confirmButtonColor: '#376B64',
+                confirmButtonText: 'รับทราบ', 
+                customClass: { popup: 'rounded-[2rem] w-auto max-w-[90vw]', confirmButton: 'rounded-xl px-6 py-2.5 font-bold' } 
+              });
             }
           });
         } catch {
-          Toast.fire({ icon: 'error', title: 'เกิดข้อผิดพลาดในการส่งข้อความ' });
+          Toast.fire({ icon: 'error', title: 'เกิดข้อผิดพลาดในการประมวลผลเครือข่าย' });
         }
       }
     });
-  };
+  }, [fetchInvoices]);
 
-  // ==========================================
-  // Notify (bulk)
-  // ==========================================
-  const handleBulkNotify = async (type: 'SEND' | 'REMINDER' | 'OVERDUE') => {
+  const handleBulkNotify = useCallback(async (type: 'SEND' | 'REMINDER' | 'OVERDUE') => {
     if (selectedInvoices.length === 0) return;
-    const titles = { SEND: 'ส่งบิลทั้งหมดที่เลือก?', REMINDER: 'ส่งแจ้งเตือนล่วงหน้าทั้งหมดที่เลือก?', OVERDUE: 'ส่งทวงยอดค้างทั้งหมดที่เลือก?' };
+    const titles = { SEND: 'นำส่งใบแจ้งหนี้ทั้งหมด?', REMINDER: 'แจ้งเตือนล่วงหน้าทั้งหมด?', OVERDUE: 'แจ้งเตือนยอดค้างชำระทั้งหมด?' };
 
     Swal.fire({
       title: titles[type],
-      text: `ระบบจะทำการส่งข้อความแจ้งเตือนไปยังลูกบ้านจำนวน ${selectedInvoices.length} รายการ`,
+      text: `ระบบจะดำเนินการส่งข้อความไปยังผู้พักอาศัยจำนวน ${selectedInvoices.length} รายการ`,
       icon: 'question',
       showCancelButton: true,
       showCloseButton: true,
+      reverseButtons: false,
       confirmButtonColor: '#376B64',
       cancelButtonColor: '#9CA3AF',
-      confirmButtonText: 'ใช่, ส่งเลย!',
-      cancelButtonText: 'ยกเลิก',
+      confirmButtonText: 'ยืนยันการนำส่ง',
+      cancelButtonText: 'ยกเลิกรายการ',
       customClass: {
         popup: 'rounded-[2rem] w-auto max-w-[90vw]',
         confirmButton: 'rounded-xl px-4 sm:px-6 py-2.5 font-bold w-full sm:w-auto mb-2 sm:mb-0',
@@ -335,7 +429,7 @@ export default function AdminInvoicesPage() {
       },
     }).then(async (result) => {
       if (result.isConfirmed) {
-        Swal.fire({ title: 'กำลังส่งแจ้งเตือน...', html: 'โปรดรอสักครู่ ห้ามปิดหน้านี้', allowOutsideClick: false, didOpen: () => Swal.showLoading(), customClass: { popup: 'rounded-[2rem]' } });
+        Swal.fire({ title: 'กำลังนำส่งข้อมูล...', html: 'กรุณารอสักครู่ ห้ามปิดหรือรีเฟรชหน้าต่างนี้', allowOutsideClick: false, didOpen: () => Swal.showLoading(), customClass: { popup: 'rounded-[2rem]' } });
         try {
           await Promise.all(
             selectedInvoices.map(id =>
@@ -348,38 +442,37 @@ export default function AdminInvoicesPage() {
           );
           Swal.fire({
             icon: 'success',
-            title: 'ส่งสำเร็จ!',
-            text: `แจ้งเตือนเข้า LINE จำนวน ${selectedInvoices.length} รายการเรียบร้อย!`,
+            title: 'ดำเนินการสำเร็จ',
+            text: `การแจ้งเตือนถูกนำส่งจำนวน ${selectedInvoices.length} รายการเรียบร้อยแล้ว`,
             showCloseButton: true,
             confirmButtonColor: '#376B64',
+            confirmButtonText: 'รับทราบ',
             customClass: { popup: 'rounded-[2rem] w-auto max-w-[90vw]', confirmButton: 'rounded-xl px-8 py-3 font-bold' },
           });
           if (type === 'OVERDUE') fetchInvoices();
         } catch {
-          Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'ไม่สามารถส่งข้อความได้ครบทุกรายการ', showCloseButton: true, confirmButtonColor: '#e11d48', customClass: { popup: 'rounded-[2rem] w-auto max-w-[90vw]', confirmButton: 'rounded-xl px-6 py-2.5 font-bold' } });
+          Swal.fire({ icon: 'error', title: 'พบข้อผิดพลาด', text: 'ระบบไม่สามารถส่งข้อความได้ครบทุกรายการที่ระบุ', showCloseButton: true, confirmButtonColor: '#E11D48', confirmButtonText: 'ปิดหน้านี้', customClass: { popup: 'rounded-[2rem] w-auto max-w-[90vw]', confirmButton: 'rounded-xl px-6 py-2.5 font-bold' } });
         }
       }
     });
-  };
+  }, [selectedInvoices, fetchInvoices]);
 
-  // ==========================================
-  // Edit Amount
-  // ==========================================
-  const handleEditAmount = (inv: any) => {
+  const handleEditAmount = useCallback((inv: any) => {
     Swal.fire({
-      title: `แก้ไขยอดบ้าน ${inv.house?.houseNo}`,
+      title: `แก้ไขข้อมูลยูนิต ${inv.house?.houseNo}`,
       html: `
-        <div class="text-left mb-2 text-sm font-bold text-gray-700 mt-4">ยอดตั้งต้น (บาท)</div>
-        <input id="swal-input1" class="swal2-input !m-0 !w-full !rounded-xl !border-gray-200 focus:!ring-[#376B64] focus:!border-[#376B64] mb-4" value="${inv.baseAmount}" type="number">
-        <div class="text-left mb-2 text-sm font-bold text-gray-700">ค่าปรับ (บาท)</div>
-        <input id="swal-input2" class="swal2-input !m-0 !w-full !rounded-xl !border-gray-200 focus:!ring-[#376B64] focus:!border-[#376B64]" value="${inv.penaltyAmount}" type="number">
+        <div class="text-left mb-2 text-sm font-bold text-slate-700 mt-4">จำนวนเงินตั้งต้น (บาท)</div>
+        <input id="swal-input1" class="swal2-input !m-0 !w-full !rounded-xl !border-slate-200 focus:!ring-[#376B64] focus:!border-[#376B64] mb-4 outline-none" value="${inv.baseAmount}" type="number">
+        <div class="text-left mb-2 text-sm font-bold text-slate-700">ค่าปรับล่าช้า (บาท)</div>
+        <input id="swal-input2" class="swal2-input !m-0 !w-full !rounded-xl !border-slate-200 focus:!ring-[#376B64] focus:!border-[#376B64] outline-none" value="${inv.penaltyAmount}" type="number">
       `,
       showCancelButton: true,
       showCloseButton: true,
-      confirmButtonText: 'บันทึกการแก้ไข',
+      reverseButtons: false,
+      confirmButtonText: 'บันทึกข้อมูล',
       cancelButtonText: 'ยกเลิก',
       confirmButtonColor: '#376B64',
-      cancelButtonColor: '#9ca3af',
+      cancelButtonColor: '#9CA3AF',
       customClass: {
         popup: 'rounded-[2rem] w-auto max-w-[90vw]',
         confirmButton: 'rounded-xl px-4 sm:px-6 py-2.5 font-bold w-full sm:w-auto mb-2 sm:mb-0',
@@ -392,80 +485,82 @@ export default function AdminInvoicesPage() {
       }),
     }).then((result) => {
       if (result.isConfirmed) {
-        Swal.fire({ title: 'กำลังอัปเดตยอด...', allowOutsideClick: false, didOpen: () => Swal.showLoading(), customClass: { popup: 'rounded-[2rem]' } });
+        Swal.fire({ title: 'กำลังปรับปรุงข้อมูล...', allowOutsideClick: false, didOpen: () => Swal.showLoading(), customClass: { popup: 'rounded-[2rem]' } });
         try {
           fetch('/api/admin/update-invoice', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ invoiceId: inv.id, baseAmount: result.value?.base, penaltyAmount: result.value?.penalty }),
           }).then(res => {
-            if (res.ok) { Toast.fire({ icon: 'success', title: 'อัปเดตยอดเงินเรียบร้อยแล้ว' }); fetchInvoices(); }
-            else Toast.fire({ icon: 'error', title: 'เกิดข้อผิดพลาดในการอัปเดต' });
+            if (res.ok) { Toast.fire({ icon: 'success', title: 'ปรับปรุงข้อมูลเสร็จสิ้น' }); fetchInvoices(); }
+            else Toast.fire({ icon: 'error', title: 'พบปัญหาในการปรับปรุงข้อมูล' });
           });
         } catch {
-          Toast.fire({ icon: 'error', title: 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้' });
+          Toast.fire({ icon: 'error', title: 'ไม่สามารถติดต่อเซิร์ฟเวอร์ได้' });
         }
       }
     });
-  };
+  }, [fetchInvoices]);
 
-  // ==========================================
-  // Reset Status
-  // ==========================================
-  const handleResetInvoice = (id: string, currentStatus: string) => {
+  const handleResetInvoice = useCallback((id: string, currentStatus: string) => {
     Swal.fire({
-      title: 'เปลี่ยนสถานะบิล',
-      text: `สถานะปัจจุบัน: ${currentStatus}`,
+      title: 'ปรับปรุงสถานะใบแจ้งหนี้',
+      text: `สถานะอ้างอิงปัจจุบัน: ${currentStatus}`,
       icon: 'info',
-      input: 'select',
-      inputOptions: {
-        PENDING: 'รอชำระ (PENDING)',
-        OVERDUE: 'ค้างชำระ (OVERDUE)',
-        PARTIAL: 'แบ่งจ่าย (PARTIAL)',
-        PAID: 'ชำระแล้ว (PAID)',
-        CHECKING: 'รอตรวจสอบ (CHECKING)',
-        REJECTED: 'ถูกปฏิเสธ (REJECTED)',
-      },
-      inputPlaceholder: 'เลือกสถานะใหม่...',
+      html: `
+        <div class="relative text-left mt-4">
+          <select id="status-select" class="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-xl outline-none px-4 py-3 focus:border-[#376B64] focus:ring-2 focus:ring-[#376B64]/10 cursor-pointer font-bold">
+            <option value="" disabled>กรุณาเลือกสถานะที่ต้องการ...</option>
+            <option value="PENDING" ${currentStatus === 'PENDING' ? 'selected' : ''}>รอชำระ (PENDING)</option>
+            <option value="OVERDUE" ${currentStatus === 'OVERDUE' ? 'selected' : ''}>ค้างชำระ (OVERDUE)</option>
+            <option value="PARTIAL" ${currentStatus === 'PARTIAL' ? 'selected' : ''}>แบ่งจ่าย (PARTIAL)</option>
+            <option value="CHECKING" ${currentStatus === 'CHECKING' ? 'selected' : ''}>รอตรวจสอบ (CHECKING)</option>
+            <option value="PAID" ${currentStatus === 'PAID' ? 'selected' : ''}>ชำระแล้ว (PAID)</option>
+            <option value="REJECTED" ${currentStatus === 'REJECTED' ? 'selected' : ''}>ถูกปฏิเสธ (REJECTED)</option>
+          </select>
+          <div class="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </div>
+        </div>
+      `,
       showCancelButton: true,
       showCloseButton: true,
+      reverseButtons: false,
       confirmButtonColor: '#376B64',
-      cancelButtonColor: '#9ca3af',
-      confirmButtonText: 'บันทึกสถานะ',
+      cancelButtonColor: '#9CA3AF',
+      confirmButtonText: 'บันทึกการเปลี่ยนแปลง',
       cancelButtonText: 'ยกเลิก',
       customClass: {
         popup: 'rounded-[2rem] w-auto max-w-[90vw]',
-        input: 'rounded-xl border-gray-200 py-3 cursor-pointer w-full text-sm sm:text-base',
         confirmButton: 'rounded-xl px-4 sm:px-6 py-2.5 font-bold w-full sm:w-auto mb-2 sm:mb-0',
         cancelButton: 'rounded-xl px-4 sm:px-6 py-2.5 font-bold w-full sm:w-auto',
         actions: 'flex flex-col sm:flex-row w-full gap-2 px-4'
       },
-      inputValidator: (value) => new Promise((resolve) => {
-        if (value) resolve(null); else resolve('กรุณาเลือกสถานะ!');
-      }),
+      preConfirm: () => {
+        const val = (document.getElementById('status-select') as HTMLSelectElement).value;
+        if (!val) { Swal.showValidationMessage('กรุณาเลือกสถานะอ้างอิง'); }
+        return val;
+      }
     }).then((result) => {
-      if (result.isConfirmed) {
-        Swal.fire({ title: 'กำลังอัปเดต...', allowOutsideClick: false, didOpen: () => Swal.showLoading(), customClass: { popup: 'rounded-[2rem]' } });
+      if (result.isConfirmed && result.value) {
+        Swal.fire({ title: 'กำลังปรับปรุงสถานะ...', allowOutsideClick: false, didOpen: () => Swal.showLoading(), customClass: { popup: 'rounded-[2rem]' } });
         try {
           fetch('/api/admin/reset-invoice', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ invoiceId: id, newStatus: result.value }),
           }).then(res => {
-            if (res.ok) { Toast.fire({ icon: 'success', title: `เปลี่ยนสถานะเป็น ${result.value} แล้ว` }); fetchInvoices(); }
-            else Toast.fire({ icon: 'error', title: 'อัปเดตไม่สำเร็จ' });
+            if (res.ok) { Toast.fire({ icon: 'success', title: `สถานะถูกเปลี่ยนเป็น ${result.value} เรียบร้อย` }); fetchInvoices(); }
+            else Toast.fire({ icon: 'error', title: 'ไม่สามารถปรับปรุงสถานะได้' });
           });
         } catch {
-          Toast.fire({ icon: 'error', title: 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้' });
+          Toast.fire({ icon: 'error', title: 'ไม่สามารถติดต่อเซิร์ฟเวอร์ได้' });
         }
       }
     });
-  };
+  }, [fetchInvoices]);
 
-  // ==========================================
-  // Status Badge
-  // ==========================================
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = useCallback((status: string) => {
     switch (status) {
       case 'PAID': return 'text-emerald-600';
       case 'CHECKING': return 'text-amber-500';
@@ -473,14 +568,14 @@ export default function AdminInvoicesPage() {
       case 'OVERDUE': return 'text-rose-600 font-extrabold';
       case 'PENDING': return 'text-[#376B64]';
       case 'PARTIAL': return 'text-orange-500 font-bold';
-      default: return 'text-gray-500';
+      default: return 'text-slate-500';
     }
-  };
+  }, []);
 
   if (loading) return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center text-[#376B64]">
       <RefreshCw className="animate-spin mb-4" size={40} />
-      <span className="font-bold text-lg">กำลังโหลดข้อมูล...</span>
+      <span className="font-bold text-lg">กำลังประมวลผลข้อมูล...</span>
     </div>
   );
 
@@ -492,20 +587,22 @@ export default function AdminInvoicesPage() {
         <div className="bg-white p-5 sm:p-6 md:p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div className="w-full md:w-auto">
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-              <Receipt className="text-[#376B64] shrink-0" size={32} /> ระบบจัดการบิล
+              <Receipt className="text-[#376B64] shrink-0" size={32} /> การจัดการใบแจ้งหนี้
             </h1>
-            <p className="text-xs sm:text-sm text-slate-500 mt-2">เรียงลำดับตาม: รอบบิลเก่าที่สุด และบ้านเลขที่น้อยไปมาก</p>
+            <p className="text-xs sm:text-sm text-slate-500 mt-2">ประมวลผลและติดตามสถานะการชำระเงินของโครงการ</p>
           </div>
 
           <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto mt-2 md:mt-0">
-            <Link href="/admin/settings" className="flex items-center justify-center w-full sm:w-auto px-5 py-2.5 bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 rounded-xl font-bold text-sm transition-all shadow-sm">
-              <Settings size={16} className="mr-2 shrink-0" /> ตั้งค่า
-            </Link>
+            {isSuperAdmin && (
+              <Link href="/admin/settings" className="flex items-center justify-center w-full sm:w-auto px-5 py-2.5 bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 rounded-xl font-bold text-sm transition-all shadow-sm">
+                <Settings size={16} className="mr-2 shrink-0" /> ตั้งค่าระบบ
+              </Link>
+            )}
             <button
               onClick={handleCreateBillChoice}
               className="flex items-center justify-center w-full sm:w-auto px-6 py-2.5 bg-[#376B64] hover:bg-[#2A524C] text-white rounded-xl font-bold text-sm shadow-md transition-all active:scale-[0.98]"
             >
-              <Plus size={18} className="mr-1 shrink-0" /> สร้างบิลใหม่
+              <Plus size={18} className="mr-1 shrink-0" /> สร้างใบแจ้งหนี้
             </button>
           </div>
         </div>
@@ -516,37 +613,35 @@ export default function AdminInvoicesPage() {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
             <input
               type="text"
-              placeholder="ค้นหาบ้านเลขที่..."
+              placeholder="ค้นหาตามยูนิตอ้างอิง..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-[1.25rem] focus:ring-4 focus:ring-[#376B64]/10 focus:border-[#376B64] outline-none transition-all font-medium text-slate-700"
+              className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-[1.25rem] focus:ring-4 focus:ring-[#376B64]/10 focus:border-[#376B64] outline-none transition-all font-medium text-slate-700 text-sm"
             />
           </div>
 
           <div className="flex gap-3 w-full md:w-auto overflow-x-auto pb-2 md:pb-0 custom-scrollbar sm:scrollbar-hide">
-            <div className="flex items-center bg-slate-50 border border-slate-200 rounded-[1.25rem] px-4 py-3 min-w-max hover:border-[#376B64]/30 transition-colors">
-              <Filter size={16} className="text-[#376B64] mr-2 shrink-0" />
-              <select value={filterMonth} onChange={(e) => setFilterMonth(Number(e.target.value))} className="bg-transparent text-sm font-bold outline-none text-slate-700 cursor-pointer w-full">
-                <option value={0}>ทุกเดือน</option>
-                {thaiMonths.map(m => <option key={m.num} value={m.num}>{m.full}</option>)}
-              </select>
+            <div className="w-40 shrink-0">
+              <CustomDropdown
+                icon={Filter}
+                value={filterMonth}
+                onChange={(v) => setFilterMonth(Number(v))}
+                options={monthOptions}
+              />
             </div>
-            <div className="flex items-center bg-slate-50 border border-slate-200 rounded-[1.25rem] px-4 py-3 min-w-max hover:border-[#376B64]/30 transition-colors">
-              <select value={filterYear} onChange={(e) => setFilterYear(Number(e.target.value))} className="bg-transparent text-sm font-bold outline-none text-slate-700 cursor-pointer w-full">
-                <option value={0}>ทุกปี</option>
-                {availableYears.map(y => <option key={y} value={y}>{y + 543}</option>)}
-              </select>
+            <div className="w-32 shrink-0">
+              <CustomDropdown
+                value={filterYear}
+                onChange={(v) => setFilterYear(Number(v))}
+                options={yearOptions}
+              />
             </div>
-            <div className="flex items-center bg-slate-50 border border-slate-200 rounded-[1.25rem] px-4 py-3 min-w-max hover:border-[#376B64]/30 transition-colors">
-              <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="bg-transparent text-sm font-bold outline-none text-slate-700 cursor-pointer w-full">
-                <option value="ALL">ทุกสถานะ</option>
-                <option value="PENDING">รอชำระ (PENDING)</option>
-                <option value="OVERDUE">ค้างชำระ (OVERDUE)</option>
-                <option value="PARTIAL">แบ่งจ่าย (PARTIAL)</option>
-                <option value="CHECKING">รอตรวจสอบ (CHECKING)</option>
-                <option value="PAID">ชำระแล้ว (PAID)</option>
-                <option value="REJECTED">ถูกปฏิเสธ (REJECTED)</option>
-              </select>
+            <div className="w-48 shrink-0">
+              <CustomDropdown
+                value={filterStatus}
+                onChange={(v) => setFilterStatus(String(v))}
+                options={statusOptions}
+              />
             </div>
           </div>
         </div>
@@ -557,21 +652,26 @@ export default function AdminInvoicesPage() {
           {selectedInvoices.length > 0 && (
             <div className="bg-slate-900 text-white px-4 sm:px-6 py-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-in slide-in-from-top duration-300 z-10 relative">
               <span className="text-sm font-bold flex items-center gap-2 whitespace-nowrap">
-                <span className="flex items-center justify-center bg-[#376B64] text-white w-6 h-6 rounded-full text-xs shadow-sm font-black shrink-0">{selectedInvoices.length}</span> รายการที่เลือก
+                <span className="flex items-center justify-center bg-[#376B64] text-white w-6 h-6 rounded-full text-xs shadow-sm font-black shrink-0">{selectedInvoices.length}</span> รายการอ้างอิง
               </span>
               <div className="flex flex-col sm:flex-row flex-wrap items-center gap-2 w-full md:w-auto justify-end">
-                <button
-                  onClick={() => handleDelete()}
-                  className="flex items-center justify-center w-full sm:w-auto px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition shadow-sm active:scale-[0.98] whitespace-nowrap"
-                >
-                  <Trash2 size={14} className="mr-1.5 shrink-0" /> ลบข้อมูลที่เลือก
-                </button>
-                <div className="h-px w-full sm:w-px sm:h-6 bg-slate-700 mx-1 my-1 sm:my-0" />
+                {isSuperAdmin && (
+                  <>
+                    <button
+                      onClick={() => handleDelete()}
+                      className="flex items-center justify-center w-full sm:w-auto px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition shadow-sm active:scale-[0.98] whitespace-nowrap"
+                    >
+                      <Trash2 size={14} className="mr-1.5 shrink-0" /> ลบข้อมูลที่เลือก
+                    </button>
+                    <div className="h-px w-full sm:w-px sm:h-6 bg-slate-700 mx-1 my-1 sm:my-0" />
+                  </>
+                )}
+                
                 <div className="flex flex-row w-full sm:w-auto gap-2">
-                  <button onClick={() => handleBulkNotify('SEND')} className="flex-1 sm:flex-none flex justify-center items-center px-3 sm:px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 text-xs font-bold rounded-xl transition active:scale-[0.98] whitespace-nowrap"><Send size={14} className="mr-1.5 shrink-0" /> ส่งบิล</button>
-                  <button onClick={() => handleBulkNotify('REMINDER')} className="flex-1 sm:flex-none flex justify-center items-center px-3 sm:px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-orange-400 border border-slate-700 text-xs font-bold rounded-xl transition active:scale-[0.98] whitespace-nowrap"><Clock size={14} className="mr-1.5 shrink-0" /> ทวงล่วงหน้า</button>
+                  <button onClick={() => handleBulkNotify('SEND')} className="flex-1 sm:flex-none flex justify-center items-center px-3 sm:px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 text-xs font-bold rounded-xl transition active:scale-[0.98] whitespace-nowrap"><Send size={14} className="mr-1.5 shrink-0" /> นำส่งใบแจ้งหนี้</button>
+                  <button onClick={() => handleBulkNotify('REMINDER')} className="flex-1 sm:flex-none flex justify-center items-center px-3 sm:px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-orange-400 border border-slate-700 text-xs font-bold rounded-xl transition active:scale-[0.98] whitespace-nowrap"><Clock size={14} className="mr-1.5 shrink-0" /> แจ้งเตือนล่วงหน้า</button>
                 </div>
-                <button onClick={() => handleBulkNotify('OVERDUE')} className="flex items-center justify-center w-full sm:w-auto px-3 sm:px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-rose-400 border border-slate-700 text-xs font-bold rounded-xl transition active:scale-[0.98] whitespace-nowrap"><AlertCircle size={14} className="mr-1.5 shrink-0" /> ทวงยอดค้าง</button>
+                <button onClick={() => handleBulkNotify('OVERDUE')} className="flex items-center justify-center w-full sm:w-auto px-3 sm:px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-rose-400 border border-slate-700 text-xs font-bold rounded-xl transition active:scale-[0.98] whitespace-nowrap"><AlertCircle size={14} className="mr-1.5 shrink-0" /> แจ้งเตือนยอดค้างชำระ</button>
               </div>
             </div>
           )}
@@ -588,12 +688,12 @@ export default function AdminInvoicesPage() {
                       checked={selectedInvoices.length === filteredInvoices.length && filteredInvoices.length > 0}
                     />
                   </th>
-                  <th className="py-4 px-2 text-sm font-bold tracking-wide text-center whitespace-nowrap">บ้านเลขที่</th>
-                  <th className="py-4 px-2 text-sm font-bold tracking-wide text-center whitespace-nowrap">ประจำเดือน</th>
-                  <th className="py-4 px-2 text-sm font-bold tracking-wide text-center whitespace-nowrap">ยอดชำระ</th>
-                  <th className="py-4 px-2 text-sm font-bold tracking-wide text-center whitespace-nowrap">สถานะ</th>
-                  <th className="py-4 px-4 text-sm font-bold tracking-wide text-center border-l border-slate-100 whitespace-nowrap">จัดการบิล</th>
-                  <th className="py-4 px-4 text-sm font-bold tracking-wide text-center border-l border-slate-100 whitespace-nowrap">แจ้งเตือนผ่าน LINE</th>
+                  <th className="py-4 px-2 text-sm font-bold tracking-wide text-center whitespace-nowrap">ยูนิตอ้างอิง</th>
+                  <th className="py-4 px-2 text-sm font-bold tracking-wide text-center whitespace-nowrap">รอบการเรียกเก็บเงิน</th>
+                  <th className="py-4 px-2 text-sm font-bold tracking-wide text-center whitespace-nowrap">ยอดชำระดำเนินการ</th>
+                  <th className="py-4 px-2 text-sm font-bold tracking-wide text-center whitespace-nowrap">สถานะปัจจุบัน</th>
+                  <th className="py-4 px-4 text-sm font-bold tracking-wide text-center border-l border-slate-100 whitespace-nowrap">การจัดการบัญชี</th>
+                  <th className="py-4 px-4 text-sm font-bold tracking-wide text-center border-l border-slate-100 whitespace-nowrap">ระบบการแจ้งเตือน</th>
                 </tr>
               </thead>
 
@@ -602,8 +702,8 @@ export default function AdminInvoicesPage() {
                   <tr>
                     <td colSpan={7} className="py-24 text-center">
                       <Search className="mx-auto text-slate-300 mb-4" size={48} />
-                      <h3 className="text-lg font-bold text-slate-700 mb-1">ไม่พบบิล</h3>
-                      <p className="text-slate-500 text-sm">ลองเปลี่ยนคำค้นหาหรือตัวกรองเดือน/ปี ดูสิ</p>
+                      <h3 className="text-lg font-bold text-slate-700 mb-1">ไม่พบข้อมูลใบแจ้งหนี้</h3>
+                      <p className="text-slate-500 text-sm">ระบบไม่พบข้อมูลตามเงื่อนไขการค้นหาหรือตัวกรองที่ระบุ</p>
                     </td>
                   </tr>
                 ) : (
@@ -647,13 +747,13 @@ export default function AdminInvoicesPage() {
 
                             {penalty > 0 && (
                               <span className="text-[11px] text-rose-500 font-medium mt-0.5 whitespace-nowrap">
-                                {inv.status === 'PAID' ? '(รวมค่าปรับแล้ว)' : `(รวมค่าปรับ ${penalty.toLocaleString('th-TH')} ฿)`}
+                                {inv.status === 'PAID' ? '(รวมค่าปรับล่าช้า)' : `(รวมค่าปรับ ${penalty.toLocaleString('th-TH')} ฿)`}
                               </span>
                             )}
 
                             {inv.status === 'PARTIAL' && paid > 0 && (
                               <span className="text-[11px] text-orange-600 mt-1 font-black whitespace-nowrap">
-                                ยอดคงเหลือ (จ่ายแล้ว {paid.toLocaleString('th-TH', { minimumFractionDigits: 2 })} ฿)
+                                ยอดค้างชำระ (ชำระบางส่วน {paid.toLocaleString('th-TH', { minimumFractionDigits: 2 })} ฿)
                               </span>
                             )}
                           </div>
@@ -669,14 +769,15 @@ export default function AdminInvoicesPage() {
                           <div className="flex items-center justify-center">
                             <div className="flex bg-slate-50 p-1.5 rounded-xl gap-1.5 border border-slate-200/60 shadow-sm">
 
-                              {/* ปุ่มแก้ไขยอด */}
+                              {/* ปุ่มแก้ไขข้อมูล */}
                               <button
                                 onClick={() => {
                                   if (inv.status === 'PAID') {
                                     Swal.fire({
                                       icon: 'error',
-                                      title: 'ไม่สามารถแก้ไขได้',
-                                      text: 'บิลที่ชำระเงินเรียบร้อยแล้ว ไม่สามารถแก้ไขยอดได้ครับ',
+                                      title: 'ระงับการแก้ไขข้อมูล',
+                                      text: 'รายการที่ดำเนินการเสร็จสิ้นแล้ว ไม่สามารถเปลี่ยนแปลงข้อมูลได้',
+                                      confirmButtonColor: '#376B64',
                                       customClass: { popup: 'rounded-[2rem]' }
                                     });
                                     return;
@@ -684,60 +785,61 @@ export default function AdminInvoicesPage() {
                                   handleEditAmount(inv);
                                 }}
                                 className={`group relative p-2 rounded-lg transition-all shadow-sm ${inv.status === 'PAID' ? 'text-slate-300 cursor-not-allowed opacity-50' : 'text-slate-500 hover:text-[#376B64] hover:bg-[#376B64]/10 hover:shadow'}`}
+                                title="แก้ไขข้อมูลบัญชี"
                               >
                                 <Edit size={16} className="shrink-0" />
                               </button>
 
-                              {/* ปุ่มเปลี่ยนสถานะ */}
+                              {/* ปุ่มอัปเดตสถานะ */}
                               <button
                                 onClick={() => {
-                                  if (inv.status === 'PAID') {
-                                    const isSuperAdmin = false; // TODO: เปลี่ยนเป็นเช็คสิทธิ์จากระบบ Login ในอนาคต
-                                    if (!isSuperAdmin) {
-                                      Swal.fire({
-                                        icon: 'warning',
-                                        title: 'สิทธิ์ไม่เพียงพอ',
-                                        text: 'เฉพาะแอดมินระดับสูงเท่านั้นที่สามารถเปลี่ยนสถานะบิลที่จ่ายแล้วได้ (ระบบ Login กำลังพัฒนา)',
-                                        customClass: { popup: 'rounded-[2rem]' }
-                                      });
-                                      return;
-                                    }
+                                  if (inv.status === 'PAID' && !isSuperAdmin) {
+                                    Swal.fire({
+                                      icon: 'warning',
+                                      title: 'ข้อจำกัดสิทธิ์การเข้าถึง',
+                                      text: 'การเปลี่ยนสถานะจากชำระเงินแล้ว สงวนสิทธิ์สำหรับผู้ดูแลระบบระดับสูงเท่านั้น',
+                                      confirmButtonColor: '#376B64',
+                                      customClass: { popup: 'rounded-[2rem]' }
+                                    });
+                                    return;
                                   }
                                   handleResetInvoice(inv.id, inv.status);
                                 }}
-                                className={`group relative p-2 rounded-lg transition-all shadow-sm ${inv.status === 'PAID' ? 'text-slate-300 cursor-not-allowed opacity-50' : 'text-slate-500 hover:text-amber-600 hover:bg-amber-50 hover:shadow'}`}
+                                className={`group relative p-2 rounded-lg transition-all shadow-sm ${(inv.status === 'PAID' && !isSuperAdmin) ? 'text-slate-300 cursor-not-allowed opacity-50' : 'text-slate-500 hover:text-amber-600 hover:bg-amber-50 hover:shadow'}`}
+                                title="ปรับปรุงสถานะ"
                               >
                                 <RefreshCw size={16} className="shrink-0" />
                               </button>
 
                               {/* ปุ่มลบ */}
-                              <button
-                                onClick={() => {
-                                  if (inv.status === 'PAID') {
-                                    Swal.fire({
-                                      icon: 'error',
-                                      title: 'ไม่สามารถลบได้',
-                                      text: 'บิลที่มีการชำระเงินแล้ว ไม่สามารถลบออกจากระบบได้ครับ',
-                                      customClass: { popup: 'rounded-[2rem]' }
-                                    });
-                                    return;
-                                  }
-                                  handleDelete(inv.id);
-                                }}
-                                className={`group relative p-2 rounded-lg transition-all shadow-sm ${inv.status === 'PAID' ? 'text-slate-300 cursor-not-allowed opacity-50' : 'text-slate-500 hover:text-rose-600 hover:bg-rose-50 hover:shadow'}`}
-                              >
-                                <Trash2 size={16} className="shrink-0" />
-                              </button>
+                              {isSuperAdmin && (
+                                <button
+                                  onClick={() => {
+                                    if (inv.status === 'PAID') {
+                                      Swal.fire({
+                                        icon: 'error',
+                                        title: 'ระงับการลบข้อมูล',
+                                        text: 'รายการที่ปิดยอดแล้วไม่สามารถนำออกจากระบบได้',
+                                        confirmButtonColor: '#376B64',
+                                        customClass: { popup: 'rounded-[2rem]' }
+                                      });
+                                      return;
+                                    }
+                                    handleDelete(inv.id);
+                                  }}
+                                  className={`group relative p-2 rounded-lg transition-all shadow-sm ${inv.status === 'PAID' ? 'text-slate-300 cursor-not-allowed opacity-50' : 'text-slate-500 hover:text-rose-600 hover:bg-rose-50 hover:shadow'}`}
+                                  title="ลบข้อมูลอ้างอิง"
+                                >
+                                  <Trash2 size={16} className="shrink-0" />
+                                </button>
+                              )}
 
                             </div>
                           </div>
                         </td>
 
-                        {/* 🌟 จุดที่อัปเดต: ตั้งปุ่มแจ้งเตือนให้ Disable เมื่อเป็น PAID */}
                         <td className="py-4 px-4 border-l border-slate-50 text-center whitespace-nowrap min-w-[320px]">
                           <div className="flex flex-nowrap items-center justify-center gap-1.5">
-                            
-                            {/* ปุ่มส่งบิล */}
                             <button 
                               onClick={() => handleNotify(inv.id, 'SEND')} 
                               disabled={inv.status === 'PAID'}
@@ -747,10 +849,9 @@ export default function AdminInvoicesPage() {
                                 : 'bg-blue-50 hover:bg-blue-100 text-blue-600 border-blue-100 active:scale-95'
                               }`}
                             >
-                              <Send size={12} className="mr-1 shrink-0" /> ส่งบิล
+                              <Send size={12} className="mr-1 shrink-0" /> ส่งใบแจ้งหนี้
                             </button>
 
-                            {/* ปุ่มทวงล่วงหน้า */}
                             <button 
                               onClick={() => handleNotify(inv.id, 'REMINDER')} 
                               disabled={inv.status === 'PAID'}
@@ -760,10 +861,9 @@ export default function AdminInvoicesPage() {
                                 : 'bg-orange-50 hover:bg-orange-100 text-orange-600 border-orange-100 active:scale-95'
                               }`}
                             >
-                              <Clock size={12} className="mr-1 shrink-0" /> ทวงล่วงหน้า
+                              <Clock size={12} className="mr-1 shrink-0" /> ทวงถามล่วงหน้า
                             </button>
 
-                            {/* ปุ่มทวงยอดค้าง */}
                             <button 
                               onClick={() => handleNotify(inv.id, 'OVERDUE')} 
                               disabled={inv.status === 'PAID'}
@@ -773,9 +873,8 @@ export default function AdminInvoicesPage() {
                                 : 'bg-rose-50 hover:bg-rose-100 text-rose-600 border-rose-100 active:scale-95'
                               }`}
                             >
-                              <AlertCircle size={12} className="mr-1 shrink-0" /> ทวงยอดค้าง
+                              <AlertCircle size={12} className="mr-1 shrink-0" /> แจ้งยอดค้างชำระ
                             </button>
-
                           </div>
                         </td>
 
@@ -789,7 +888,7 @@ export default function AdminInvoicesPage() {
         </div>
       </div>
 
-      {/* Calendar Modal */}
+      {/* Modal - สร้างใบแจ้งหนี้ */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white p-5 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-sm border border-slate-100 animate-in zoom-in-95 duration-200 relative max-h-[90vh] overflow-y-auto custom-scrollbar">
@@ -805,11 +904,11 @@ export default function AdminInvoicesPage() {
               <div className="w-12 h-12 sm:w-16 sm:h-16 bg-[#376B64]/10 text-[#376B64] rounded-xl sm:rounded-2xl flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-sm border border-[#376B64]/20">
                 <Plus size={24} className="sm:w-8 sm:h-8" strokeWidth={2.5} />
               </div>
-              <h2 className="text-xl sm:text-2xl font-black text-slate-900">ระบุรอบบิล</h2>
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900">กำหนดรอบประมวลผล</h2>
               <p className="text-slate-500 text-xs sm:text-sm mt-2 leading-relaxed">
                 {targetHouseNo
-                  ? <span>สร้างบิลให้บ้านเลขที่ <span className="font-bold text-[#376B64] bg-[#376B64]/10 px-2 py-0.5 rounded-md whitespace-nowrap">{targetHouseNo}</span></span>
-                  : 'สร้างบิลให้ลูกบ้านทุกคนในโครงการ'}
+                  ? <span>เตรียมสร้างใบแจ้งหนี้เฉพาะยูนิตอ้างอิง <span className="font-bold text-[#376B64] bg-[#376B64]/10 px-2 py-0.5 rounded-md whitespace-nowrap">{targetHouseNo}</span></span>
+                  : 'ประมวลผลใบแจ้งหนี้รวมสำหรับทุกยูนิตในระบบ'}
               </p>
             </div>
 
@@ -819,7 +918,7 @@ export default function AdminInvoicesPage() {
                   <ChevronLeft size={18} className="sm:w-5 sm:h-5" />
                 </button>
                 <div className="flex flex-col items-center">
-                  <span className="text-[9px] sm:text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">ปี พ.ศ.</span>
+                  <span className="text-[9px] sm:text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">รอบบิลประจำปี พ.ศ.</span>
                   <span className="font-black text-[#376B64] text-lg sm:text-xl">{selectedYear + 543}</span>
                 </div>
                 <button onClick={() => setSelectedYear(y => y + 1)} className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-lg sm:rounded-xl text-slate-600 transition-colors hover:shadow-sm">
@@ -841,8 +940,9 @@ export default function AdminInvoicesPage() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3">
-              <button onClick={() => setIsModalOpen(false)} className="flex-1 py-3.5 sm:py-4 rounded-xl sm:rounded-2xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors text-sm sm:text-base">ยกเลิก</button>
-              <button onClick={submitGenerateInvoices} className="flex-1 py-3.5 sm:py-4 rounded-xl sm:rounded-2xl font-bold text-white bg-[#376B64] hover:bg-[#2A524C] shadow-lg shadow-[#376B64]/30 transition-all active:scale-[0.98] text-sm sm:text-base">ยืนยันสร้างบิล</button>
+              {/* ปุ่มยืนยันอยู่ด้านซ้ายมือ */}
+              <button onClick={submitGenerateInvoices} className="flex-1 py-3.5 sm:py-4 rounded-xl sm:rounded-2xl font-bold text-white bg-[#376B64] hover:bg-[#2A524C] shadow-lg shadow-[#376B64]/30 transition-all active:scale-[0.98] text-sm sm:text-base">ยืนยันการสร้างใบแจ้งหนี้</button>
+              <button onClick={() => setIsModalOpen(false)} className="flex-1 py-3.5 sm:py-4 rounded-xl sm:rounded-2xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors text-sm sm:text-base">ยกเลิกรายการ</button>
             </div>
           </div>
         </div>
