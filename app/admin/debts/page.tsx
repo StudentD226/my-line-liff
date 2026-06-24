@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { 
   DollarSign, Home, AlertTriangle, Search, 
-  Calendar, User, Phone, Loader2, AlertCircle, ArrowUpDown
+  Calendar, User, Phone, Loader2, AlertCircle, ArrowUpDown, CheckSquare
 } from "lucide-react";
 import Swal from "sweetalert2";
 
@@ -11,6 +11,9 @@ export default function DebtTrackerPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("debt-desc"); 
+  
+  // 🌟 State สำหรับเก็บรายการที่ถูกติ๊ก Checkbox
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   useEffect(() => {
     fetchDebts();
@@ -30,6 +33,7 @@ export default function DebtTrackerPage() {
       });
   };
 
+  // 🌟 ฟังก์ชันทวงหนี้แบบ "รายบุคคล" (ปุ่มขวาสุดในตาราง)
   const handleNotifyDebt = async (item: any) => {
     const result = await Swal.fire({
       title: 'ยืนยันการทวงยอดค้าง?',
@@ -44,13 +48,47 @@ export default function DebtTrackerPage() {
     });
 
     if (result.isConfirmed) {
-      Swal.fire({
-        title: 'กำลังส่งแจ้งเตือน...',
-        allowOutsideClick: false,
-        didOpen: () => { Swal.showLoading(); },
-        customClass: { popup: 'rounded-[2rem]' }
-      });
+      await processNotification([item]);
+    }
+  };
 
+  // 🌟 ฟังก์ชันทวงหนี้แบบ "กลุ่ม" (ปุ่มจากแถบด้านล่าง)
+  const handleBulkNotify = async () => {
+    const itemsToNotify = debts.filter(d => selectedIds.includes(d.id));
+    
+    const result = await Swal.fire({
+      title: 'ทวงยอดค้างทั้งหมดที่เลือก?',
+      html: `คุณกำลังจะส่งแจ้งเตือนไปยังบ้าน <b>${itemsToNotify.length} หลัง</b> ยืนยันหรือไม่?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#EF4444', 
+      cancelButtonColor: '#F3F4F6', 
+      confirmButtonText: `ตกลง, ส่ง ${itemsToNotify.length} รายการ`,
+      cancelButtonText: '<span style="color: #4B5563">ยกเลิก</span>',
+      customClass: { popup: 'rounded-[2rem]' }
+    });
+
+    if (result.isConfirmed) {
+      await processNotification(itemsToNotify);
+      setSelectedIds([]); // เคลียร์ค่าที่เลือกหลังจากส่งเสร็จ
+    }
+  };
+
+  // 🌟 ฟังก์ชันตัวกลางสำหรับยิง API ไปหา LINE
+  const processNotification = async (items: any[]) => {
+    Swal.fire({
+      title: 'กำลังส่งแจ้งเตือน...',
+      text: `ส่งแล้ว 0 / ${items.length} รายการ`,
+      allowOutsideClick: false,
+      didOpen: () => { Swal.showLoading(); },
+      customClass: { popup: 'rounded-[2rem]' }
+    });
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
       try {
         const res = await fetch("/api/admin-notify", {
           method: "POST",
@@ -60,29 +98,36 @@ export default function DebtTrackerPage() {
             type: "OVERDUE"
           }),
         });
-
         const data = await res.json();
-        
         if (data.success) {
-          Swal.fire({
-            icon: 'success',
-            title: 'ส่งแจ้งเตือนสำเร็จ!',
-            text: `ทวงยอดค้างบ้าน ${item.houseNumber} เรียบร้อยแล้ว`,
-            confirmButtonColor: '#376B64',
-            customClass: { popup: 'rounded-[2rem]' }
-          });
+          successCount++;
         } else {
-          throw new Error(data.error || "ไม่สามารถส่งแจ้งเตือนได้");
+          failCount++;
         }
-      } catch (err: any) {
-        Swal.fire({
-          icon: 'error',
-          title: 'เกิดข้อผิดพลาด',
-          text: err.message,
-          confirmButtonColor: '#EF4444',
-          customClass: { popup: 'rounded-[2rem]' }
-        });
+      } catch (err) {
+        failCount++;
       }
+      
+      // อัปเดตสถานะบนหน้าจอโหลด
+      Swal.update({ text: `ส่งแล้ว ${i + 1} / ${items.length} รายการ` });
+    }
+
+    if (failCount === 0) {
+      Swal.fire({
+        icon: 'success',
+        title: 'ส่งแจ้งเตือนสำเร็จ!',
+        text: `ส่งแจ้งเตือนครบทั้ง ${successCount} บ้านเรียบร้อยแล้ว`,
+        confirmButtonColor: '#376B64',
+        customClass: { popup: 'rounded-[2rem]' }
+      });
+    } else {
+      Swal.fire({
+        icon: 'warning',
+        title: 'ส่งสำเร็จบางส่วน',
+        text: `สำเร็จ ${successCount} รายการ, ล้มเหลว ${failCount} รายการ`,
+        confirmButtonColor: '#376B64',
+        customClass: { popup: 'rounded-[2rem]' }
+      });
     }
   };
 
@@ -101,6 +146,24 @@ export default function DebtTrackerPage() {
     return 0;
   });
 
+  // 🌟 จัดการ Checkbox Select All
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedIds(sortedDebts.map(item => item.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  // 🌟 จัดการ Checkbox ทีละอัน
+  const handleSelectOne = (e: React.ChangeEvent<HTMLInputElement>, id: string) => {
+    if (e.target.checked) {
+      setSelectedIds(prev => [...prev, id]);
+    } else {
+      setSelectedIds(prev => prev.filter(item => item !== id));
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#F8FAFC]">
@@ -111,7 +174,7 @@ export default function DebtTrackerPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto bg-[#F8FAFC] min-h-screen w-full">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto bg-[#F8FAFC] min-h-screen w-full relative pb-24">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
           <AlertTriangle className="text-rose-500" size={28} />
@@ -178,6 +241,15 @@ export default function DebtTrackerPage() {
           <table className="w-full text-left border-collapse min-w-[800px]">
             <thead>
               <tr className="bg-slate-50/70 border-b border-slate-100 text-slate-400 text-xs font-bold uppercase tracking-wider">
+                {/* 🌟 Checkbox ส่วนหัวตาราง */}
+                <th className="p-4 sm:p-5 w-12 text-center">
+                  <input 
+                    type="checkbox" 
+                    className="w-4 h-4 cursor-pointer accent-[#376B64] rounded"
+                    checked={sortedDebts.length > 0 && selectedIds.length === sortedDebts.length}
+                    onChange={handleSelectAll}
+                  />
+                </th>
                 <th className="p-4 sm:p-5">บ้านเลขที่</th>
                 <th className="p-4 sm:p-5 text-center">จำนวนเดือนที่ค้าง</th>
                 <th className="p-4 sm:p-5 text-right">ยอดค้างทั้งหมด</th>
@@ -188,7 +260,16 @@ export default function DebtTrackerPage() {
             <tbody className="divide-y divide-slate-50 text-sm font-medium text-slate-700">
               {sortedDebts.length > 0 ? (
                 sortedDebts.map((item) => (
-                  <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
+                  <tr key={item.id} className={`hover:bg-slate-50/50 transition-colors ${selectedIds.includes(item.id) ? 'bg-[#376b64]/5' : ''}`}>
+                    {/* 🌟 Checkbox แต่ละรายการ */}
+                    <td className="p-4 sm:p-5 text-center">
+                      <input 
+                        type="checkbox" 
+                        className="w-4 h-4 cursor-pointer accent-[#376B64] rounded"
+                        checked={selectedIds.includes(item.id)}
+                        onChange={(e) => handleSelectOne(e, item.id)}
+                      />
+                    </td>
                     <td className="p-4 sm:p-5 whitespace-nowrap">
                       <div className="flex flex-col gap-0.5">
                         <span className="text-base font-black text-slate-900 bg-slate-100 px-2.5 py-0.5 rounded-lg w-max mb-1">
@@ -203,7 +284,6 @@ export default function DebtTrackerPage() {
                       </div>
                     </td>
                     <td className="p-4 sm:p-5 text-center whitespace-nowrap">
-                      {/* 🌟 ปรับตรงนี้ เพิ่ม Tooltip ให้โชว์เดือนที่ค้าง */}
                       <div className="relative inline-block group">
                         <span className={`cursor-pointer px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm ${
                           item.overdueCount >= 3 
@@ -213,7 +293,6 @@ export default function DebtTrackerPage() {
                           ค้าง {item.overdueCount} เดือน ⚠️
                         </span>
                         
-                        {/* 🌟 กล่อง Tooltip ที่จะเด้งขึ้นมาตอนเอาเมาส์ชี้ */}
                         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-max min-w-[140px] p-3 bg-slate-800 text-white text-xs rounded-xl shadow-xl z-50 text-center leading-relaxed font-medium">
                           {item.overdueMonths && item.overdueMonths.length > 0 ? (
                             item.overdueMonths.map((m: string, i: number) => (
@@ -248,7 +327,7 @@ export default function DebtTrackerPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="p-10 text-center text-slate-400 font-bold">
+                  <td colSpan={6} className="p-10 text-center text-slate-400 font-bold">
                     ไม่พบข้อมูลลูกบ้านที่ค้างชำระ 🎉
                   </td>
                 </tr>
@@ -257,6 +336,39 @@ export default function DebtTrackerPage() {
           </table>
         </div>
       </div>
+
+      {/* 🌟 Floating Action Bar (แถบเมนูด้านล่างสุด จะเด้งขึ้นมาเมื่อมีรายการถูกเลือก) */}
+      {selectedIds.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 bg-[#1e293b] p-4 flex items-center justify-between z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] border-t border-slate-700 transition-all duration-300">
+          <div className="flex items-center justify-between w-full max-w-7xl mx-auto px-2 sm:px-6">
+            
+            <div className="flex items-center gap-3">
+              <div className="bg-[#376b64] text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shadow-md">
+                {selectedIds.length}
+              </div>
+              <span className="text-white font-medium text-sm sm:text-base hidden sm:inline-block">รายการที่เลือก</span>
+            </div>
+
+            <div className="flex gap-2 sm:gap-3">
+              <button 
+                onClick={() => setSelectedIds([])} 
+                className="px-4 py-2 sm:py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-xs sm:text-sm font-medium transition-colors"
+              >
+                ยกเลิก
+              </button>
+              <button 
+                onClick={handleBulkNotify} 
+                className="px-4 py-2 sm:py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-colors shadow-lg shadow-rose-500/30"
+              >
+                <AlertCircle size={16} /> 
+                <span className="hidden sm:inline-block">ทวงยอดค้างที่เลือก</span>
+                <span className="sm:hidden">ส่งทวงหนี้</span>
+              </button>
+            </div>
+            
+          </div>
+        </div>
+      )}
     </div>
   );
 }

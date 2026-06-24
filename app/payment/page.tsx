@@ -297,7 +297,7 @@ function PaymentForm() {
       if (data.success) {
         Swal.fire({
           title: 'สำเร็จ!', text: 'ส่งหลักฐานการชำระเงินเรียบร้อยแล้ว ระบบกำลังตรวจสอบความถูกต้องครับ', icon: 'success',
-          confirmButtonColor: '#376B64', customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl px-8 py-3 font-bold' }
+          confirmButtonColor: '#376b64', customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl px-8 py-3 font-bold' }
         }).then(() => {
           if (liff.isInClient()) liff.closeWindow();
           else router.push('/invoices');
