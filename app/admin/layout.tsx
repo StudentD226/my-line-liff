@@ -23,7 +23,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (pathname === '/admin/login') {
     return <>{children}</>;
   }
-  // 🌟 --------------------------------------------- 🌟
+
 
   const menuItems = [
     { icon: LayoutDashboard, label: 'ภาพรวมระบบ', href: '/admin' },
