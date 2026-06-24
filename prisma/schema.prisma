@@ -64,6 +64,7 @@ enum Role {
 // ------------------------------------------------------
 model House {
   id        String   @id @default(cuid())
+  passcode  String?    @unique
   houseNo   String   @unique
   houseSize Float    @default(0) 
   

@@ -113,7 +113,7 @@ export default function AdminDashboardHome() {
         
         <div className="flex items-center gap-2 bg-white p-2 rounded-xl shadow-sm border border-gray-100 w-full sm:w-auto">
           <Calendar className="text-[#1A534B] shrink-0" size={18} />
-          <span className="text-sm font-bold text-gray-600 shrink-0">ปีงบประมาณ:</span>
+          <span className="text-sm font-bold text-gray-600 shrink-0">ปี:</span>
           <select 
             value={selectedYear} 
             onChange={(e) => setSelectedYear(Number(e.target.value))}

@@ -6,6 +6,7 @@ import {
 import Link from "next/link";
 import { addHouse, updateHouse, autoGenerateHouses } from './actions';
 import AutoGenerateButton from './AutoGenerateButton';
+import PasscodeCell from "./_components/PasscodeCell"; // 🌟 นำเข้า Component รหัสลับ
 import { redirect } from "next/navigation";
 
 const prisma = new PrismaClient();
@@ -105,7 +106,6 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
             <p className="text-xs sm:text-sm text-slate-500 mt-2">เพิ่ม แก้ไข ลบข้อมูล และจัดการสมาชิกลูกบ้านทั้งหมดในโครงการ</p>
           </div>
 
-          {/* 🌟 ปรับปุ่มให้กางเต็มจอบนมือถือ */}
           <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 w-full md:w-auto mt-2 md:mt-0">
             <Link 
               href="/admin/houses?add=true" 
@@ -157,7 +157,7 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
 
           {/* 🌟 Table Container */}
           <div className="overflow-x-auto w-full custom-scrollbar">
-            <table className="w-full border-collapse min-w-[900px]">
+            <table className="w-full border-collapse min-w-[1000px]">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-100 text-slate-500">
                   <th className="p-4 w-12 text-center">
@@ -169,6 +169,10 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
                   </th>
                   <th className="py-4 px-2 text-sm font-bold tracking-wide text-center whitespace-nowrap">{unitLabel}</th>
                   <th className="py-4 px-2 text-sm font-bold tracking-wide text-center whitespace-nowrap">ขนาดพื้นที่</th>
+                  
+                  {/* 🌟 คอลัมน์รหัสลับใหม่ */}
+                  <th className="py-4 px-2 text-sm font-bold tracking-wide text-center whitespace-nowrap text-[#EA580C]">รหัสลับ (Passcode)</th>
+                  
                   <th className="py-4 px-2 text-sm font-bold tracking-wide text-center whitespace-nowrap">รูปแบบการคิดเงิน</th>
                   <th className="py-4 px-2 text-sm font-bold tracking-wide text-center whitespace-nowrap">อัตราเรทราคา</th>
                   <th className="py-4 px-4 text-sm font-bold tracking-wide text-center border-l border-slate-100 whitespace-nowrap">ข้อมูลติดต่อ</th>
@@ -178,7 +182,7 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
               <tbody className="divide-y divide-slate-50">
                 {houses.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-24 text-center">
+                    <td colSpan={8} className="py-24 text-center">
                       <Search className="mx-auto text-slate-300 mb-4 shrink-0" size={48} />
                       <h3 className="text-lg font-bold text-slate-700 mb-1">ไม่พบข้อมูล</h3>
                       <p className="text-slate-500 text-sm">ไม่พบ{unitLabel} {searchQuery && `"${searchQuery}"`} ในระบบ</p>
@@ -203,6 +207,14 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
                       <td className="py-4 px-2 text-slate-700 font-bold text-sm text-center whitespace-nowrap">
                         {house.houseSize} <span className="text-slate-400 font-normal">{sizeLabel}</span>
                       </td>
+
+                      {/* 🌟 ช่องแสดงรหัสลับ (เรียกใช้ PasscodeCell Component) */}
+                      <td className="py-4 px-2 text-center whitespace-nowrap">
+                        <div className="flex justify-center">
+                          <PasscodeCell houseId={house.id} houseNo={house.houseNo} passcode={house.passcode || null} />
+                        </div>
+                      </td>
+
                       <td className="py-4 px-2 text-center whitespace-nowrap">
                         <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider ${house.feeType === 'FIXED' ? 'bg-[#376B64]/10 text-[#376B64]' : 'bg-slate-100 text-slate-600'}`}>
                           {house.feeType === 'FIXED' ? 'เหมาจ่ายรายเดือน' : 'ตามพื้นที่'}
@@ -472,6 +484,7 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
                 text: "ข้อมูลยูนิตและลูกบ้านทั้งหมดจะถูกลบเกลี้ยง และไม่สามารถกู้คืนได้!",
                 icon: 'warning',
                 showCancelButton: true,
+                reverseButtons: true, // 🌟 สลับปุ่มให้ ตกลง อยู่ซ้าย ยกเลิก อยู่ขวา
                 confirmButtonColor: '#ef4444',
                 cancelButtonColor: '#94a3b8',
                 confirmButtonText: 'ใช่, ลบให้หมด!',
