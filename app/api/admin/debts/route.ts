@@ -54,6 +54,7 @@ export async function GET() {
       // ส่งกลับ Object ข้อมูลที่เรียบร้อยแล้ว
       return {
         id: house.id,
+        latestInvoiceId: unpaidInvoices[0]?.id,
         houseNumber: house.houseNo,          // ดึงเลขที่บ้านจากฟิลด์ houseNo
         ownerName: house.owner?.name || "-", // ดึงชื่อเจ้าของบ้าน ถ้าไม่มีขึ้นเป็นเครื่องหมาย -
         phone: house.owner?.phone || "-",    // ดึงเบอร์โทรศัพท์ ถ้าไม่มีขึ้นเป็นเครื่องหมาย -

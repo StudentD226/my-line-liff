@@ -24,7 +24,7 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
-    // 2. บันทึกข้อมูลลูกบ้านลง Database ของเรา (ทำตรงนี้ให้เสร็จก่อน ปลอดภัยแน่นอน)
+    // 2. บันทึกข้อมูลลูกบ้านลง Database ของเรา
     const user = await prisma.user.upsert({
       where: { lineId: lineId },
       update: {
@@ -41,32 +41,18 @@ export async function POST(request: Request) {
     });
 
     // =======================================================
-    // 📍 3. ส่งข้อมูลไปให้ n8n ของเพื่อน (โซนปลอดภัย หุ้มเกราะไว้แล้ว)
+    // 🌟 3. ระบบเลื่อนขั้น: ใครลงทะเบียนคนแรก ได้เป็นเจ้าบ้านทันที!
     // =======================================================
-    const n8nUrl = "https://donation-humbling-wreckage.ngrok-free.dev/webhook/register"; 
-    
-    try {
-      // ใส่ await เพื่อรอให้มันยิงออกไปจริงๆ ระบบจะได้ไม่ตัดจบก่อน
-      await fetch(n8nUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          event: "new_registration",
-          lineId: user.lineId,
-          name: user.name,
-          phone: user.phone,
-          houseNo: house.houseNo
-        })
+    if (!house.ownerId) {
+      await prisma.house.update({
+        where: { id: house.id },
+        data: { ownerId: user.id } // เอา id ของคนที่เพิ่งสมัคร ยัดใส่เป็นเจ้าของบ้าน
       });
-      console.log("ส่งข้อมูลไป n8n เรียบร้อย!");
-    } catch (err) {
-      // 🛡️ ถ้ายิงไป n8n ไม่ผ่าน (เช่น ลิงก์ตาย) มันจะมาตกตรงนี้แทน
-      // ทำให้เว็บเราไม่ Error และทำงานคำสั่งข้างล่างต่อไปได้ตามปกติ
-      console.error("ส่งไป n8n ไม่สำเร็จ (แต่ไม่กระทบระบบหลัก):", err);
+      console.log(`👑 แต่งตั้ง ${user.name} เป็นเจ้าของบ้านเลขที่ ${house.houseNo} อัตโนมัติ!`);
     }
     // =======================================================
 
-    // 4. ตอบกลับหน้าเว็บว่า "สมัครสำเร็จ!" เสมอ (ตราบใดที่ผ่านข้อ 2 มาได้)
+    // 4. ตอบกลับหน้าเว็บว่า "สมัครสำเร็จ!"
     return NextResponse.json({ success: true, user });
     
   } catch (error: any) { 
