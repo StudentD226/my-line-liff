@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { 
   DollarSign, Home, AlertTriangle, Search, 
-  Bell, Eye, Calendar, User, Phone, Loader2
+  Calendar, User, Phone, Loader2
 } from "lucide-react";
 
 export default function DebtTrackerPage() {
@@ -10,13 +10,12 @@ export default function DebtTrackerPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // 🌟 ของจริง: ดึงข้อมูลจาก Database ผ่าน API
   useEffect(() => {
     fetch("/api/admin/debts")
       .then((res) => res.json())
       .then((result) => {
         if (result.success) {
-          setDebts(result.data); // ยัดข้อมูลลง State
+          setDebts(result.data);
         }
         setIsLoading(false);
       })
@@ -30,7 +29,7 @@ export default function DebtTrackerPage() {
   const totalHousesInDebt = debts.length;
 
   const filteredDebts = debts.filter((item) =>
-    item.houseNumber.includes(searchTerm) || item.ownerName?.includes(searchTerm)
+    item.houseNumber.includes(searchTerm) || (item.ownerName && item.ownerName.includes(searchTerm))
   );
 
   if (isLoading) {
@@ -49,13 +48,13 @@ export default function DebtTrackerPage() {
           <AlertTriangle className="text-rose-500" size={28} />
           ระบบติดตามและทวงถามค่าส่วนกลาง
         </h1>
-        <p className="text-sm text-slate-500 mt-1">จัดการ ตรวจสอบยอดค้าง และส่งแจ้งเตือนการค้างชำระรายหลัง</p>
+        <p className="text-sm text-slate-500 mt-1">สรุปข้อมูลยอดค้างชำระทั้งหมดในระบบ</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
         <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex items-center justify-between">
           <div>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">ยอดเงินรวมที่จะได้จากการทวง</p>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">ยอดเงินรวมที่ค้างชำระ</p>
             <p className="text-3xl font-black text-rose-600">
               {totalAmountToCollect.toLocaleString()} <span className="text-base font-medium text-slate-500">บาท</span>
             </p>
@@ -100,7 +99,6 @@ export default function DebtTrackerPage() {
                 <th className="p-4 sm:p-5 text-center">จำนวนเดือนที่ค้าง</th>
                 <th className="p-4 sm:p-5 text-right">ยอดค้างทั้งหมด</th>
                 <th className="p-4 sm:p-5 text-center">เดือนล่าสุดที่จ่าย</th>
-                <th className="p-4 sm:p-5 text-center">จัดการ</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50 text-sm font-medium text-slate-700">
@@ -112,11 +110,12 @@ export default function DebtTrackerPage() {
                         <span className="text-base font-black text-slate-900 bg-slate-100 px-2.5 py-0.5 rounded-lg w-max mb-1">
                           {item.houseNumber}
                         </span>
+                        {/* 🌟 ปรับให้แสดงคำว่า "ยังไม่ระบุชื่อ" ถ้าไม่มีข้อมูล */}
                         <span className="text-xs text-slate-500 font-semibold flex items-center gap-1">
-                          <User size={12} /> {item.ownerName || "ไม่ระบุ"}
+                          <User size={12} /> {item.ownerName !== "-" ? item.ownerName : "ยังไม่ระบุชื่อเจ้าของ"}
                         </span>
                         <span className="text-xs text-slate-400 flex items-center gap-1">
-                          <Phone size={12} /> {item.phone || "-"}
+                          <Phone size={12} /> {item.phone !== "-" ? item.phone : "ไม่มีเบอร์ติดต่อ"}
                         </span>
                       </div>
                     </td>
@@ -149,24 +148,12 @@ export default function DebtTrackerPage() {
                         {item.lastPaidMonth}
                       </span>
                     </td>
-                    <td className="p-4 sm:p-5 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <button 
-                          onClick={() => alert(`แจ้งเตือนผ่าน LINE ทวงหนี้บ้าน ${item.houseNumber} เรียบร้อย`)}
-                          className="p-2 bg-amber-50 text-amber-600 hover:bg-amber-100 rounded-xl transition-colors title='ส่งข้อความทวงหนี้'"
-                        >
-                          <Bell size={16} />
-                        </button>
-                        <button className="p-2 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-xl transition-colors title='ดูประวัติโดยละเอียด'">
-                          <Eye size={16} />
-                        </button>
-                      </div>
-                    </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="p-10 text-center text-slate-400 font-bold">
+                  {/* 🌟 ปรับ colSpan เป็น 4 เพราะเราลบคอลัมน์ออกไป 1 อัน */}
+                  <td colSpan={4} className="p-10 text-center text-slate-400 font-bold">
                     ไม่พบข้อมูลลูกบ้านที่ค้างชำระ 🎉
                   </td>
                 </tr>
