@@ -30,7 +30,7 @@ export async function GET() {
       const unpaidInvoices = house.invoices.filter((inv) => {
         // ตัดบิล dummy ปี 9999
         if (inv.billingYear === 9999) return false;
-        // ตัดบิลผ่อนชำระ TR- (พักหนี้/แบ่งจ่าย) ไม่นับซ้ำกับบิลหลัก
+        // ตัดบิลผ่อนชำระ TR- ไม่นับซ้ำกับบิลหลัก
         if (inv.invoiceNo && inv.invoiceNo.startsWith("TR-")) return false;
 
         // OVERDUE และ PARTIAL → นับเสมอ
@@ -48,8 +48,13 @@ export async function GET() {
         (inv) => `${thaiMonths[inv.billingMonth - 1]} ${inv.billingYear + 543}`
       );
 
+      // 🌟 คำนวณหนี้สุทธิ = (baseAmount + penaltyAmount) - paidAmount
+      // ใช้วิธีนี้แทน totalAmount เพื่อให้แน่ใจว่ารวมค่าปรับเสมอ
       const totalOwed = unpaidInvoices.reduce((sum, inv) => {
-        const debt = Number(inv.totalAmount ?? 0) - Number(inv.paidAmount ?? 0);
+        const base = Number(inv.baseAmount ?? 0);
+        const penalty = Number(inv.penaltyAmount ?? 0);
+        const paid = Number(inv.paidAmount ?? 0);
+        const debt = (base + penalty) - paid;
         return sum + (debt > 0 ? debt : 0);
       }, 0);
 
