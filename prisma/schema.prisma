@@ -64,7 +64,7 @@ enum Role {
 // ------------------------------------------------------
 model House {
   id        String   @id @default(cuid())
-  passcode  String?    @unique
+  passcode  String?  @unique
   houseNo   String   @unique
   houseSize Float    @default(0) 
   
@@ -78,7 +78,7 @@ model House {
   
   invoices  Invoice[]
   reports   Report[]
-  createdAt DateTime  @default(now())
+  createdAt DateTime @default(now())
 }
 
 enum FeeType {
@@ -107,10 +107,10 @@ model Invoice {
   slipUrl         String?       
   payeeName       String?       
   
-  // 🌟 ฟิลด์ใหม่สำหรับเก็บข้อมูลจาก AI ตรวจสลิป
-  senderName      String?       // ชื่อผู้โอน
-  receiverName    String?       // ชื่อผู้รับโอน
-  bankRef         String?       // รหัสอ้างอิงธนาคาร
+  // 🌟 ฟิลด์สำหรับเก็บข้อมูลจากระบบตรวจสอบสลิปอัตโนมัติ
+  senderName      String?       
+  receiverName    String?       
+  bankRef         String?       
   
   transferDate    String?       
   transferTime    String?       
@@ -164,22 +164,22 @@ model Report {
 // 6. ข่าวประกาศ (News)
 // ------------------------------------------------------
 model News {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   title       String
-  content     String   @db.Text 
+  content     String    @db.Text 
   imageUrl    String?
   
-  category    String   @default("ทั่วไป")  // เช่น บำรุงรักษา, ด่วน, กิจกรรม, ทั่วไป
-  status      String   @default("DRAFT")   // สถานะ: DRAFT (ร่าง), PUBLISHED (เผยแพร่), SCHEDULED (ตั้งเวลา)
+  category    String    @default("ทั่วไป") 
+  status      String    @default("DRAFT")   
   
-  views       Int      @default(0)         // ยอดคนดู
-  recipients  Int      @default(0)         // จำนวนลูกบ้านที่ส่ง LINE ไปถึง
-  isPinned    Boolean  @default(false)     // ปักหมุดประกาศหรือไม่
+  views       Int       @default(0)         
+  recipients  Int       @default(0)         
+  isPinned    Boolean   @default(false)     
   
-  scheduledAt DateTime?                    // วันเวลาที่ต้องการให้เผยแพร่อัตโนมัติ (ถ้ามี)
+  scheduledAt DateTime?                    
   
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt         
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt         
 }
 
 // ------------------------------------------------------
@@ -221,7 +221,7 @@ model FinancialTransaction {
 }
 
 // ------------------------------------------------------
-// 8. ระบบแจ้งเตือนแอดมิน (Admin Reminders)
+// 8. ระบบบริหารจัดการบุคลากรและแจ้งเตือน (Personnel & Administration)
 // ------------------------------------------------------
 model AdminReminder {
   id          String   @id @default(cuid())
@@ -233,11 +233,21 @@ model AdminReminder {
   updatedAt   DateTime @updatedAt
 }
 
+enum AdminRole {
+  SUPER_ADMIN
+  ADMIN
+  NITI
+}
+
 model AdminUser {
-  id        String   @id @default(cuid())
-  name      String   // ชื่อพนักงาน
-  email     String   @unique // ใช้อีเมลเป็น Username
-  password  String   // รหัสผ่าน (เดี๋ยวเราจะเข้ารหัสก่อนบันทึก)
-  role      String   @default("NITI") // สิทธิ์การใช้งาน: SUPER_ADMIN, ADMIN, NITI
-  createdAt DateTime @default(now())
+  id                String    @id @default(cuid())
+  staffCode         String    @unique // 🌟 รหัสประจำตัวพนักงานที่ระบบสร้างอัตโนมัติ เช่น SP-0001, NITI-0002
+  name              String    // ชื่อและนามสกุลพนักงาน
+  email             String    @unique // อีเมลสำหรับระบุตัวตนและลงชื่อเข้าใช้งาน
+  password          String    // รหัสผ่านที่ผ่านการเข้ารหัสความปลอดภัยเรียบร้อยแล้ว
+  isDefaultPassword Boolean   @default(true) // 🌟 บ่งชี้สถานะรหัสผ่านเริ่มต้นเพื่อความสะดวกในการจัดการและบังคับเปลี่ยน
+  role              AdminRole @default(NITI) // 🌟 สิทธิ์โครงสร้างกลุ่มผู้ใช้งานระบบ
+  passwordChangedAt DateTime? // 🌟 วันเวลาที่พนักงานดำเนินการอัปเดตรหัสผ่านใหม่ด้วยตนเอง
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 }

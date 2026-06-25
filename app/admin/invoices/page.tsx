@@ -102,7 +102,6 @@ CustomDropdown.displayName = "CustomDropdown";
 
 // --- Main Page ---
 export default function AdminInvoicesPage() {
-  // จำลองระบบสิทธิ์ (RBAC)
   const currentUserRole: Role = 'SUPERADMIN'; 
   const isSuperAdmin = currentUserRole === 'SUPERADMIN';
 
@@ -163,7 +162,6 @@ export default function AdminInvoicesPage() {
     return Array.from(new Set(invoices.map(inv => inv.billingYear))).sort((a, b) => b - a);
   }, [invoices]);
 
-  // Dropdown Options
   const monthOptions = useMemo(() => [
     { label: 'ทุกเดือน', value: 0 },
     ...thaiMonths.map(m => ({ label: m.full, value: m.num }))
@@ -198,12 +196,12 @@ export default function AdminInvoicesPage() {
   const handleCreateBillChoice = useCallback(() => {
     Swal.fire({
       title: 'สร้างใบแจ้งหนี้ใหม่',
-      text: 'กรุณาเลือูปแบบการสร้างใบแจ้งหนี้',
+      text: 'กรุณาเลือกรูปแบบการสร้างใบแจ้งหนี้',
       icon: 'question',
       showCancelButton: true,
       showDenyButton: true,
       showCloseButton: true,
-      reverseButtons: false, // ยืนยันซ้ายสุด ยกเลิกขวาสุด
+      reverseButtons: false, 
       confirmButtonText: 'สร้างให้ทุกยูนิต',
       denyButtonText: 'ระบุยูนิตเป้าหมาย',
       cancelButtonText: 'ยกเลิกการทำรายการ',
@@ -345,7 +343,7 @@ export default function AdminInvoicesPage() {
               setSelectedInvoices([]);
               fetchInvoices();
             } else {
-              Toast.fire({ icon: 'error', title: 'เกิดข้อผิดพลาดในการประมวลผล' });
+              Toast.fire({ icon: 'error', title: 'เกิดข้อผิดพลาดในการลบ' });
             }
           });
         } catch {
@@ -461,7 +459,7 @@ export default function AdminInvoicesPage() {
     Swal.fire({
       title: `แก้ไขข้อมูลยูนิต ${inv.house?.houseNo}`,
       html: `
-        <div class="text-left mb-2 text-sm font-bold text-slate-700 mt-4">จำนวนเงินตั้งต้น (บาท)</div>
+        <div class="text-left mb-2 text-sm font-bold text-slate-700 mt-4">定ยอดเริ่มต้น (บาท)</div>
         <input id="swal-input1" class="swal2-input !m-0 !w-full !rounded-xl !border-slate-200 focus:!ring-[#376B64] focus:!border-[#376B64] mb-4 outline-none" value="${inv.baseAmount}" type="number">
         <div class="text-left mb-2 text-sm font-bold text-slate-700">ค่าปรับล่าช้า (บาท)</div>
         <input id="swal-input2" class="swal2-input !m-0 !w-full !rounded-xl !border-slate-200 focus:!ring-[#376B64] focus:!border-[#376B64] outline-none" value="${inv.penaltyAmount}" type="number">
@@ -607,7 +605,7 @@ export default function AdminInvoicesPage() {
           </div>
         </div>
 
-        {/* Search & Filter */}
+        {/* Search & Filter - 🌟 แก้ไขให้นำ overflow-x-auto ออกและใช้ flex-wrap เพื่อป้องกัน Dropdown ถูกจำกัดพื้นที่ */}
         <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col md:flex-row gap-4 items-center">
           <div className="relative w-full md:w-1/4 shrink-0">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
@@ -620,7 +618,7 @@ export default function AdminInvoicesPage() {
             />
           </div>
 
-          <div className="flex gap-3 w-full md:w-auto overflow-x-auto pb-2 md:pb-0 custom-scrollbar sm:scrollbar-hide">
+          <div className="flex flex-wrap gap-3 w-full md:w-auto pb-2 md:pb-0">
             <div className="w-40 shrink-0">
               <CustomDropdown
                 icon={Filter}
@@ -769,7 +767,6 @@ export default function AdminInvoicesPage() {
                           <div className="flex items-center justify-center">
                             <div className="flex bg-slate-50 p-1.5 rounded-xl gap-1.5 border border-slate-200/60 shadow-sm">
 
-                              {/* ปุ่มแก้ไขข้อมูล */}
                               <button
                                 onClick={() => {
                                   if (inv.status === 'PAID') {
@@ -790,7 +787,6 @@ export default function AdminInvoicesPage() {
                                 <Edit size={16} className="shrink-0" />
                               </button>
 
-                              {/* ปุ่มอัปเดตสถานะ */}
                               <button
                                 onClick={() => {
                                   if (inv.status === 'PAID' && !isSuperAdmin) {
@@ -811,7 +807,6 @@ export default function AdminInvoicesPage() {
                                 <RefreshCw size={16} className="shrink-0" />
                               </button>
 
-                              {/* ปุ่มลบ */}
                               {isSuperAdmin && (
                                 <button
                                   onClick={() => {
@@ -940,7 +935,6 @@ export default function AdminInvoicesPage() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3">
-              {/* ปุ่มยืนยันอยู่ด้านซ้ายมือ */}
               <button onClick={submitGenerateInvoices} className="flex-1 py-3.5 sm:py-4 rounded-xl sm:rounded-2xl font-bold text-white bg-[#376B64] hover:bg-[#2A524C] shadow-lg shadow-[#376B64]/30 transition-all active:scale-[0.98] text-sm sm:text-base">ยืนยันการสร้างใบแจ้งหนี้</button>
               <button onClick={() => setIsModalOpen(false)} className="flex-1 py-3.5 sm:py-4 rounded-xl sm:rounded-2xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors text-sm sm:text-base">ยกเลิกรายการ</button>
             </div>

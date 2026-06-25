@@ -2,8 +2,33 @@ import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
+export const dynamic = 'force-dynamic';
 const prisma = new PrismaClient();
 
+// 🌟 1. เพิ่มฟังก์ชัน GET สำหรับดึงรายชื่อไปแสดงในตาราง (Tab: รายชื่อทีมงาน)
+export async function GET() {
+  try {
+    const staffList = await prisma.adminUser.findMany({
+      select: {
+        id: true,
+        staffCode: true,
+        name: true,
+        email: true,
+        role: true,
+        isDefaultPassword: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    
+    return NextResponse.json({ success: true, data: staffList });
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json({ success: false, error: 'ไม่สามารถดึงข้อมูลได้' }, { status: 500 });
+  }
+}
+
+// 🌟 2. อัปเกรดฟังก์ชัน POST เดิม ให้รองรับการรันรหัสอัตโนมัติ
 export async function POST(request: Request) {
   try {
     // 🌟 ดักสิทธิ์ตรงนี้: (สมมติว่าลูกพี่ดึง Session มาเช็ก)
@@ -18,16 +43,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'อีเมลนี้มีในระบบแล้ว' }, { status: 400 });
     }
 
+    // 🌟 ระบบสร้างรหัสพนักงานอัตโนมัติ (staffCode)
+    const prefix = (role === 'SUPER_ADMIN' || role === 'ADMIN') ? 'SP' : 'NITI';
+    const currentCount = await prisma.adminUser.count({
+      where: { staffCode: { startsWith: prefix } }
+    });
+    const nextNumber = String(currentCount + 1).padStart(4, '0');
+    const staffCode = `${prefix}-${nextNumber}`; // จะได้ออกมาเป็น SP-0001 หรือ NITI-0001
+
     // 🌟 เข้ารหัสผ่านก่อนลง Database (ป้องกันข้อมูลหลุด)
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // บันทึกลง Database
     const newUser = await prisma.adminUser.create({
       data: {
+        staffCode, // เพิ่มรหัสประจำตัวที่รันอัตโนมัติ
         name,
         email,
         password: hashedPassword,
         role,
+        isDefaultPassword: true, // ตั้งค่าบอกระบบว่าเป็นรหัสตั้งต้น
       }
     });
 
