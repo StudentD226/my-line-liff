@@ -5,6 +5,8 @@ export const dynamic = "force-dynamic";
 
 const prisma = new PrismaClient();
 
+const truncateDecimals = (val: number): number => Math.floor(Math.round(val * 10000) / 100) / 100;
+
 const thaiMonths = [
   "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
   "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม",
@@ -13,6 +15,11 @@ const thaiMonths = [
 export async function GET() {
   try {
     const now = new Date();
+    const today = new Date(now);
+    today.setHours(0, 0, 0, 0);
+
+    const config = await prisma.systemConfig.findFirst();
+    const penaltyRatePerMonth = config?.penaltyRatePerDay ? Number(config.penaltyRatePerDay) : 100;
 
     const houses = await prisma.house.findMany({
       include: {
@@ -28,17 +35,10 @@ export async function GET() {
 
     const formattedDebts = houses.map((house) => {
       const unpaidInvoices = house.invoices.filter((inv) => {
-        // ตัดบิล dummy ปี 9999
         if (inv.billingYear === 9999) return false;
-        // ตัดบิลผ่อนชำระ TR- ไม่นับซ้ำกับบิลหลัก
         if (inv.invoiceNo && inv.invoiceNo.startsWith("TR-")) return false;
-
-        // OVERDUE และ PARTIAL → นับเสมอ
         if (["OVERDUE", "PARTIAL"].includes(inv.status)) return true;
-
-        // PENDING ที่เลย dueDate แล้ว → นับด้วย (กรณี cron ยังไม่ update status)
-        if (inv.status === "PENDING" && inv.dueDate < now) return true;
-
+        if (inv.status === "PENDING" && inv.dueDate < today) return true;
         return false;
       });
 
@@ -48,14 +48,29 @@ export async function GET() {
         (inv) => `${thaiMonths[inv.billingMonth - 1]} ${inv.billingYear + 543}`
       );
 
-      // 🌟 คำนวณหนี้สุทธิ = (baseAmount + penaltyAmount) - paidAmount
-      // ใช้วิธีนี้แทน totalAmount เพื่อให้แน่ใจว่ารวมค่าปรับเสมอ
+      // 🌟 คำนวณค่าปรับแบบเดียวกับ invoice detail API
       const totalOwed = unpaidInvoices.reduce((sum, inv) => {
-        const base = Number(inv.baseAmount ?? 0);
-        const penalty = Number(inv.penaltyAmount ?? 0);
-        const paid = Number(inv.paidAmount ?? 0);
-        const debt = (base + penalty) - paid;
-        return sum + (debt > 0 ? debt : 0);
+        const base = truncateDecimals(Number(inv.baseAmount ?? 0));
+        const paid = truncateDecimals(Number(inv.paidAmount ?? 0));
+
+        let penalty = truncateDecimals(Number(inv.penaltyAmount ?? 0));
+
+        // คำนวณค่าปรับสดๆ ถ้าเลย dueDate แล้ว
+        if (["PENDING", "OVERDUE", "PARTIAL"].includes(inv.status)) {
+          const dueDate = new Date(inv.dueDate);
+          dueDate.setHours(0, 0, 0, 0);
+
+          if (today > dueDate) {
+            const diffTime = today.getTime() - dueDate.getTime();
+            const overdueDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            const overdueMonths = Math.floor(overdueDays / 30);
+            penalty = truncateDecimals(overdueMonths * penaltyRatePerMonth);
+          }
+        }
+
+        const totalDue = truncateDecimals(base + penalty);
+        const outstanding = truncateDecimals(totalDue - paid);
+        return sum + (outstanding > 0 ? outstanding : 0);
       }, 0);
 
       const lastPaidMonth =
