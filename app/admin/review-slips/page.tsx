@@ -81,6 +81,7 @@ export default function AdminInvoiceReview() {
         cancelButtonColor: '#9ca3af',
         confirmButtonText: 'ใช่, ยืนยันยอดนี้',
         cancelButtonText: 'ยกเลิก',
+        reverseButtons: true,
         customClass: { 
           popup: 'rounded-[2rem] w-auto max-w-[90vw]', 
           confirmButton: 'rounded-xl px-4 sm:px-6 py-2.5 font-bold w-full sm:w-auto mb-2 sm:mb-0', 
