@@ -12,6 +12,8 @@ const thaiMonths = [
 
 export async function GET() {
   try {
+    const now = new Date();
+
     const houses = await prisma.house.findMany({
       include: {
         owner: true,
@@ -26,11 +28,18 @@ export async function GET() {
 
     const formattedDebts = houses.map((house) => {
       const unpaidInvoices = house.invoices.filter((inv) => {
-        // ตัดบิล dummy / ทดสอบออก
+        // ตัดบิล dummy ปี 9999
         if (inv.billingYear === 9999) return false;
+        // ตัดบิลผ่อนชำระ TR- (พักหนี้/แบ่งจ่าย) ไม่นับซ้ำกับบิลหลัก
         if (inv.invoiceNo && inv.invoiceNo.startsWith("TR-")) return false;
-        // เอาเฉพาะ OVERDUE และ PARTIAL เท่านั้น
-        return ["OVERDUE", "PARTIAL"].includes(inv.status);
+
+        // OVERDUE และ PARTIAL → นับเสมอ
+        if (["OVERDUE", "PARTIAL"].includes(inv.status)) return true;
+
+        // PENDING ที่เลย dueDate แล้ว → นับด้วย (กรณี cron ยังไม่ update status)
+        if (inv.status === "PENDING" && inv.dueDate < now) return true;
+
+        return false;
       });
 
       const paidInvoices = house.invoices.filter((inv) => inv.status === "PAID");
@@ -48,16 +57,6 @@ export async function GET() {
         paidInvoices.length > 0
           ? `${thaiMonths[paidInvoices[0].billingMonth - 1]} ${paidInvoices[0].billingYear + 543}`
           : "ยังไม่เคยชำระ";
-
-      // ------- Debug log (ลบออกได้หลังหาบัคเจอ) -------
-      console.log(
-        `[DEBUG] ${house.houseNo}`,
-        `| total invoices: ${house.invoices.length}`,
-        `| unpaid (OVERDUE/PARTIAL): ${unpaidInvoices.length}`,
-        `| totalOwed: ${totalOwed}`,
-        `| statuses: ${[...new Set(house.invoices.map((i) => i.status))].join(", ") || "ไม่มีบิล"}`
-      );
-      // ---------------------------------------------------
 
       return {
         id: house.id,
