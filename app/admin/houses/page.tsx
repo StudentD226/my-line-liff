@@ -13,6 +13,7 @@ import { redirect } from "next/navigation";
 const prisma = new PrismaClient();
 
 // ระบบจำลองสิทธิ์ (RBAC) - สามารถนำไปผูกกับ Session Authentication ได้ในอนาคต
+// TODO: เมื่อเชื่อมต่อระบบ Authentication จริงแล้ว ให้แทนที่ค่าคงที่นี้ด้วยข้อมูลจาก Session ของผู้ใช้งาน
 type Role = 'SUPERADMIN' | 'JURISTIC';
 const currentUserRole: Role = 'SUPERADMIN'; // เปลี่ยนเป็น 'JURISTIC' เพื่อดูผลลัพธ์การซ่อนฟังก์ชัน
 const isSuperAdmin = currentUserRole === 'SUPERADMIN';
@@ -133,7 +134,7 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
     <div className="min-h-screen bg-slate-50 font-sans p-4 sm:p-6 md:p-8 w-full overflow-x-hidden">
       <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-500 pb-20 w-full">
         
-        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
 
         {/* Header Action Card */}
         <div className="bg-white p-5 sm:p-6 md:p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -188,7 +189,7 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
               <span className="text-sm font-bold flex items-center gap-2 whitespace-nowrap">
                 <span id="selectedCount" className="flex items-center justify-center bg-[#376B64] text-white w-6 h-6 rounded-full text-xs shadow-sm font-black shrink-0">0</span> รายการที่เลือก
               </span>
-              <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+              <div className="flex items-center gap-3 w-full sm:w-auto justify-start">
                 
                 <button type="button" className="generate-passcode-btn flex items-center justify-center w-full sm:w-auto px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl transition shadow-sm active:scale-[0.98] whitespace-nowrap">
                   <Key size={14} className="mr-1.5 shrink-0" /> สุ่มรหัสผ่านใหม่
@@ -402,11 +403,11 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
                 </div>
                 
                 <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 mt-6">
-                  {/* ปุ่มตกลงอยู่ด้านซ้าย ปุ่มยกเลิกอยู่ด้านขวา */}
-                  <button suppressHydrationWarning type="submit" className="flex-1 text-white font-bold py-3 sm:py-3.5 rounded-2xl transition-all shadow-md active:scale-[0.98] bg-[#376B64] hover:bg-[#2A524C] text-sm sm:text-base shrink-0">
+                  {/* ปุ่มยืนยัน/ตกลงอยู่ด้านซ้ายเสมอ ปุ่มยกเลิกอยู่ด้านขวา */}
+                  <button suppressHydrationWarning type="submit" className="flex-1 text-white font-bold py-3 sm:py-3.5 rounded-2xl transition-all shadow-md active:scale-[0.98] bg-[#376B64] hover:bg-[#2A524C] text-sm sm:text-base shrink-0 order-1">
                     {editHouse ? 'บันทึกข้อมูลการเปลี่ยนแปลง' : 'ยืนยันการเพิ่มข้อมูลยูนิต'}
                   </button>
-                  <Link href="/admin/houses" className="flex-1 text-center bg-gray-100 text-gray-700 font-bold py-3 sm:py-3.5 rounded-2xl hover:bg-gray-200 transition-colors text-sm sm:text-base">
+                  <Link href="/admin/houses" className="flex-1 text-center bg-gray-100 text-gray-700 font-bold py-3 sm:py-3.5 rounded-2xl hover:bg-gray-200 transition-colors text-sm sm:text-base order-2">
                     ยกเลิกรายการ
                   </Link>
                 </div>
@@ -458,96 +459,107 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
 
       {/* ควบคุมการทำงานของ Popup แจ้งเตือน (JS) */}
       <script dangerouslySetInnerHTML={{ __html: `
-        const urlParams = new URLSearchParams(window.location.search);
-        const alertType = urlParams.get('alert');
-        
-        if (alertType) {
-          let title = 'ดำเนินการเสร็จสิ้น';
-          let text = 'ระบบได้บันทึกข้อมูลเรียบร้อยแล้ว';
-          
-          if (alertType === 'add_success') text = 'เพิ่มข้อมูลอ้างอิงยูนิตใหม่เรียบร้อยแล้ว';
-          if (alertType === 'update_success') text = 'ปรับปรุงข้อมูลยูนิตเรียบร้อยแล้ว';
-          if (alertType === 'delete_success') text = 'ลบข้อมูลและประวัติที่เกี่ยวข้องทั้งหมดเรียบร้อยแล้ว';
-          if (alertType === 'delete_multiple_success') text = 'ลบรายการข้อมูลยูนิตที่เลือกเรียบร้อยแล้ว';
-          if (alertType === 'remove_success') text = 'นำรายชื่อผู้พักอาศัยออกจากระบบเรียบร้อยแล้ว';
-          if (alertType === 'generate_multiple_success') text = 'สร้างรหัสผ่านชั่วคราวให้ยูนิตที่เลือกเรียบร้อยแล้ว';
+        (function() {
+          const urlParams = new URLSearchParams(window.location.search);
+          const alertType = urlParams.get('alert');
 
-          Swal.fire({
-            icon: 'success', 
-            title: title, 
-            text: text,
-            confirmButtonText: 'รับทราบ',
-            reverseButtons: false, 
-            confirmButtonColor: '#376B64', 
-            timer: 3000, 
-            timerProgressBar: true,
-            customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl font-bold px-8' }
-          });
+          function showResultAlert() {
+            if (!alertType || typeof Swal === 'undefined') return;
 
-          const newUrl = new URL(window.location.href);
-          newUrl.searchParams.delete('alert');
-          window.history.replaceState({}, '', newUrl);
-        }
+            let text = 'ระบบได้บันทึกข้อมูลเรียบร้อยแล้ว';
+            const messages = {
+              add_success: 'เพิ่มข้อมูลอ้างอิงยูนิตใหม่เรียบร้อยแล้ว',
+              update_success: 'ปรับปรุงข้อมูลยูนิตเรียบร้อยแล้ว',
+              delete_success: 'ลบข้อมูลและประวัติที่เกี่ยวข้องทั้งหมดเรียบร้อยแล้ว',
+              delete_multiple_success: 'ลบรายการข้อมูลยูนิตที่เลือกเรียบร้อยแล้ว',
+              remove_success: 'นำรายชื่อผู้พักอาศัยออกจากระบบเรียบร้อยแล้ว',
+              generate_multiple_success: 'สร้างรหัสผ่านชั่วคราวให้ยูนิตที่เลือกเรียบร้อยแล้ว'
+            };
+            if (messages[alertType]) text = messages[alertType];
 
-        if (!window.adminHouseEventsBound) {
+            Swal.fire({
+              icon: 'success', 
+              title: 'ดำเนินการเสร็จสิ้น', 
+              text: text,
+              confirmButtonText: 'รับทราบ',
+              reverseButtons: false, 
+              confirmButtonColor: '#376B64', 
+              timer: 3000, 
+              timerProgressBar: true,
+              customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl font-bold px-8' }
+            });
+
+            const newUrl = new URL(window.location.href);
+            newUrl.searchParams.delete('alert');
+            window.history.replaceState({}, '', newUrl);
+          }
+
+          // รอให้ sweetalert2 (โหลดแบบ defer) พร้อมใช้งานก่อนค่อยเรียก ป้องกัน error กรณีโหลดไม่ทันบนเครื่องช้า
+          if (typeof Swal !== 'undefined') {
+            showResultAlert();
+          } else {
+            window.addEventListener('load', showResultAlert);
+          }
+
+          if (window.adminHouseEventsBound) return;
           window.adminHouseEventsBound = true;
 
-          function updateSelection() {
-            const checkboxes = document.querySelectorAll('.house-checkbox');
+          // ใช้ Set เก็บรายการที่เลือกแทนการไล่ query DOM ทุกครั้ง (เร็วขึ้น ลดการคำนวณซ้ำ)
+          const selectedHouseIds = new Set();
+
+          function updateSelection(changedCheckbox) {
             const bulkBar = document.getElementById('bulkActionBar');
             const selectAllBtn = document.getElementById('selectAllBtn');
             const selectedCount = document.getElementById('selectedCount');
-            
-            const checkedBoxes = Array.from(checkboxes).filter(cb => cb.checked);
-            const allChecked = checkboxes.length > 0 && checkedBoxes.length === checkboxes.length;
-            
+            const totalCheckboxes = document.querySelectorAll('.house-checkbox').length;
+
             if (bulkBar) {
-              if (checkedBoxes.length > 0) {
-                bulkBar.style.display = 'flex';
-              } else {
-                bulkBar.style.display = 'none';
-              }
+              bulkBar.style.display = selectedHouseIds.size > 0 ? 'flex' : 'none';
             }
             if (selectedCount) {
-              selectedCount.textContent = checkedBoxes.length;
+              selectedCount.textContent = selectedHouseIds.size;
             }
             if (selectAllBtn) {
-              selectAllBtn.checked = allChecked;
+              selectAllBtn.checked = totalCheckboxes > 0 && selectedHouseIds.size === totalCheckboxes;
             }
 
-            checkboxes.forEach(cb => {
-              const row = cb.closest('tr');
+            if (changedCheckbox) {
+              const row = changedCheckbox.closest('tr');
               if (row) {
-                if (cb.checked) {
-                  row.style.backgroundColor = 'rgba(55, 107, 100, 0.05)';
-                } else {
-                  row.style.backgroundColor = '';
-                }
+                row.style.backgroundColor = changedCheckbox.checked ? 'rgba(55, 107, 100, 0.05)' : '';
               }
-            });
+            }
           }
 
           document.addEventListener('change', function(e) {
             if (e.target.id === 'selectAllBtn') {
               const checkboxes = document.querySelectorAll('.house-checkbox');
-              checkboxes.forEach(cb => cb.checked = e.target.checked);
+              checkboxes.forEach(cb => {
+                cb.checked = e.target.checked;
+                if (e.target.checked) selectedHouseIds.add(cb.value);
+                else selectedHouseIds.delete(cb.value);
+                const row = cb.closest('tr');
+                if (row) row.style.backgroundColor = e.target.checked ? 'rgba(55, 107, 100, 0.05)' : '';
+              });
               updateSelection();
             } 
             else if (e.target.classList.contains('house-checkbox')) {
-              updateSelection();
+              if (e.target.checked) selectedHouseIds.add(e.target.value);
+              else selectedHouseIds.delete(e.target.value);
+              updateSelection(e.target);
             }
           });
 
           document.addEventListener('click', function(e) {
             const deleteBtn = e.target.closest('.delete-btn');
-            if (deleteBtn) {
+            if (deleteBtn && typeof Swal !== 'undefined') {
               e.preventDefault();
               Swal.fire({
                 title: 'ยืนยันการลบข้อมูล?',
                 text: "ข้อมูลที่ถูกเลือกรวมถึงประวัติที่เกี่ยวข้องจะถูกลบและไม่สามารถกู้คืนได้",
                 icon: 'warning',
                 showCancelButton: true,
-                reverseButtons: false, // ปุ่มตกลงอยู่ด้านซ้าย
+                reverseButtons: false, // ปุ่มยืนยันอยู่ด้านซ้ายเสมอ
                 confirmButtonColor: '#ef4444',
                 cancelButtonColor: '#94a3b8',
                 confirmButtonText: 'ยืนยันการลบข้อมูล',
@@ -562,14 +574,14 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
             }
 
             const generateBtn = e.target.closest('.generate-passcode-btn');
-            if (generateBtn) {
+            if (generateBtn && typeof Swal !== 'undefined') {
               e.preventDefault();
               Swal.fire({
                 title: 'ยืนยันการสุ่มรหัสผ่านใหม่?',
                 text: "ระบบจะดำเนินการสร้างรหัสผ่านชั่วคราวชุดใหม่ให้ยูนิตที่เลือก ข้อมูลเดิมจะถูกระงับทันที",
                 icon: 'warning',
                 showCancelButton: true,
-                reverseButtons: false, // ปุ่มตกลงอยู่ด้านซ้าย
+                reverseButtons: false, // ปุ่มยืนยันอยู่ด้านซ้ายเสมอ
                 confirmButtonColor: '#376B64',
                 cancelButtonColor: '#94a3b8',
                 confirmButtonText: 'ดำเนินการสุ่มรหัสใหม่',
@@ -583,7 +595,7 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
               });
             }
           });
-        }
+        })();
       `}} />
 
       <style dangerouslySetInnerHTML={{__html: `

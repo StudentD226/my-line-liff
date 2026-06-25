@@ -5,7 +5,11 @@ import { revalidatePath } from "next/cache";
 
 const prisma = new PrismaClient();
 
-// 🌟 ฟังก์ชันสร้างรหัสลับ (เอาเลขบ้านมาต่อด้วยสุ่ม 4 ตัวอักษร)
+// TODO: เมื่อเชื่อมต่อระบบ Authentication จริงแล้ว ให้เพิ่มการตรวจสอบสิทธิ์ (isSuperAdmin)
+// ในฟังก์ชันที่มีผลกระทบต่อข้อมูล (deleteHouse, removeResident, autoGenerateHouses, resetHousePasscode)
+// เพื่อป้องกันการเรียกใช้งานโดยตรงจากผู้ใช้ที่ไม่มีสิทธิ์
+
+// ฟังก์ชันสร้างรหัสลับ (เอาเลขบ้านมาต่อด้วยสุ่ม 4 ตัวอักษร)
 function generatePasscode(houseNo: string) {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let randomPart = '';
@@ -19,22 +23,22 @@ function generatePasscode(houseNo: string) {
 export async function addHouse(formData: FormData) {
   const houseNo = formData.get("houseNo")?.toString();
   const houseSize = parseFloat(formData.get("houseSize")?.toString() || "0");
-  
+
   const feeType = (formData.get("feeType")?.toString() as 'CALCULATED' | 'FIXED') || 'CALCULATED';
   const feeRate = parseFloat(formData.get("feeRate")?.toString() || "0");
 
   if (!houseNo) return;
 
-  const passcode = generatePasscode(houseNo); // 🌟 สร้างรหัสลับ
+  const passcode = generatePasscode(houseNo); // สร้างรหัสลับ
 
-  await prisma.house.create({ 
-    data: { 
-      houseNo, 
+  await prisma.house.create({
+    data: {
+      houseNo,
       houseSize,
-      feeType, 
+      feeType,
       feeRate,
-      passcode // 🌟 บันทึกลง Database
-    } 
+      passcode // บันทึกลง Database
+    }
   });
   revalidatePath("/admin/houses");
 }
@@ -43,7 +47,7 @@ export async function addHouse(formData: FormData) {
 export async function updateHouse(formData: FormData) {
   const id = formData.get("id")?.toString();
   const houseSize = parseFloat(formData.get("houseSize")?.toString() || "0");
-  
+
   const feeType = (formData.get("feeType")?.toString() as 'CALCULATED' | 'FIXED') || 'CALCULATED';
   const feeRate = parseFloat(formData.get("feeRate")?.toString() || "0");
 
@@ -51,13 +55,13 @@ export async function updateHouse(formData: FormData) {
 
   await prisma.house.update({
     where: { id },
-    data: { 
+    data: {
       houseSize,
-      feeType, 
-      feeRate 
+      feeType,
+      feeRate
     },
   });
-  
+
   revalidatePath("/admin/houses");
 }
 
@@ -77,11 +81,11 @@ export async function removeResident(formData: FormData) {
 
   await prisma.user.update({
     where: { id: userId },
-    data: { 
-      residentHouse: { disconnect: true } 
-    } 
+    data: {
+      residentHouse: { disconnect: true }
+    }
   });
-  
+
   revalidatePath("/admin/houses");
 }
 
@@ -91,47 +95,52 @@ export async function autoGenerateHouses(formData: FormData) {
   const startNum = parseInt(formData.get("startNum")?.toString() || "1");
   const endNum = parseInt(formData.get("endNum")?.toString() || "10");
   const houseSize = parseFloat(formData.get("houseSize")?.toString() || "50");
-  
+
   const feeType = (formData.get("feeType")?.toString() as 'CALCULATED' | 'FIXED') || 'CALCULATED';
   const feeRate = parseFloat(formData.get("feeRate")?.toString() || "0");
 
-  if (startNum > endNum) return; 
+  if (startNum > endNum) return;
 
-  for (let i = startNum; i <= endNum; i++) {
-    const houseNo = `${prefix}${i}`; 
-    
-    const existing = await prisma.house.findFirst({ where: { houseNo } });
-    if (!existing) {
-      const passcode = generatePasscode(houseNo); // 🌟 สร้างรหัสลับให้ทีละหลังในลูป
+  // สร้างเลขที่ทั้งหมดในชุดก่อน แล้วเช็คว่าเลขที่ใดมีอยู่แล้วในครั้งเดียว (1 query)
+  // แทนการ findFirst ทีละรายการในลูป (เดิมคือ N queries ถ้ามี N รายการ ทำให้ช้าเมื่อสร้างจำนวนมาก)
+  const houseNumbers = Array.from({ length: endNum - startNum + 1 }, (_, idx) => `${prefix}${startNum + idx}`);
 
-      await prisma.house.create({ 
-        data: { 
-          houseNo, 
-          houseSize,
-          feeType, 
-          feeRate,
-          passcode // 🌟 บันทึกลง Database
-        } 
-      });
-    }
+  const existingHouses = await prisma.house.findMany({
+    where: { houseNo: { in: houseNumbers } },
+    select: { houseNo: true }
+  });
+  const existingSet = new Set(existingHouses.map((h) => h.houseNo));
+
+  const newHouses = houseNumbers
+    .filter((houseNo) => !existingSet.has(houseNo))
+    .map((houseNo) => ({
+      houseNo,
+      houseSize,
+      feeType,
+      feeRate,
+      passcode: generatePasscode(houseNo) // สร้างรหัสลับให้ทีละหลัง
+    }));
+
+  if (newHouses.length > 0) {
+    await prisma.house.createMany({ data: newHouses });
   }
-  
+
   revalidatePath("/admin/houses");
 }
 
-// 🌟 6. รีเซ็ตรหัสลับใหม่ (Server Action ตัวใหม่ล่าสุด)
+// 6. รีเซ็ตรหัสลับใหม่
 export async function resetHousePasscode(formData: FormData) {
   const id = formData.get("id")?.toString();
   const houseNo = formData.get("houseNo")?.toString();
-  
+
   if (!id || !houseNo) return;
 
-  const newPasscode = generatePasscode(houseNo); // 🌟 สุ่มรหัสใหม่ผสมกับเลขบ้าน
+  const newPasscode = generatePasscode(houseNo); // สุ่มรหัสใหม่ผสมกับเลขบ้าน
 
   await prisma.house.update({
     where: { id },
     data: { passcode: newPasscode },
   });
-  
+
   revalidatePath("/admin/houses");
 }
