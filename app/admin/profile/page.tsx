@@ -15,13 +15,12 @@ export default function AdminProfilePage() {
     confirmPassword: ''
   });
 
-  // โหลดข้อมูลเริ่มต้นเมื่อ session พร้อม
-  useEffect(() => {
+useEffect(() => {
     if (session?.user) {
       setFormData(prev => ({
         ...prev,
-        name: session.user.name || '',
-        email: session.user.email || ''
+        name: session?.user?.name || '',   
+        email: session?.user?.email || ''  
       }));
     }
   }, [session]);
