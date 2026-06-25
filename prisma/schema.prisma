@@ -241,7 +241,7 @@ enum AdminRole {
 
 model AdminUser {
   id                String    @id @default(cuid())
-  staffCode         String    @unique // 🌟 รหัสประจำตัวพนักงานที่ระบบสร้างอัตโนมัติ เช่น SP-0001, NITI-0002
+  staffCode         String?    @unique // 🌟 รหัสประจำตัวพนักงานที่ระบบสร้างอัตโนมัติ เช่น SP-0001, NITI-0002
   name              String    // ชื่อและนามสกุลพนักงาน
   email             String    @unique // อีเมลสำหรับระบุตัวตนและลงชื่อเข้าใช้งาน
   password          String    // รหัสผ่านที่ผ่านการเข้ารหัสความปลอดภัยเรียบร้อยแล้ว
@@ -249,5 +249,5 @@ model AdminUser {
   role              AdminRole @default(NITI) // 🌟 สิทธิ์โครงสร้างกลุ่มผู้ใช้งานระบบ
   passwordChangedAt DateTime? // 🌟 วันเวลาที่พนักงานดำเนินการอัปเดตรหัสผ่านใหม่ด้วยตนเอง
   createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  updatedAt         DateTime  @default(now()) @updatedAt
 }
