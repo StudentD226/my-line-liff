@@ -459,7 +459,7 @@ export default function AdminInvoicesPage() {
     Swal.fire({
       title: `แก้ไขข้อมูลยูนิต ${inv.house?.houseNo}`,
       html: `
-        <div class="text-left mb-2 text-sm font-bold text-slate-700 mt-4">定ยอดเริ่มต้น (บาท)</div>
+        <div class="text-left mb-2 text-sm font-bold text-slate-700 mt-4">ยอดเริ่มต้น (บาท)</div>
         <input id="swal-input1" class="swal2-input !m-0 !w-full !rounded-xl !border-slate-200 focus:!ring-[#376B64] focus:!border-[#376B64] mb-4 outline-none" value="${inv.baseAmount}" type="number">
         <div class="text-left mb-2 text-sm font-bold text-slate-700">ค่าปรับล่าช้า (บาท)</div>
         <input id="swal-input2" class="swal2-input !m-0 !w-full !rounded-xl !border-slate-200 focus:!ring-[#376B64] focus:!border-[#376B64] outline-none" value="${inv.penaltyAmount}" type="number">

@@ -46,13 +46,30 @@ export const authOptions: NextAuthOptions = {
     })
   ],
   callbacks: {
-    // ฝัง Role ลงใน Token และ Session จะได้เอาไปดักปุ่มต่างๆ ในหน้าเว็บได้
-    async jwt({ token, user }) {
-      if (user) token.role = (user as any).role;
+    // 🌟 1. ดักจับและฝังข้อมูลลงใน Token
+    async jwt({ token, user, trigger, session }) {
+      // ตอนล็อคอินครั้งแรก
+      if (user) {
+        token.id = user.id;
+        token.name = user.name;
+        token.role = (user as any).role;
+      }
+      
+      // 🌟 จุดสำคัญ: ดักจับตอนที่หน้าเว็บส่งคำสั่ง update() มา
+      if (trigger === "update" && session?.name) {
+        token.name = session.name; // สั่งให้ทับชื่อเก่าใน Token ด้วยชื่อใหม่
+      }
+      
       return token;
     },
+    
+    // 🌟 2. ส่งข้อมูลจาก Token ออกไปให้หน้าเว็บ (Session) ใช้งาน
     async session({ session, token }) {
-      if (session.user) (session.user as any).role = token.role;
+      if (session.user) {
+        (session.user as any).id = token.id;
+        (session.user as any).name = token.name; // ชื่อใหม่จะถูกอัปเดตตรงนี้
+        (session.user as any).role = token.role;
+      }
       return session;
     }
   },

@@ -1,10 +1,12 @@
 "use client";
-import React, { useState, useEffect, useRef } from "react";
+
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { 
   ChevronLeft, Droplet, Zap, MoreHorizontal, MapPin, 
   ClipboardList, MessageSquareText, Camera, Send, 
   AlertCircle, Wrench, Info, Image as ImageIcon, 
-  Shield, Building, X, Clock, CheckCircle2, CheckCircle, Circle
+  Shield, Building, X, Clock, CheckCircle2, CheckCircle, Circle,
+  ChevronDown
 } from "lucide-react";
 import liff from "@line/liff"; 
 import Swal from "sweetalert2"; 
@@ -17,6 +19,10 @@ const STATUS_CONFIG: Record<string, any> = {
 };
 
 export default function MaintenancePage() {
+  // 🌟 โครงสร้าง RBAC (Role-Based Access Control)
+  // สมมติค่าเริ่มต้นเป็น RESIDENT ลูกพี่สามารถเปลี่ยนเป็นค่าที่ดึงมาจาก Session/Database ได้
+  const [userRole, setUserRole] = useState<'RESIDENT' | 'NITI' | 'SUPER_ADMIN'>('RESIDENT');
+
   // 🌟 State ควบคุมหน้าจอ (Tabs)
   const [activeView, setActiveView] = useState<'REPAIR' | 'INFORM' | 'HISTORY'>('REPAIR');
 
@@ -36,6 +42,15 @@ export default function MaintenancePage() {
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
 
+  // การใช้ useMemo เพื่อป้องกันการสร้าง Array ใหม่ทุกครั้งที่ Render (Performance)
+  const categories = useMemo(() => [
+    { id: "ประปา", label: "ระบบประปา", icon: Droplet, colorClass: "text-blue-600", bgClass: "bg-blue-50", borderClass: "border-blue-200" },
+    { id: "ไฟฟ้า", label: "ระบบไฟฟ้า", icon: Zap, colorClass: "text-amber-600", bgClass: "bg-amber-50", borderClass: "border-amber-200" },
+    { id: "ส่วนกลาง", label: "พื้นที่ส่วนกลาง", icon: Building, colorClass: "text-[#376B64]", bgClass: "bg-[#376B64]/10", borderClass: "border-[#376B64]/20" },
+    { id: "ความปลอดภัย", label: "ความปลอดภัย", icon: Shield, colorClass: "text-rose-600", bgClass: "bg-rose-50", borderClass: "border-rose-200" },
+    { id: "อื่นๆ", label: "เรื่องอื่นๆ", icon: MoreHorizontal, colorClass: "text-slate-600", bgClass: "bg-slate-50", borderClass: "border-slate-200" },
+  ], []);
+
   useEffect(() => {
     const initLiff = async () => {
       try {
@@ -51,17 +66,9 @@ export default function MaintenancePage() {
     initLiff();
   }, []);
 
-  // โหลดประวัติเมื่อเปิดแท็บ HISTORY
-  useEffect(() => {
-    if (activeView === 'HISTORY' && lineId) {
-      fetchHistory(lineId);
-    }
-  }, [activeView, lineId]);
-
-  const fetchHistory = async (userId: string) => {
+  const fetchHistory = useCallback(async (userId: string) => {
     setIsLoadingHistory(true);
     try {
-      // 🌟 จุดแก้ที่ 1: ใส่ { cache: 'no-store' } เพื่อไม่ให้ Next.js จำแคชข้อมูลเก่า
       const res = await fetch(`/api/maintenance?lineId=${userId}`, {
         cache: 'no-store',
         headers: {
@@ -78,21 +85,28 @@ export default function MaintenancePage() {
     } finally {
       setIsLoadingHistory(false);
     }
-  };
+  }, []);
 
-  const categories = [
-    { id: "ประปา", label: "ประปา", icon: Droplet, colorClass: "text-blue-600", bgClass: "bg-blue-50", borderClass: "border-blue-200" },
-    { id: "ไฟฟ้า", label: "ไฟฟ้า", icon: Zap, colorClass: "text-amber-600", bgClass: "bg-amber-50", borderClass: "border-amber-200" },
-    { id: "ส่วนกลาง", label: "ส่วนกลาง", icon: Building, colorClass: "text-[#376B64]", bgClass: "bg-[#376B64]/10", borderClass: "border-[#376B64]/20" },
-    { id: "ความปลอดภัย", label: "ความปลอดภัย", icon: Shield, colorClass: "text-rose-600", bgClass: "bg-rose-50", borderClass: "border-rose-200" },
-    { id: "อื่นๆ", label: "อื่นๆ", icon: MoreHorizontal, colorClass: "text-slate-600", bgClass: "bg-slate-50", borderClass: "border-slate-200" },
-  ];
+  useEffect(() => {
+    if (activeView === 'HISTORY' && lineId) {
+      fetchHistory(lineId);
+    }
+  }, [activeView, lineId, fetchHistory]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        Swal.fire({ icon: 'error', title: 'ไฟล์ใหญ่เกินไป', text: 'กรุณาเลือกไฟล์ภาพขนาดไม่เกิน 2MB ครับ', confirmButtonColor: '#376B64', customClass: { popup: 'rounded-[2rem]' } });
+      // 🌟 อัปเกรด: ขยายขนาดการอัปโหลดไฟล์เป็น 10MB
+      if (file.size > 10 * 1024 * 1024) {
+        Swal.fire({ 
+          icon: 'warning', 
+          title: 'ขนาดไฟล์เกินกำหนด', 
+          text: 'กรุณาเลือกไฟล์ภาพขนาดไม่เกิน 10MB', 
+          confirmButtonText: 'ตกลง',
+          confirmButtonColor: '#376B64', 
+          // 🌟 จัดปุ่ม Swal ไปทางซ้าย
+          customClass: { popup: 'rounded-[2rem]', actions: 'w-full !justify-start px-4', confirmButton: 'mr-auto' } 
+        });
         return;
       }
       setSelectedFile(file);
@@ -102,22 +116,94 @@ export default function MaintenancePage() {
       };
       reader.readAsDataURL(file);
     }
-  };
+  }, []);
 
-  const removeImage = () => {
+  const removeImage = useCallback(() => {
     setSelectedFile(null);
     setImagePreview(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
+  }, []);
+
+  // 🌟 ฟังก์ชันส่ง Flex Message เข้าแชท LINE
+  const sendFlexMessage = async (ticketData: any) => {
+    if (liff.isInClient()) {
+      try {
+        await liff.sendMessages([
+          {
+            type: "flex",
+            altText: "แจ้งข้อมูลสำเร็จ",
+            contents: {
+              type: "bubble",
+              size: "mega",
+              header: {
+                type: "box",
+                layout: "vertical",
+                backgroundColor: "#376B64",
+                paddingAll: "20px",
+                contents: [
+                  { type: "text", text: "บันทึกข้อมูลสำเร็จ", weight: "bold", color: "#FFFFFF", size: "xl" }
+                ]
+              },
+              body: {
+                type: "box",
+                layout: "vertical",
+                spacing: "md",
+                paddingAll: "20px",
+                contents: [
+                  {
+                    type: "box", layout: "horizontal",
+                    contents: [
+                      { type: "text", text: "รหัสอ้างอิง:", color: "#888888", size: "sm", flex: 2 },
+                      { type: "text", text: ticketData.ticketNo || ticketData.id.slice(-6).toUpperCase(), color: "#333333", size: "sm", weight: "bold", flex: 4 }
+                    ]
+                  },
+                  {
+                    type: "box", layout: "horizontal",
+                    contents: [
+                      { type: "text", text: "หมวดหมู่:", color: "#888888", size: "sm", flex: 2 },
+                      { type: "text", text: ticketData.category, color: "#333333", size: "sm", flex: 4 }
+                    ]
+                  },
+                  {
+                    type: "box", layout: "horizontal",
+                    contents: [
+                      { type: "text", text: "หัวข้อเรื่อง:", color: "#888888", size: "sm", flex: 2 },
+                      { type: "text", text: ticketData.title, color: "#333333", size: "sm", wrap: true, flex: 4 }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        ]);
+      } catch (error) {
+        console.error("Failed to send Flex Message:", error);
+      }
+    }
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     if (!location || !title || !details) {
-      Swal.fire({ icon: 'warning', title: 'ข้อมูลไม่ครบถ้วน', text: 'กรุณาระบุสถานที่ หัวข้อ และรายละเอียดปัญหาให้ครบถ้วน', confirmButtonColor: '#376B64', customClass: { popup: 'rounded-[2rem]' }});
+      Swal.fire({ 
+        icon: 'warning', 
+        title: 'ข้อมูลไม่ครบถ้วน', 
+        text: 'กรุณาระบุสถานที่ หัวข้อ และรายละเอียดให้ครบถ้วนก่อนส่งข้อมูล', 
+        confirmButtonText: 'ตกลง',
+        confirmButtonColor: '#376B64', 
+        customClass: { popup: 'rounded-[2rem]', actions: 'w-full !justify-start px-4', confirmButton: 'mr-auto' }
+      });
       return;
     }
 
     if (!lineId) {
-      Swal.fire({ icon: 'error', title: 'ไม่พบข้อมูลผู้ใช้', text: 'กรุณาเปิดระบบผ่านแอป LINE', confirmButtonColor: '#376B64', customClass: { popup: 'rounded-[2rem]' } });
+      Swal.fire({ 
+        icon: 'error', 
+        title: 'ไม่พบข้อมูลยืนยันตัวตน', 
+        text: 'กรุณาเข้าใช้งานระบบผ่านแอปพลิเคชัน LINE', 
+        confirmButtonText: 'ตกลง',
+        confirmButtonColor: '#376B64', 
+        customClass: { popup: 'rounded-[2rem]', actions: 'w-full !justify-start px-4', confirmButton: 'mr-auto' } 
+      });
       return;
     }
 
@@ -142,15 +228,18 @@ export default function MaintenancePage() {
       const data = await response.json();
 
       if (data.success && data.ticket) {
+        // ส่ง Flex Message ให้ผู้ใช้
+        await sendFlexMessage(data.ticket);
+
         Swal.fire({ 
           icon: 'success', 
-          title: 'ส่งแจ้งเรื่องสำเร็จ!', 
-          text: `นิติบุคคลได้รับเรื่องของคุณแล้ว`,
+          title: 'ส่งข้อมูลสำเร็จ', 
+          text: `ระบบได้รับข้อมูลการแจ้งเรื่องของท่านเรียบร้อยแล้ว`,
+          confirmButtonText: 'ตกลง',
           confirmButtonColor: '#376B64',
-          customClass: { popup: 'rounded-[2rem]' }
+          customClass: { popup: 'rounded-[2rem]', actions: 'w-full !justify-start px-4', confirmButton: 'mr-auto' }
         }).then(() => {
           
-          // 🌟 จุดแก้ที่ 2: สร้างก้อนข้อมูลจำลองของเคสล่าสุด แล้วยัดเข้าหน้าสเตทประวัติทันทีโดยไม่ต้องรอโหลดเครือข่ายใหม่
           const newTicketData = {
             id: data.ticket.id,
             ticketNo: data.ticket.ticketNo,
@@ -169,27 +258,36 @@ export default function MaintenancePage() {
             ]
           };
 
-          // ยัดต่อเข้าอาเรย์ด้านบนสุด (ทำให้อัปเดตทันที)
           setTickets(prevTickets => [newTicketData, ...prevTickets]);
-
-          // เคลียร์ฟอร์ม
           setTitle("");
           setDetails("");
           setLocation("");
           removeImage();
-          
-          // สลับไปหน้าประวัติทันที
           setActiveView('HISTORY'); 
         });
       } else {
-        Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: data.error || 'ไม่สามารถส่งข้อมูลได้', confirmButtonColor: '#376B64', customClass: { popup: 'rounded-[2rem]' } });
+        Swal.fire({ 
+          icon: 'error', 
+          title: 'เกิดข้อผิดพลาดทางระบบ', 
+          text: data.error || 'ไม่สามารถดำเนินการส่งข้อมูลได้', 
+          confirmButtonText: 'ตกลง',
+          confirmButtonColor: '#376B64', 
+          customClass: { popup: 'rounded-[2rem]', actions: 'w-full !justify-start px-4', confirmButton: 'mr-auto' } 
+        });
       }
     } catch (error) {
-      Swal.fire({ icon: 'error', title: 'เชื่อมต่อล้มเหลว', text: 'กรุณาลองใหม่อีกครั้ง', confirmButtonColor: '#376B64', customClass: { popup: 'rounded-[2rem]' } });
+      Swal.fire({ 
+        icon: 'error', 
+        title: 'การเชื่อมต่อล้มเหลว', 
+        text: 'กรุณาตรวจสอบสัญญาณอินเทอร์เน็ตและลองใหม่อีกครั้ง', 
+        confirmButtonText: 'ตกลง',
+        confirmButtonColor: '#376B64', 
+        customClass: { popup: 'rounded-[2rem]', actions: 'w-full !justify-start px-4', confirmButton: 'mr-auto' } 
+      });
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [location, title, details, lineId, imagePreview, activeView, selectedCategory, removeImage]);
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-800 pb-24">
@@ -227,6 +325,14 @@ export default function MaintenancePage() {
         {/* ฟอร์มแจ้งเรื่อง (REPAIR / INFORM) */}
         {(activeView === 'REPAIR' || activeView === 'INFORM') && (
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            
+            {/* ตัวอย่างระบบ RBAC: แสดงเฉพาะเมื่อเป็น ADMIN ขึ้นไป */}
+            {userRole === 'SUPER_ADMIN' && (
+              <div className="bg-rose-50 text-rose-700 p-3 rounded-xl border border-rose-200 text-xs font-bold flex items-center gap-2">
+                <Shield size={16} /> โหมดสำหรับผู้ดูแลระบบสูงสุด (Superadmin Mode)
+              </div>
+            )}
+
             <div className="space-y-2">
               <div className="flex items-center text-slate-700 font-bold text-xs uppercase tracking-wide px-1">
                 <AlertCircle size={16} className="mr-1.5 text-[#376B64]" /> หมวดหมู่
@@ -256,8 +362,8 @@ export default function MaintenancePage() {
               </div>
               <input
                 type="text" value={location} onChange={(e) => setLocation(e.target.value)}
-                placeholder="เช่น สวนส่วนกลาง, หน้าบ้านเลขที่ 1"
-                className="w-full border-2 border-slate-200 rounded-xl p-3 text-sm font-semibold focus:outline-none focus:border-[#376B64] focus:ring-2 focus:ring-[#376B64]/20 bg-white"
+                placeholder="ระบุสถานที่ เช่น สวนส่วนกลาง, หน้าบ้านเลขที่..."
+                className="w-full border-2 border-slate-200 rounded-xl p-3 text-sm font-semibold focus:outline-none focus:border-[#376B64] focus:ring-2 focus:ring-[#376B64]/20 bg-white transition-all"
               />
             </div>
 
@@ -267,8 +373,8 @@ export default function MaintenancePage() {
               </div>
               <input
                 type="text" value={title} onChange={(e) => setTitle(e.target.value)}
-                placeholder="ระบุหัวข้อสั้นๆ ให้เข้าใจง่าย"
-                className="w-full border-2 border-slate-200 rounded-xl p-3 text-sm font-semibold focus:outline-none focus:border-[#376B64] focus:ring-2 focus:ring-[#376B64]/20 bg-white"
+                placeholder="ระบุหัวข้อเรื่องที่ต้องการแจ้ง (โดยสังเขป)"
+                className="w-full border-2 border-slate-200 rounded-xl p-3 text-sm font-semibold focus:outline-none focus:border-[#376B64] focus:ring-2 focus:ring-[#376B64]/20 bg-white transition-all"
               />
             </div>
 
@@ -278,11 +384,11 @@ export default function MaintenancePage() {
               </div>
               <div className="relative">
                 <textarea
-                  rows={3} maxLength={500} value={details} onChange={(e) => setDetails(e.target.value)}
-                  placeholder="โปรดอธิบายรายละเอียดของเรื่องนี้เพิ่มเติม"
-                  className="w-full border-2 border-slate-200 rounded-xl p-3 text-sm font-medium focus:outline-none focus:border-[#376B64] focus:ring-2 focus:ring-[#376B64]/20 bg-white resize-none"
+                  rows={4} maxLength={500} value={details} onChange={(e) => setDetails(e.target.value)}
+                  placeholder="โปรดอธิบายรายละเอียดของเรื่องนี้เพิ่มเติม เพื่อให้นิติบุคคลตรวจสอบได้อย่างถูกต้อง"
+                  className="w-full border-2 border-slate-200 rounded-xl p-3 text-sm font-medium focus:outline-none focus:border-[#376B64] focus:ring-2 focus:ring-[#376B64]/20 bg-white resize-none transition-all custom-scrollbar"
                 ></textarea>
-                <div className="absolute bottom-3 right-3 text-[10px] text-slate-400 font-bold">
+                <div className="absolute bottom-3 right-3 text-[10px] text-slate-400 font-bold bg-white/80 px-1 rounded">
                   {details.length}/500
                 </div>
               </div>
@@ -295,7 +401,8 @@ export default function MaintenancePage() {
               <input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
               {imagePreview ? (
                 <div className="relative w-full aspect-[20/13] rounded-xl overflow-hidden border-2 border-slate-200 shadow-sm">
-                  <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={imagePreview} alt="Preview" loading="lazy" className="w-full h-full object-cover" />
                   <button onClick={removeImage} className="absolute top-2 right-2 bg-slate-900/60 p-1.5 rounded-full text-white hover:bg-rose-500 transition-colors">
                     <X size={18} />
                   </button>
@@ -304,7 +411,7 @@ export default function MaintenancePage() {
                 <button onClick={() => fileInputRef.current?.click()} className="w-full border-2 border-dashed border-gray-300 rounded-xl py-6 flex flex-col items-center justify-center bg-white text-gray-500 hover:border-[#376B64]/50 hover:bg-[#376B64]/5 active:scale-[0.99] transition-all">
                   <ImageIcon size={24} className="mb-2 text-[#376B64]/70" />
                   <span className="text-xs font-semibold text-slate-700">กดเพื่อถ่ายภาพ หรือเลือกรูปจากอัลบั้ม</span>
-                  <span className="text-[10px] text-slate-400 mt-1">(ไม่เกิน 2MB)</span>
+                  <span className="text-[10px] text-slate-400 mt-1">(รองรับขนาดสูงสุด 10MB)</span>
                 </button>
               )}
             </div>
@@ -321,18 +428,19 @@ export default function MaintenancePage() {
             ) : tickets.length === 0 ? (
               <div className="text-center py-16 text-slate-400">
                 <ClipboardList size={48} className="mx-auto mb-4 opacity-50" />
-                <p className="font-bold">ยังไม่มีประวัติการแจ้งเรื่อง</p>
+                <p className="font-bold text-sm">ยังไม่มีประวัติการแจ้งเรื่องในระบบ</p>
               </div>
             ) : (
               tickets.map(ticket => (
                 <div 
                   key={ticket.id} 
                   onClick={() => setSelectedTicket(ticket)}
-                  className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 active:scale-[0.98] transition-transform cursor-pointer"
+                  className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 active:scale-[0.98] transition-transform cursor-pointer hover:shadow-md"
                 >
                   <div className="flex justify-between items-start mb-2">
-                    <span className="text-xs font-bold text-slate-400">#{ticket.ticketNo || ticket.id.slice(-6).toUpperCase()}</span>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_CONFIG[ticket.status].bg} ${STATUS_CONFIG[ticket.status].color}`}>
+                    <span className="text-xs font-bold text-slate-400">รหัสอ้างอิง: #{ticket.ticketNo || ticket.id.slice(-6).toUpperCase()}</span>
+                    <span className={`flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_CONFIG[ticket.status].bg} ${STATUS_CONFIG[ticket.status].color}`}>
+                       {React.createElement(STATUS_CONFIG[ticket.status].icon, { size: 12 })}
                       {STATUS_CONFIG[ticket.status].label}
                     </span>
                   </div>
@@ -349,15 +457,20 @@ export default function MaintenancePage() {
         )}
       </main>
 
-      {/* ปุ่มส่งเรื่อง */}
+      {/* ปุ่มส่งเรื่อง (จัดชิดซ้ายตาความต้องการ) */}
       {(activeView === 'REPAIR' || activeView === 'INFORM') && (
         <div className="fixed bottom-0 left-0 right-0 p-3 bg-white/90 backdrop-blur-md border-t border-slate-100 max-w-md mx-auto shadow-[0_-4px_15px_rgba(0,0,0,0.02)]">
           <button 
             onClick={handleSubmit} 
             disabled={isSubmitting}
-            className={`w-full text-white font-black py-3.5 px-4 rounded-xl flex items-center justify-center shadow-lg transition-all active:scale-[0.98] ${isSubmitting ? 'bg-slate-400 cursor-not-allowed' : 'bg-[#376B64] hover:bg-[#2a524c]'}`}
+            // 🌟 จัดไอคอนและข้อความให้อยู่ชิดซ้าย (justify-start) และเว้นระยะห่างด้านซ้าย (pl-5)
+            className={`w-full text-white font-black py-3.5 px-5 rounded-xl flex items-center justify-start shadow-lg transition-all active:scale-[0.98] ${isSubmitting ? 'bg-slate-400 cursor-not-allowed' : 'bg-[#376B64] hover:bg-[#2a524c]'}`}
           >
-            {isSubmitting ? "กำลังส่งข้อมูล..." : <><Send size={18} className="mr-2" /> ส่งเรื่องให้นิติบุคคล</>}
+            {isSubmitting ? (
+              <span className="flex items-center"><div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-3"></div> กำลังดำเนินการ...</span>
+            ) : (
+              <span className="flex items-center"><Send size={18} className="mr-3" /> ยืนยันการส่งข้อมูล</span>
+            )}
           </button>
         </div>
       )}
@@ -369,16 +482,17 @@ export default function MaintenancePage() {
             <div className="flex justify-between items-center p-5 border-b border-slate-100">
               <div>
                 <h2 className="text-lg font-black text-slate-800">รายละเอียดสถานะ</h2>
-                <p className="text-xs font-bold text-slate-400 mt-0.5">#{selectedTicket.ticketNo || selectedTicket.id.slice(-6).toUpperCase()}</p>
+                <p className="text-xs font-bold text-slate-400 mt-0.5">รหัสอ้างอิง: #{selectedTicket.ticketNo || selectedTicket.id.slice(-6).toUpperCase()}</p>
               </div>
-              <button onClick={() => setSelectedTicket(null)} className="p-2 bg-slate-100 rounded-full text-slate-500"><X size={18}/></button>
+              <button onClick={() => setSelectedTicket(null)} className="p-2 bg-slate-100 hover:bg-slate-200 transition-colors rounded-full text-slate-500"><X size={18}/></button>
             </div>
             <div className="p-5 overflow-y-auto custom-scrollbar">
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 mb-6">
                 <h3 className="font-bold text-slate-800 text-sm mb-1">{selectedTicket.title}</h3>
                 <p className="text-xs text-slate-600 leading-relaxed mb-3">{selectedTicket.description}</p>
                 {selectedTicket.imageUrl && (
-                  <img src={selectedTicket.imageUrl} alt="My Evidence" className="w-full h-32 object-cover rounded-xl border border-slate-200" />
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img src={selectedTicket.imageUrl} loading="lazy" alt="หลักฐานการแจ้งเรื่อง" className="w-full h-32 object-cover rounded-xl border border-slate-200 shadow-sm" />
                 )}
               </div>
               <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2 text-sm"><Clock size={16} className="text-[#376B64]" /> ความคืบหน้างาน</h3>
@@ -397,8 +511,9 @@ export default function MaintenancePage() {
                           {hist.note || '-'}
                           {hist.imageUrl && (
                               <div className="mt-3">
-                                <p className="text-[10px] font-bold text-[#376B64] mb-1 flex items-center gap-1"><ImageIcon size={12}/> ภาพอัปเดตจากแอดมิน</p>
-                                <img src={hist.imageUrl} alt="Admin Update" className="w-full h-32 object-cover rounded-lg border border-slate-200" />
+                                <p className="text-[10px] font-bold text-[#376B64] mb-1 flex items-center gap-1"><ImageIcon size={12}/> ภาพความคืบหน้าจากนิติบุคคล</p>
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={hist.imageUrl} loading="lazy" alt="ภาพความคืบหน้า" className="w-full h-32 object-cover rounded-lg border border-slate-200" />
                               </div>
                           )}
                         </div>
