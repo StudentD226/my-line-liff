@@ -3,13 +3,16 @@
 import React, { useState, useCallback } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Lock, Mail, ShieldAlert, AlertCircle, LogIn, Loader2 } from "lucide-react";
+import { Lock, Mail, ShieldAlert, AlertCircle, LogIn, Loader2, Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  // 🌟 เพิ่ม State สำหรับจัดการเปิด-ปิดรหัสผ่าน
+  const [showPassword, setShowPassword] = useState(false);
 
   // State สำหรับเก็บข้อความแจ้งเตือนใต้ Textbox แต่ละช่อง
   const [fieldErrors, setFieldErrors] = useState({ email: "", password: "" });
@@ -138,8 +141,9 @@ export default function LoginPage() {
               <div className="relative">
                 <Lock className={`absolute left-4 top-3.5 size-5 transition-colors shrink-0 ${fieldErrors.password ? 'text-red-400' : 'text-slate-400'}`} />
                 <input
-                  type="password"
-                  className={`appearance-none block w-full pl-11 pr-4 py-3 border rounded-xl focus:outline-none focus:ring-2 font-medium transition-colors
+                  // 🌟 สลับชนิดของ input ตาม state showPassword
+                  type={showPassword ? "text" : "password"}
+                  className={`appearance-none block w-full pl-11 pr-12 py-3 border rounded-xl focus:outline-none focus:ring-2 font-medium transition-colors
                     ${fieldErrors.password 
                       ? 'border-red-300 focus:ring-red-500 focus:border-transparent bg-red-50/30 text-red-900' 
                       : 'border-slate-200 focus:ring-[#376B64] focus:border-[#376B64] bg-slate-50 focus:bg-white text-slate-900'}`}
@@ -148,6 +152,21 @@ export default function LoginPage() {
                   onChange={handlePasswordChange}
                   disabled={isLoading}
                 />
+                
+                {/* 🌟 ปุ่มสลับแสดง/ซ่อนรหัสผ่าน */}
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  disabled={isLoading}
+                  className="absolute right-3 top-3 p-1 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors rounded-lg"
+                  title={showPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
+                >
+                  {showPassword ? (
+                    <EyeOff size={20} className="shrink-0" />
+                  ) : (
+                    <Eye size={20} className="shrink-0" />
+                  )}
+                </button>
               </div>
               {fieldErrors.password && (
                 <div className="mt-1.5 flex items-center text-red-500 text-xs font-bold animate-in fade-in slide-in-from-top-1">
