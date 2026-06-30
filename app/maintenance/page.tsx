@@ -5,13 +5,11 @@ import {
   ChevronLeft, Droplet, Zap, MoreHorizontal, MapPin, 
   ClipboardList, MessageSquareText, Camera, Send, 
   AlertCircle, Wrench, Info, Image as ImageIcon, 
-  Shield, Building, X, Clock, CheckCircle2, CheckCircle, Circle,
-  ChevronDown
+  Shield, Building, X, Clock, CheckCircle2, CheckCircle, Circle
 } from "lucide-react";
 import liff from "@line/liff"; 
 import Swal from "sweetalert2"; 
 
-// --- Configuration สำหรับ History ---
 const STATUS_CONFIG: Record<string, any> = {
   PENDING: { label: 'รอดำเนินการ', color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200', icon: Clock },
   IN_PROGRESS: { label: 'กำลังดำเนินการ', color: 'text-[#376B64]', bg: 'bg-[#376B64]/10', border: 'border-[#376B64]/20', icon: Wrench },
@@ -19,14 +17,9 @@ const STATUS_CONFIG: Record<string, any> = {
 };
 
 export default function MaintenancePage() {
-  // 🌟 โครงสร้าง RBAC (Role-Based Access Control)
-  // สมมติค่าเริ่มต้นเป็น RESIDENT ลูกพี่สามารถเปลี่ยนเป็นค่าที่ดึงมาจาก Session/Database ได้
   const [userRole, setUserRole] = useState<'RESIDENT' | 'NITI' | 'SUPER_ADMIN'>('RESIDENT');
-
-  // 🌟 State ควบคุมหน้าจอ (Tabs)
   const [activeView, setActiveView] = useState<'REPAIR' | 'INFORM' | 'HISTORY'>('REPAIR');
 
-  // --- State สำหรับ Form ---
   const [selectedCategory, setSelectedCategory] = useState("ประปา");
   const [location, setLocation] = useState("");
   const [title, setTitle] = useState("");
@@ -37,12 +30,10 @@ export default function MaintenancePage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // --- State สำหรับ History ---
   const [tickets, setTickets] = useState<any[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
 
-  // การใช้ useMemo เพื่อป้องกันการสร้าง Array ใหม่ทุกครั้งที่ Render (Performance)
   const categories = useMemo(() => [
     { id: "ประปา", label: "ระบบประปา", icon: Droplet, colorClass: "text-blue-600", bgClass: "bg-blue-50", borderClass: "border-blue-200" },
     { id: "ไฟฟ้า", label: "ระบบไฟฟ้า", icon: Zap, colorClass: "text-amber-600", bgClass: "bg-amber-50", borderClass: "border-amber-200" },
@@ -54,7 +45,7 @@ export default function MaintenancePage() {
   useEffect(() => {
     const initLiff = async () => {
       try {
-        await liff.init({ liffId: process.env.NEXT_PUBLIC_LIFF_ID || "2009290251-UZlxLIQJ" }); 
+        await liff.init({ liffId: process.env.NEXT_PUBLIC_LIFF_ID || "YOUR_LIFF_ID" }); 
         if (liff.isLoggedIn()) {
           const profile = await liff.getProfile();
           setLineId(profile.userId);
@@ -96,7 +87,6 @@ export default function MaintenancePage() {
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // 🌟 อัปเกรด: ขยายขนาดการอัปโหลดไฟล์เป็น 10MB
       if (file.size > 10 * 1024 * 1024) {
         Swal.fire({ 
           icon: 'warning', 
@@ -104,7 +94,6 @@ export default function MaintenancePage() {
           text: 'กรุณาเลือกไฟล์ภาพขนาดไม่เกิน 10MB', 
           confirmButtonText: 'ตกลง',
           confirmButtonColor: '#376B64', 
-          // 🌟 จัดปุ่ม Swal ไปทางซ้าย
           customClass: { popup: 'rounded-[2rem]', actions: 'w-full !justify-start px-4', confirmButton: 'mr-auto' } 
         });
         return;
@@ -124,7 +113,6 @@ export default function MaintenancePage() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   }, []);
 
-  // 🌟 ฟังก์ชันส่ง Flex Message เข้าแชท LINE
   const sendFlexMessage = async (ticketData: any) => {
     if (liff.isInClient()) {
       try {
@@ -208,9 +196,58 @@ export default function MaintenancePage() {
     }
 
     setIsSubmitting(true);
-    const finalImageUrl = imagePreview || null;
+    let finalImageUrl = null;
 
     try {
+      if (selectedFile) {
+        Swal.fire({
+          title: 'กำลังอัปโหลดข้อมูล',
+          text: 'กรุณารอสักครู่ ระบบกำลังดำเนินการบันทึกไฟล์ภาพประกอบ',
+          allowOutsideClick: false,
+          showConfirmButton: false,
+          customClass: { popup: 'rounded-[2rem]' },
+          didOpen: () => {
+            Swal.showLoading();
+          }
+        });
+
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        
+        const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+        const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+
+        if (!uploadPreset || !cloudName) {
+          throw new Error('ไม่พบการตั้งค่าตัวแปรสำหรับอัปโหลดไฟล์ในระบบ');
+        }
+
+        formData.append('upload_preset', uploadPreset);
+
+        const cloudinaryRes = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+          method: 'POST',
+          body: formData
+        });
+
+        const cloudinaryData = await cloudinaryRes.json();
+
+        if (cloudinaryData.secure_url) {
+          finalImageUrl = cloudinaryData.secure_url;
+        } else {
+          throw new Error('ไม่สามารถอัปโหลดไฟล์ภาพได้');
+        }
+      } else {
+        Swal.fire({
+          title: 'กำลังบันทึกข้อมูล',
+          text: 'กรุณารอสักครู่',
+          allowOutsideClick: false,
+          showConfirmButton: false,
+          customClass: { popup: 'rounded-[2rem]' },
+          didOpen: () => {
+            Swal.showLoading();
+          }
+        });
+      }
+
       const response = await fetch('/api/maintenance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -221,20 +258,19 @@ export default function MaintenancePage() {
           location: location,
           title: title,
           description: details,
-          imageUrl: finalImageUrl
+          imageUrl: finalImageUrl 
         })
       });
 
       const data = await response.json();
 
       if (data.success && data.ticket) {
-        // ส่ง Flex Message ให้ผู้ใช้
         await sendFlexMessage(data.ticket);
 
         Swal.fire({ 
           icon: 'success', 
           title: 'ส่งข้อมูลสำเร็จ', 
-          text: `ระบบได้รับข้อมูลการแจ้งเรื่องของท่านเรียบร้อยแล้ว`,
+          text: 'ระบบได้รับข้อมูลการแจ้งเรื่องของท่านเรียบร้อยแล้ว',
           confirmButtonText: 'ตกลง',
           confirmButtonColor: '#376B64',
           customClass: { popup: 'rounded-[2rem]', actions: 'w-full !justify-start px-4', confirmButton: 'mr-auto' }
@@ -275,11 +311,11 @@ export default function MaintenancePage() {
           customClass: { popup: 'rounded-[2rem]', actions: 'w-full !justify-start px-4', confirmButton: 'mr-auto' } 
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       Swal.fire({ 
         icon: 'error', 
-        title: 'การเชื่อมต่อล้มเหลว', 
-        text: 'กรุณาตรวจสอบสัญญาณอินเทอร์เน็ตและลองใหม่อีกครั้ง', 
+        title: 'การดำเนินการล้มเหลว', 
+        text: error.message || 'กรุณาตรวจสอบสัญญาณอินเทอร์เน็ตและลองใหม่อีกครั้ง', 
         confirmButtonText: 'ตกลง',
         confirmButtonColor: '#376B64', 
         customClass: { popup: 'rounded-[2rem]', actions: 'w-full !justify-start px-4', confirmButton: 'mr-auto' } 
@@ -287,7 +323,7 @@ export default function MaintenancePage() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [location, title, details, lineId, imagePreview, activeView, selectedCategory, removeImage]);
+  }, [location, title, details, lineId, selectedFile, activeView, selectedCategory, removeImage]);
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-800 pb-24">
@@ -300,7 +336,6 @@ export default function MaintenancePage() {
 
       <main className="p-4 max-w-md mx-auto space-y-4">
         
-        {/* 3 Tabs Menu */}
         <div className="bg-white p-1 rounded-xl shadow-sm border border-slate-100 flex gap-1">
           <button 
             onClick={() => setActiveView("REPAIR")}
@@ -322,14 +357,12 @@ export default function MaintenancePage() {
           </button>
         </div>
 
-        {/* ฟอร์มแจ้งเรื่อง (REPAIR / INFORM) */}
         {(activeView === 'REPAIR' || activeView === 'INFORM') && (
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
             
-            {/* ตัวอย่างระบบ RBAC: แสดงเฉพาะเมื่อเป็น ADMIN ขึ้นไป */}
             {userRole === 'SUPER_ADMIN' && (
               <div className="bg-rose-50 text-rose-700 p-3 rounded-xl border border-rose-200 text-xs font-bold flex items-center gap-2">
-                <Shield size={16} /> โหมดสำหรับผู้ดูแลระบบสูงสุด (Superadmin Mode)
+                <Shield size={16} /> โหมดสำหรับผู้ดูแลระบบสูงสุด
               </div>
             )}
 
@@ -358,7 +391,7 @@ export default function MaintenancePage() {
 
             <div className="space-y-2">
               <div className="flex items-center text-slate-700 font-bold text-xs uppercase tracking-wide px-1">
-                <MapPin size={16} className="mr-1.5 text-[#376B64]" /> สถานที่/พิกัด
+                <MapPin size={16} className="mr-1.5 text-[#376B64]" /> สถานที่และพิกัด
               </div>
               <input
                 type="text" value={location} onChange={(e) => setLocation(e.target.value)}
@@ -385,7 +418,7 @@ export default function MaintenancePage() {
               <div className="relative">
                 <textarea
                   rows={4} maxLength={500} value={details} onChange={(e) => setDetails(e.target.value)}
-                  placeholder="โปรดอธิบายรายละเอียดของเรื่องนี้เพิ่มเติม เพื่อให้นิติบุคคลตรวจสอบได้อย่างถูกต้อง"
+                  placeholder="โปรดอธิบายรายละเอียดเพิ่มเติม เพื่อให้นิติบุคคลตรวจสอบได้อย่างถูกต้อง"
                   className="w-full border-2 border-slate-200 rounded-xl p-3 text-sm font-medium focus:outline-none focus:border-[#376B64] focus:ring-2 focus:ring-[#376B64]/20 bg-white resize-none transition-all custom-scrollbar"
                 ></textarea>
                 <div className="absolute bottom-3 right-3 text-[10px] text-slate-400 font-bold bg-white/80 px-1 rounded">
@@ -410,7 +443,7 @@ export default function MaintenancePage() {
               ) : (
                 <button onClick={() => fileInputRef.current?.click()} className="w-full border-2 border-dashed border-gray-300 rounded-xl py-6 flex flex-col items-center justify-center bg-white text-gray-500 hover:border-[#376B64]/50 hover:bg-[#376B64]/5 active:scale-[0.99] transition-all">
                   <ImageIcon size={24} className="mb-2 text-[#376B64]/70" />
-                  <span className="text-xs font-semibold text-slate-700">กดเพื่อถ่ายภาพ หรือเลือกรูปจากอัลบั้ม</span>
+                  <span className="text-xs font-semibold text-slate-700">กดเพื่อถ่ายภาพ หรือเลือกรูปจากอุปกรณ์</span>
                   <span className="text-[10px] text-slate-400 mt-1">(รองรับขนาดสูงสุด 10MB)</span>
                 </button>
               )}
@@ -418,7 +451,6 @@ export default function MaintenancePage() {
           </div>
         )}
 
-        {/* หน้าประวัติ (HISTORY) */}
         {activeView === 'HISTORY' && (
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
             {isLoadingHistory ? (
@@ -457,13 +489,11 @@ export default function MaintenancePage() {
         )}
       </main>
 
-      {/* ปุ่มส่งเรื่อง (จัดชิดซ้ายตาความต้องการ) */}
       {(activeView === 'REPAIR' || activeView === 'INFORM') && (
         <div className="fixed bottom-0 left-0 right-0 p-3 bg-white/90 backdrop-blur-md border-t border-slate-100 max-w-md mx-auto shadow-[0_-4px_15px_rgba(0,0,0,0.02)]">
           <button 
             onClick={handleSubmit} 
             disabled={isSubmitting}
-            // 🌟 จัดไอคอนและข้อความให้อยู่ชิดซ้าย (justify-start) และเว้นระยะห่างด้านซ้าย (pl-5)
             className={`w-full text-white font-black py-3.5 px-5 rounded-xl flex items-center justify-start shadow-lg transition-all active:scale-[0.98] ${isSubmitting ? 'bg-slate-400 cursor-not-allowed' : 'bg-[#376B64] hover:bg-[#2a524c]'}`}
           >
             {isSubmitting ? (
@@ -475,7 +505,6 @@ export default function MaintenancePage() {
         </div>
       )}
 
-      {/* MODAL: รายละเอียด History */}
       {selectedTicket && (
         <div className="fixed inset-0 z-50 flex flex-col justify-end p-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-t-3xl w-full max-w-md mx-auto max-h-[90vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom-10 duration-300">
@@ -495,7 +524,7 @@ export default function MaintenancePage() {
                   <img src={selectedTicket.imageUrl} loading="lazy" alt="หลักฐานการแจ้งเรื่อง" className="w-full h-32 object-cover rounded-xl border border-slate-200 shadow-sm" />
                 )}
               </div>
-              <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2 text-sm"><Clock size={16} className="text-[#376B64]" /> ความคืบหน้างาน</h3>
+              <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2 text-sm"><Clock size={16} className="text-[#376B64]" /> ความคืบหน้าการดำเนินงาน</h3>
               <div className="space-y-6 relative before:absolute before:inset-0 before:ml-2.5 before:-translate-x-px before:h-full before:w-0.5 before:bg-slate-200">
                 {selectedTicket.history?.map((hist: any, i: number) => {
                   const isLast = i === selectedTicket.history.length - 1;
