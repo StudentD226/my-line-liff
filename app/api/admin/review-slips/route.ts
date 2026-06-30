@@ -6,13 +6,13 @@ import { messagingApi } from '@line/bot-sdk';
 const prisma = new PrismaClient();
 const truncateDecimals = (val: number) => Math.floor(Math.round(val * 10000) / 100) / 100;
 
-// 🌟 ตั้งค่า LINE Client สำหรับยิงแจ้งเตือน
+// ตั้งค่า LINE Client สำหรับยิงแจ้งเตือน
 const client = new messagingApi.MessagingApiClient({
   channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN || '',
 });
 
 // ==========================================
-// ฟังก์ชันพิเศษสำหรับยิง Flex Message แจ้งผลการตรวจสลิป
+// ฟังก์ชันยิง Flex Message แจ้งผลการตรวจสลิป (นำอิโมจิออกทั้งหมด)
 // ==========================================
 async function sendInlineFlexNotify(invoice: any, status: string, note?: string) {
   if (!client) return;
@@ -28,21 +28,21 @@ async function sendInlineFlexNotify(invoice: any, status: string, note?: string)
 
     const isApproved = status === 'PAID';
     
-    // 🎨 ตั้งค่า Theme สีและข้อความ (เขียว = ผ่าน / แดง = ปฏิเสธ)
+    // ตั้งค่า Theme สีและข้อความ (เขียว = ผ่าน / แดง = ปฏิเสธ)
     const statusBgColor = isApproved ? "#ECFDF5" : "#FEF2F2"; 
     const statusTextColor = isApproved ? "#059669" : "#DC2626"; 
     
-    // ถ้าปฏิเสธ ให้เอา Note (สาเหตุ) มาต่อท้ายข้อความเลย
+    // ข้อความแจ้งเตือนอย่างเป็นทางการ
     const statusText = isApproved 
-      ? "✅ ยืนยันยอดเงินสำเร็จ" 
-      : `❌ สลิปถูกปฏิเสธ\n${note || 'ข้อมูลไม่ถูกต้อง'}`;
+      ? "ยืนยันการรับชำระเงินเสร็จสิ้น" 
+      : `สถานะ: ปฏิเสธรายการ\nเหตุผล: ${note || 'ข้อมูลไม่ถูกต้อง กรุณาติดต่อผู้ดูแลระบบ'}`;
     
     // กล่องยอดเงิน
     const amountBgColor = isApproved ? "#ECFDF5" : "#FDEBEC";
     const amountTextColor = isApproved ? "#059669" : "#EF4444";
 
     const buttonColor = isApproved ? "#376B64" : "#EF4444";
-    const buttonLabel = isApproved ? "ดูประวัติและสถานะบิล" : "แนบสลิปใหม่";
+    const buttonLabel = isApproved ? "ดูประวัติและสถานะบัญชี" : "ดำเนินการแนบหลักฐานใหม่";
     const buttonUri = isApproved ? "/invoices" : "/payment"; 
 
     // แปลงวันที่ตรวจสอบ
@@ -50,10 +50,10 @@ async function sendInlineFlexNotify(invoice: any, status: string, note?: string)
     const fullThaiMonths = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
     const dateStr = `${d.getDate()} ${fullThaiMonths[d.getMonth() + 1]} ${d.getFullYear() + 543}`;
 
-    // 🚀 โครงสร้าง Flex Message ตามดีไซน์ของลูกพี่
+    // โครงสร้าง Flex Message
     const flexMessage: messagingApi.FlexMessage = {
       type: "flex",
-      altText: isApproved ? `✅ ยืนยันรับชำระเงิน บ้านเลขที่ ${house.houseNo}` : `❌ สลิปถูกปฏิเสธ บ้านเลขที่ ${house.houseNo}`,
+      altText: isApproved ? `การยืนยันรับชำระเงิน บ้านเลขที่อ้างอิง ${house.houseNo}` : `แจ้งเตือนการปฏิเสธรายการ บ้านเลขที่อ้างอิง ${house.houseNo}`,
       contents: {
         type: "bubble",
         size: "kilo",
@@ -63,7 +63,7 @@ async function sendInlineFlexNotify(invoice: any, status: string, note?: string)
             {
               type: "box", layout: "horizontal", alignItems: "center",
               contents: [
-                { type: "text", text: `🏠 บ้านเลขที่ ${house.houseNo || "-"}`, weight: "bold", size: "xl", color: "#111827" }
+                { type: "text", text: `บ้านเลขที่อ้างอิง: ${house.houseNo || "-"}`, weight: "bold", size: "lg", color: "#111827" }
               ]
             },
             {
@@ -75,7 +75,7 @@ async function sendInlineFlexNotify(invoice: any, status: string, note?: string)
             {
               type: "box", layout: "vertical", margin: "xl", backgroundColor: amountBgColor, cornerRadius: "lg", paddingAll: "lg", alignItems: "center",
               contents: [
-                { type: "text", text: "ยอดแจ้งโอน", size: "sm", color: amountTextColor, weight: "bold" },
+                { type: "text", text: "ยอดดำเนินการ", size: "sm", color: amountTextColor, weight: "bold" },
                 { type: "text", text: `${Number(invoice.totalAmount).toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท`, size: "xl", weight: "bold", color: amountTextColor, margin: "sm" }
               ]
             },
@@ -100,7 +100,7 @@ async function sendInlineFlexNotify(invoice: any, status: string, note?: string)
               }
             },
             {
-              type: "text", text: `REF: ${invoice.invoiceNo}`, color: "#9CA3AF", size: "xs", align: "center", margin: "md"
+              type: "text", text: `หมายเลขอ้างอิงระบบ: ${invoice.invoiceNo}`, color: "#9CA3AF", size: "xs", align: "center", margin: "md"
             }
           ]
         }
@@ -180,12 +180,12 @@ export async function GET() {
     return NextResponse.json({ success: true, invoices: mappedInvoices });
   } catch (error) {
     console.error("Fetch Pending Invoices Error:", error);
-    return NextResponse.json({ success: false, error: 'ดึงข้อมูลไม่สำเร็จ' }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'เกิดข้อผิดพลาดในการดึงข้อมูล' }, { status: 500 });
   }
 }
 
 // ==========================================
-// 2. แอดมินกดอนุมัติ/ปฏิเสธ สลิป (PATCH) - ระบบ FIFO
+// 2. แอดมินกดอนุมัติ/ปฏิเสธ สลิป (PATCH)
 // ==========================================
 export async function PATCH(request: Request) {
   try {
@@ -194,19 +194,16 @@ export async function PATCH(request: Request) {
     if (!invoiceId || !status) return NextResponse.json({ success: false, error: 'ข้อมูลไม่ครบถ้วน' }, { status: 400 });
 
     const transactionInvoice = await prisma.invoice.findUnique({ where: { id: invoiceId } });
-    if (!transactionInvoice) return NextResponse.json({ success: false, error: 'ไม่พบรายการแจ้งโอน' }, { status: 404 });
+    if (!transactionInvoice) return NextResponse.json({ success: false, error: 'ไม่พบรายการอ้างอิงในระบบ' }, { status: 404 });
 
-    // 🔴 1. กรณีปฏิเสธสลิป
+    // 1. กรณีปฏิเสธสลิป
     if (status === 'REJECTED') {
       await prisma.invoice.update({ where: { id: invoiceId }, data: { status: 'REJECTED' } });
-      
-      // 🌟 เรียกใช้ฟังก์ชันยิง Flex Message แจ้งเตือนสีแดงพร้อมบอกสาเหตุ
       await sendInlineFlexNotify(transactionInvoice, 'REJECTED', note); 
-      
-      return NextResponse.json({ success: true, message: `ปฏิเสธสลิปสำเร็จ` });
+      return NextResponse.json({ success: true, message: `ดำเนินการปฏิเสธรายการสำเร็จ` });
     }
 
-    // 🟢 2. กรณีอนุมัติสลิป (ทำงานตามระบบ FIFO)
+    // 2. กรณีอนุมัติสลิป (ทำงานตามระบบ FIFO)
     if (status === 'PAID') {
       let remainingMoney = truncateDecimals(Number(transactionInvoice.totalAmount)); 
       let updatedInvoicesCount = 0;
@@ -320,13 +317,12 @@ export async function PATCH(request: Request) {
         data: { status: 'PAID', paidAt: new Date() } 
       });
       
-      // 🌟 เรียกใช้ฟังก์ชันยิง Flex Message แจ้งเตือนสีเขียว
       await sendInlineFlexNotify(transactionInvoice, 'PAID');
 
-      return NextResponse.json({ success: true, message: `รับยอดโอนสำเร็จ (อัปเดตไป ${updatedInvoicesCount} รายการ)` });
+      return NextResponse.json({ success: true, message: `ดำเนินการเสร็จสิ้น (อัปเดตระบบ ${updatedInvoicesCount} รายการ)` });
     }
   } catch (error) {
     console.error("Update Invoice Status Error:", error);
-    return NextResponse.json({ success: false, error: 'เกิดข้อผิดพลาดในการอัปเดต' }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'เกิดข้อผิดพลาดในการประมวลผลระบบ' }, { status: 500 });
   }
 }
