@@ -11,47 +11,47 @@ datasource db {
 // 1. ตั้งค่าระบบกลาง (System Configuration)
 // ------------------------------------------------------
 model SystemConfig {
-  id                  Int         @id @default(1)
-  projectType         ProjectType @default(HOUSING_ESTATE)
-  flatRateAmount      Float       @default(500)   
-  penaltyRatePerDay   Float       @default(100)   
-  updatedAt           DateTime    @updatedAt      
+  id                Int         @id @default(1)
+  projectType       ProjectType @default(HOUSING_ESTATE)
+  flatRateAmount    Float       @default(500)
+  penaltyRatePerDay Float       @default(100)
+  updatedAt         DateTime    @updatedAt
 
   // 📅 การตั้งค่าวันที่และเวลาของระบบบิล
-  invoiceGenerateDay  Int         @default(27)    
-  invoiceGenerateTime String      @default("08:00") 
-  dueDateDay          Int         @default(7)     
-  penaltyStartDay     Int         @default(8)     
-  secondReminderDay   Int         @default(15)    
+  invoiceGenerateDay  Int    @default(27)
+  invoiceGenerateTime String @default("08:00")
+  dueDateDay          Int    @default(7)
+  penaltyStartDay     Int    @default(8)
+  secondReminderDay   Int    @default(15)
 
   // 🏦 ข้อมูลบัญชีธนาคารรับเงินส่วนกลาง
-  bankName            String      @default("ธนาคารกรุงไทย")
-  bankAccountNo       String      @default("660-9-55290-8")
-  bankAccountName     String      @default("นิติบุคคลหมู่บ้าน")
-  bankLogoUrl         String      @default("/banks/KTB.png")
+  bankName        String @default("ธนาคารกรุงไทย")
+  bankAccountNo   String @default("660-9-55290-8")
+  bankAccountName String @default("นิติบุคคลหมู่บ้าน")
+  bankLogoUrl     String @default("/banks/KTB.png")
 }
 
 enum ProjectType {
-  HOUSING_ESTATE 
-  CONDO          
+  HOUSING_ESTATE
+  CONDO
 }
 
 // ------------------------------------------------------
 // 2. ข้อมูลผู้ใช้งาน และ สิทธิ์ (Users & Roles)
 // ------------------------------------------------------
 model User {
-  id              String   @id @default(cuid())
-  lineId          String?  @unique
-  name            String?
-  phone           String?
-  role            Role     @default(USER)
-  isNotify        Boolean  @default(true)
-  
+  id       String  @id @default(cuid())
+  lineId   String? @unique
+  name     String?
+  phone    String?
+  role     Role    @default(USER)
+  isNotify Boolean @default(true)
+
   residentHouseId String?
-  residentHouse   House?   @relation("HouseResidents", fields: [residentHouseId], references: [id])
-  ownedHouses     House[]  @relation("HouseOwner")
-  
-  createdAt       DateTime @default(now())
+  residentHouse   House?  @relation("HouseResidents", fields: [residentHouseId], references: [id])
+  ownedHouses     House[] @relation("HouseOwner")
+
+  createdAt DateTime @default(now())
 }
 
 enum Role {
@@ -63,174 +63,174 @@ enum Role {
 // 3. ข้อมูลอสังหาริมทรัพย์ (Property Units)
 // ------------------------------------------------------
 model House {
-  id        String   @id @default(cuid())
-  passcode  String?  @unique
-  houseNo   String   @unique
-  houseSize Float    @default(0) 
-  
-  feeType   FeeType  @default(CALCULATED)
-  feeRate   Float    @default(0) 
-  
-  ownerId   String?  
-  owner     User?    @relation("HouseOwner", fields: [ownerId], references: [id])
-  
-  residents User[]   @relation("HouseResidents")
-  
+  id        String  @id @default(cuid())
+  passcode  String? @unique
+  houseNo   String  @unique
+  houseSize Float   @default(0)
+
+  feeType FeeType @default(CALCULATED)
+  feeRate Float   @default(0)
+
+  ownerId String?
+  owner   User?   @relation("HouseOwner", fields: [ownerId], references: [id])
+
+  residents User[] @relation("HouseResidents")
+
   invoices  Invoice[]
   reports   Report[]
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 }
 
 enum FeeType {
-  CALCULATED 
-  FIXED      
+  CALCULATED
+  FIXED
 }
 
 // ------------------------------------------------------
 // 4. ระบบการเงินและบิล (Financials & Invoices)
 // ------------------------------------------------------
 model Invoice {
-  id              String        @id @default(cuid())
-  invoiceNo       String        @unique
-  billingMonth    Int           
-  billingYear     Int           
-  
-  baseAmount      Float         
-  penaltyAmount   Float         @default(0) 
-  totalAmount     Float         
-  
-  paidAmount      Float         @default(0) 
-  
-  dueDate         DateTime      
-  status          InvoiceStatus @default(PENDING)
-  
-  slipUrl         String?       
-  payeeName       String?       
-  
+  id           String @id @default(cuid())
+  invoiceNo    String @unique
+  billingMonth Int
+  billingYear  Int
+
+  baseAmount    Float
+  penaltyAmount Float @default(0)
+  totalAmount   Float
+
+  paidAmount Float @default(0)
+
+  dueDate DateTime
+  status  InvoiceStatus @default(PENDING)
+
+  slipUrl   String?
+  payeeName String?
+
   // 🌟 ฟิลด์สำหรับเก็บข้อมูลจากระบบตรวจสอบสลิปอัตโนมัติ
-  senderName      String?       
-  receiverName    String?       
-  bankRef         String?       
-  
-  transferDate    String?       
-  transferTime    String?       
-  paidAt          DateTime?     
+  senderName   String?
+  receiverName String?
+  bankRef      String?
+
+  transferDate String?
+  transferTime String?
+  paidAt       DateTime?
 
   residentHouseId String
-  house           House         @relation(fields: [residentHouseId], references: [id], onDelete: Cascade)
-  
-  scheduledSendAt DateTime?     
-  isNotified      Boolean       @default(false) 
+  house           House  @relation(fields: [residentHouseId], references: [id], onDelete: Cascade)
 
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  scheduledSendAt DateTime?
+  isNotified      Boolean   @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum InvoiceStatus {
-  PENDING   
-  OVERDUE   
-  CHECKING  
-  PARTIAL   
-  PAID      
-  REJECTED  
+  PENDING
+  OVERDUE
+  CHECKING
+  PARTIAL
+  PAID
+  REJECTED
 }
 
 // ------------------------------------------------------
 // 5. ระบบแจ้งซ่อมและข่าวสาร (Utility & Communication)
 // ------------------------------------------------------
 model Report {
-  id              String   @id @default(cuid())
-  ticketNo        String   @unique  
-  lineId          String   
-  type            String   @default("REPAIR") 
-  
-  category        String   
-  location        String   
-  title           String   
-  description     String   @db.Text 
-  imageUrl        String?  
-  
-  status          String   @default("PENDING") 
-  adminNote       String?  @db.Text 
-  
+  id       String @id @default(cuid())
+  ticketNo String @unique
+  lineId   String
+  type     String @default("REPAIR")
+
+  category    String
+  location    String
+  title       String
+  description String  @db.Text
+  imageUrl    String?
+
+  status    String  @default("PENDING")
+  adminNote String? @db.Text
+
   residentHouseId String
-  house           House    @relation(fields: [residentHouseId], references: [id], onDelete: Cascade)
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt 
+  house           House  @relation(fields: [residentHouseId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // ------------------------------------------------------
 // 6. ข่าวประกาศ (News)
 // ------------------------------------------------------
 model News {
-  id          String    @id @default(cuid())
-  title       String
-  content     String    @db.Text 
-  imageUrl    String?
-  
-  category    String    @default("ทั่วไป") 
-  status      String    @default("DRAFT")   
-  
-  views       Int       @default(0)         
-  recipients  Int       @default(0)         
-  isPinned    Boolean   @default(false)     
-  
-  scheduledAt DateTime?                    
-  
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt         
+  id       String  @id @default(cuid())
+  title    String
+  content  String  @db.Text
+  imageUrl String?
+
+  category String @default("ทั่วไป")
+  status   String @default("DRAFT")
+
+  views      Int     @default(0)
+  recipients Int     @default(0)
+  isPinned   Boolean @default(false)
+
+  scheduledAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // ------------------------------------------------------
 // 7. ระบบบัญชี รายรับ-รายจ่าย (Financial Tracking)
 // ------------------------------------------------------
 enum TransactionType {
-  INCOME  
-  EXPENSE 
+  INCOME
+  EXPENSE
 }
 
 model TransactionCategory {
-  id          String   @id @default(cuid())
-  name        String   
-  type        TransactionType 
-  isFavorite  Boolean  @default(false) 
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String          @id @default(cuid())
+  name       String
+  type       TransactionType
+  isFavorite Boolean         @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   transactions FinancialTransaction[]
 }
 
 model FinancialTransaction {
-  id          String   @id @default(cuid())
-  type        TransactionType 
-  
-  categoryId  String
-  category    TransactionCategory @relation(fields: [categoryId], references: [id])
-  
-  description String?  
-  amount      Float    
-  date        DateTime 
-  recordedBy  String?  
+  id   String          @id @default(cuid())
+  type TransactionType
 
-  receiptUrl  String?  
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  categoryId String
+  category   TransactionCategory @relation(fields: [categoryId], references: [id])
+
+  description String?
+  amount      Float
+  date        DateTime
+  recordedBy  String?
+
+  receiptUrl String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // ------------------------------------------------------
 // 8. ระบบบริหารจัดการบุคลากรและแจ้งเตือน (Personnel & Administration)
 // ------------------------------------------------------
 model AdminReminder {
-  id          String   @id @default(cuid())
-  title       String   
-  dayOfMonth  Int      
-  isActive    Boolean  @default(true) 
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String  @id @default(cuid())
+  title      String
+  dayOfMonth Int
+  isActive   Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum AdminRole {
@@ -241,10 +241,10 @@ enum AdminRole {
 
 model AdminUser {
   id                String    @id @default(cuid())
-  staffCode         String?    @unique // 🌟 รหัสประจำตัวพนักงานที่ระบบสร้างอัตโนมัติ เช่น SP-0001, NITI-0002
-  name              String    // ชื่อและนามสกุลพนักงาน
+  staffCode         String?   @unique // 🌟 รหัสประจำตัวพนักงานที่ระบบสร้างอัตโนมัติ เช่น SP-0001, NITI-0002
+  name              String // ชื่อและนามสกุลพนักงาน
   email             String    @unique // อีเมลสำหรับระบุตัวตนและลงชื่อเข้าใช้งาน
-  password          String    // รหัสผ่านที่ผ่านการเข้ารหัสความปลอดภัยเรียบร้อยแล้ว
+  password          String // รหัสผ่านที่ผ่านการเข้ารหัสความปลอดภัยเรียบร้อยแล้ว
   isDefaultPassword Boolean   @default(true) // 🌟 บ่งชี้สถานะรหัสผ่านเริ่มต้นเพื่อความสะดวกในการจัดการและบังคับเปลี่ยน
   role              AdminRole @default(NITI) // 🌟 สิทธิ์โครงสร้างกลุ่มผู้ใช้งานระบบ
   passwordChangedAt DateTime? // 🌟 วันเวลาที่พนักงานดำเนินการอัปเดตรหัสผ่านใหม่ด้วยตนเอง
