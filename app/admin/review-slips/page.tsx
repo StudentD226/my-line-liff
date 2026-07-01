@@ -11,8 +11,8 @@ import {
 } from 'lucide-react';
 
 // --- Components ---
-// 🌟 Custom Dropdown กำจัด Native OS Select อย่างสมบูรณ์
-const CustomDropdown = ({ value, options, onChange, placeholder }: any) => {
+// 🌟 ส่วนประกอบจำลองอินเทอร์เฟซแบบกำหนดเอง (Custom Dropdown) เพื่อหลีกเลี่ยง Native OS
+const CustomDropdown = React.memo(({ value, options, onChange, placeholder }: any) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -55,19 +55,20 @@ const CustomDropdown = ({ value, options, onChange, placeholder }: any) => {
       )}
     </div>
   );
-};
+});
+CustomDropdown.displayName = "CustomDropdown";
 
 // --- Main Page ---
 export default function AdminInvoiceReview() {
   const { data: session } = useSession();
-  const isSuperAdmin = (session?.user as any)?.role === 'SUPER_ADMIN';
+  const isSuperAdmin = useMemo(() => (session?.user as any)?.role === 'SUPER_ADMIN', [session]);
 
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
-  // Modal States
+  // 🌟 Modal States
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [approveModalOpen, setApproveModalOpen] = useState(false);
   const [targetInvoiceId, setTargetInvoiceId] = useState<string | null>(null);
@@ -76,10 +77,10 @@ export default function AdminInvoiceReview() {
   const REJECT_OPTIONS = useMemo(() => [
     { label: 'จำนวนเงินไม่ถูกต้องตามยอดเรียกเก็บ', value: 'จำนวนเงินไม่ถูกต้องตามยอดเรียกเก็บ' },
     { label: 'ภาพหลักฐานไม่ชัดเจนหรือไม่สามารถตรวจสอบได้', value: 'ภาพหลักฐานไม่ชัดเจนหรือไม่สามารถตรวจสอบได้' },
-    { label: 'หลักฐานการโอนเงินซ้ำซ้อนในระบบ', value: 'หลักฐานการโอนเงินซ้ำซ้อนในระบบ' },
+    { label: 'หลักฐานการดำเนินการซ้ำซ้อนในระบบ', value: 'หลักฐานการดำเนินการซ้ำซ้อนในระบบ' },
     { label: 'บัญชีปลายทางไม่ถูกต้อง', value: 'บัญชีปลายทางไม่ถูกต้อง' },
     { label: 'วันและเวลาดำเนินการไม่สอดคล้องกับหลักฐาน', value: 'วันและเวลาดำเนินการไม่สอดคล้องกับหลักฐาน' },
-    { label: 'เหตุผลอื่นๆ (กรุณาติดต่อผู้ดูแลระบบ)', value: 'เหตุผลอื่นๆ (กรุณาติดต่อผู้ดูแลระบบ)' }
+    { label: 'เหตุผลอื่นๆ (กรุณาติดต่อเจ้าหน้าที่)', value: 'เหตุผลอื่นๆ (กรุณาติดต่อเจ้าหน้าที่)' }
   ], []);
 
   const fetchPendingInvoices = useCallback(async () => {
@@ -93,7 +94,7 @@ export default function AdminInvoiceReview() {
       console.error("Fetch Invoices Error:", error);
       Swal.fire({ 
         icon: 'error', 
-        title: 'เกิดข้อผิดพลาดในการดึงข้อมูล', 
+        title: 'เกิดข้อผิดพลาดในการเชื่อมต่อข้อมูล', 
         text: 'ระบบไม่สามารถประมวลผลข้อมูลหลักฐานการโอนเงินได้ในขณะนี้',
         showCloseButton: true,
         confirmButtonColor: '#376B64',
@@ -122,8 +123,8 @@ export default function AdminInvoiceReview() {
       if (data.success) {
         Swal.fire({
           icon: 'success', 
-          title: 'ดำเนินการเสร็จสิ้น', 
-          text: newStatus === 'PAID' ? 'ระบบได้ทำการบันทึกและปรับยอดชำระเงินเรียบร้อยแล้ว' : 'ระบบได้ทำการปฏิเสธรายการและแจ้งผู้พักอาศัยเรียบร้อยแล้ว',
+          title: 'การดำเนินการเสร็จสิ้น', 
+          text: newStatus === 'PAID' ? 'ระบบได้ทำการบันทึกและปรับยอดชำระเงินเรียบร้อยแล้ว' : 'ระบบได้ทำการปฏิเสธรายการและส่งการแจ้งเตือนเรียบร้อยแล้ว',
           timer: 2500, 
           showCloseButton: true,
           showConfirmButton: false, 
@@ -160,11 +161,31 @@ export default function AdminInvoiceReview() {
     setRejectModalOpen(true);
   }, []);
 
+  // 🌟 TC-TRP-000 ดักจับข้อบังคับการกรอกเหตุผลปฏิเสธรายการ (Validation)
+  const handleConfirmReject = useCallback(() => {
+    if (!rejectReason || rejectReason.trim() === '') {
+      Swal.fire({
+        icon: 'warning',
+        title: 'ข้อมูลไม่ครบถ้วน',
+        text: 'กรุณาระบุเหตุผลการปฏิเสธรายการ เพื่อให้ระบบแจ้งเตือนไปยังผู้พักอาศัยอย่างเป็นทางการ',
+        showCloseButton: true,
+        confirmButtonText: 'รับทราบ',
+        confirmButtonColor: '#376B64',
+        customClass: {
+           popup: 'rounded-[2rem]',
+           confirmButton: 'rounded-xl px-6 py-2.5 font-bold'
+        }
+      });
+      return;
+    }
+    submitUpdateStatus(targetInvoiceId!, 'REJECTED', rejectReason);
+  }, [rejectReason, submitUpdateStatus, targetInvoiceId]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-4">
         <div className="w-12 h-12 border-4 border-slate-200 border-t-[#376B64] rounded-full animate-spin"></div>
-        <p className="text-[#376B64] font-bold tracking-wide animate-pulse">กำลังประมวลผลข้อมูลหลักฐาน...</p>
+        <p className="text-[#376B64] font-bold tracking-wide animate-pulse">กำลังประมวลผลข้อมูลเอกสารหลักฐาน...</p>
       </div>
     );
   }
@@ -176,7 +197,7 @@ export default function AdminInvoiceReview() {
         <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-4 md:gap-5 w-full">
           <div className="w-full md:w-auto">
             <h1 className="text-xl md:text-2xl font-black tracking-tight flex items-center gap-2 sm:gap-3">
-              <ShieldAlert className="text-white shrink-0" size={28} /> การตรวจสอบหลักฐานการชำระเงิน
+              <ShieldAlert className="text-white shrink-0" size={28} /> การตรวจสอบเอกสารการชำระเงิน
             </h1>
             <p className="text-xs text-white/80 mt-1 font-medium flex items-center gap-2">
               รายการรอดำเนินการ <span className="px-2 py-0.5 bg-white text-[#376B64] rounded-full font-bold shadow-sm">{invoices.length}</span>
@@ -184,10 +205,10 @@ export default function AdminInvoiceReview() {
           </div>
           
           <div className="flex flex-row items-center gap-2 w-full md:w-auto">
-            {/* 🌟 แสดงปุ่มนี้เฉพาะ SuperAdmin เพื่อรองรับ RBAC Requirement 3 */}
+            {/* 🌟 RBAC Check: แสดงปุ่มนี้เฉพาะ SuperAdmin */}
             {isSuperAdmin && (
               <button className="flex-1 sm:flex-none items-center justify-center gap-2 bg-white/10 hover:bg-white/20 transition-all px-4 py-2.5 rounded-xl border border-white/20 text-xs font-bold active:scale-95 flex">
-                <History size={16} /> ประวัติระบบ
+                <History size={16} /> ประวัติการทำงานระบบ
               </button>
             )}
             <Link href="/admin/invoices" className="flex-1 sm:flex-none items-center justify-center gap-2 bg-black/20 hover:bg-black/30 transition-all px-4 py-2.5 rounded-xl border border-white/10 text-xs font-bold active:scale-95 flex">
@@ -203,8 +224,8 @@ export default function AdminInvoiceReview() {
             <div className="w-16 h-16 sm:w-20 sm:h-20 bg-[#376B64]/10 text-[#376B64] rounded-full flex items-center justify-center mb-4">
               <CheckCircle size={32} className="sm:w-10 sm:h-10" strokeWidth={2} />
             </div>
-            <p className="text-lg sm:text-xl font-black text-slate-800 mb-1 tracking-tight">ไม่มีหลักฐานรอดำเนินการ</p>
-            <p className="text-xs sm:text-sm text-slate-500 font-medium">การดำเนินการเสร็จสิ้น ระบบไม่พบรายการสลิปที่รอการตรวจสอบ</p>
+            <p className="text-lg sm:text-xl font-black text-slate-800 mb-1 tracking-tight">ไม่มีเอกสารรอดำเนินการ</p>
+            <p className="text-xs sm:text-sm text-slate-500 font-medium">การดำเนินการตรวจสอบเสร็จสิ้น ระบบไม่พบรายการเอกสารในขณะนี้</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -242,7 +263,7 @@ export default function AdminInvoiceReview() {
                     <div className="flex flex-wrap sm:flex-nowrap justify-between items-center bg-[#EBF5FB] px-3 py-2.5 rounded-xl border border-blue-100 shadow-inner gap-1 sm:gap-2">
                       <div className="flex items-center gap-1.5 text-[#0369A1] shrink-0">
                         <Wallet size={14} className="shrink-0" />
-                        <span className="text-[11px] font-bold">ยอดดำเนินการ (หลักฐาน)</span>
+                        <span className="text-[11px] font-bold">ยอดดำเนินการตามเอกสาร</span>
                       </div>
                       <span className="text-base font-black text-[#0369A1] truncate break-all">{(invoice.totalAmount || 0).toLocaleString('th-TH', { minimumFractionDigits: 2 })} ฿</span>
                     </div>
@@ -269,7 +290,7 @@ export default function AdminInvoiceReview() {
                     </div>
                     
                     <div className="flex-1 flex flex-col justify-end pb-1 min-w-0">
-                      <p className="text-[10px] text-slate-400 font-bold mb-0.5 truncate">วันที่ระบุการโอน</p>
+                      <p className="text-[10px] text-slate-400 font-bold mb-0.5 truncate">วันที่ระบุการดำเนินการ</p>
                       <p className="text-xs sm:text-sm font-bold text-slate-700 truncate">{invoice.transferDate}</p>
                       <p className="text-[10px] sm:text-[11px] font-medium text-slate-500 mt-0.5 truncate">เวลา {invoice.transferTime} น.</p>
                     </div>
@@ -294,7 +315,7 @@ export default function AdminInvoiceReview() {
                     ) : (
                       <Check size={14} strokeWidth={3} className="shrink-0" />
                     )}
-                    ยืนยันตรวจสอบ
+                    ยืนยันความถูกต้อง
                   </button>
                 </div>
 
@@ -304,10 +325,11 @@ export default function AdminInvoiceReview() {
         )}
       </div>
 
-      {/* 🌟 Modal 1: ปฏิเสธสลิป (Custom UI ไม่พึ่ง Native OS) */}
+      {/* 🌟 Modal 1: ปฏิเสธสลิป */}
       {rejectModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden relative animate-in zoom-in-95 duration-200 border border-slate-100">
+            {/* 🌟 ปุ่ม X มุมขวาบน */}
             <button onClick={() => setRejectModalOpen(false)} className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors z-10">
               <X size={20} />
             </button>
@@ -315,26 +337,25 @@ export default function AdminInvoiceReview() {
               <div className="w-14 h-14 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mb-5 mx-auto">
                 <XCircle size={28} strokeWidth={2.5} />
               </div>
-              <h2 className="text-xl font-black text-slate-800 text-center mb-2">ปฏิเสธรายการแจ้งชำระเงิน</h2>
-              <p className="text-sm text-slate-500 text-center mb-6">กรุณาระบุสาเหตุการปฏิเสธเพื่อแจ้งให้ผู้พักอาศัยทราบ</p>
+              <h2 className="text-xl font-black text-slate-800 text-center mb-2">ปฏิเสธรายการเอกสาร</h2>
+              <p className="text-sm text-slate-500 text-center mb-6">กรุณาระบุสาเหตุการปฏิเสธเพื่อแจ้งให้ผู้พักอาศัยรับทราบในระบบ</p>
               
               <CustomDropdown 
                 value={rejectReason} 
                 options={REJECT_OPTIONS} 
                 onChange={setRejectReason} 
-                placeholder="คลิกเพื่อเลือกสาเหตุ..." 
+                placeholder="ระบุเหตุผลอ้างอิง..." 
               />
 
-              <div className="flex gap-3 mt-8">
-                {/* 🌟 ปุ่มยืนยันอยู่ซ้ายเสมอ */}
+              <div className="flex flex-row gap-3 mt-8">
+                {/* 🌟 ปุ่มยืนยันฝั่งซ้าย */}
                 <button 
-                  onClick={() => submitUpdateStatus(targetInvoiceId!, 'REJECTED', rejectReason)}
-                  disabled={!rejectReason}
-                  className="flex-1 py-3.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl shadow-md transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  onClick={handleConfirmReject}
+                  className="flex-[2] py-3.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl shadow-md transition-all active:scale-[0.98] text-sm"
                 >
                   ยืนยันการปฏิเสธ
                 </button>
-                {/* 🌟 ปุ่มยกเลิกอยู่ขวาเสมอ */}
+                {/* 🌟 ปุ่มยกเลิกฝั่งขวา */}
                 <button 
                   onClick={() => setRejectModalOpen(false)}
                   className="flex-1 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl transition-all active:scale-[0.98] text-sm"
@@ -351,6 +372,7 @@ export default function AdminInvoiceReview() {
       {approveModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden relative animate-in zoom-in-95 duration-200 border border-slate-100">
+            {/* 🌟 ปุ่ม X มุมขวาบน */}
             <button onClick={() => setApproveModalOpen(false)} className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors z-10">
               <X size={20} />
             </button>
@@ -358,18 +380,18 @@ export default function AdminInvoiceReview() {
               <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-5 mx-auto">
                 <CheckCircle size={28} strokeWidth={2.5} />
               </div>
-              <h2 className="text-xl font-black text-slate-800 text-center mb-2">ยืนยันความถูกต้องของยอดชำระ</h2>
-              <p className="text-sm text-slate-500 text-center mb-8">ระบบจะดำเนินการหักยอดชำระนี้กับรายการค้างชำระที่เก่าที่สุดโดยอัตโนมัติ</p>
+              <h2 className="text-xl font-black text-slate-800 text-center mb-2">ยืนยันความถูกต้องของเอกสาร</h2>
+              <p className="text-sm text-slate-500 text-center mb-8">ระบบจะดำเนินการหักลบยอดชำระนี้เข้ากับรายการหนี้ค้างที่เก่าที่สุดโดยอัตโนมัติ</p>
               
-              <div className="flex gap-3">
-                {/* 🌟 ปุ่มยืนยันอยู่ซ้ายเสมอ ใช้สีธีมหลัก */}
+              <div className="flex flex-row gap-3">
+                {/* 🌟 ปุ่มยืนยันฝั่งซ้าย */}
                 <button 
                   onClick={() => submitUpdateStatus(targetInvoiceId!, 'PAID')}
-                  className="flex-1 py-3.5 bg-[#376B64] hover:bg-[#2A524C] text-white font-bold rounded-xl shadow-md transition-all active:scale-[0.98] text-sm"
+                  className="flex-[2] py-3.5 bg-[#376B64] hover:bg-[#2A524C] text-white font-bold rounded-xl shadow-md transition-all active:scale-[0.98] text-sm"
                 >
-                  ยืนยันการตรวจสอบ
+                  ยืนยันความถูกต้อง
                 </button>
-                {/* 🌟 ปุ่มยกเลิกอยู่ขวาเสมอ */}
+                {/* 🌟 ปุ่มยกเลิกฝั่งขวา */}
                 <button 
                   onClick={() => setApproveModalOpen(false)}
                   className="flex-1 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl transition-all active:scale-[0.98] text-sm"
@@ -382,7 +404,7 @@ export default function AdminInvoiceReview() {
         </div>
       )}
 
-      {/* Image Zoom Modal */}
+      {/* Modal: ขยายเอกสารภาพประกอบ */}
       {zoomedImage && (
         <div 
           className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 cursor-zoom-out animate-in fade-in duration-200"
