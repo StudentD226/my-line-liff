@@ -1,15 +1,7 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
-import { v2 as cloudinary } from 'cloudinary'; // 🌟 1. นำเข้า Cloudinary สำหรับฝั่งแอดมิน
 
 const prisma = new PrismaClient();
-
-// 🌟 2. ตั้งค่าการเชื่อมต่อ Cloudinary ด้วยคีย์ใน .env
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
 
 // ==========================================
 // 1. ดึงข้อมูลรายการแจ้งซ่อมทั้งหมด (GET)
@@ -42,7 +34,7 @@ export async function GET() {
 
       return {
         id: r.id,
-        residentName: reporter?.name || 'ลูกบ้าน',
+        residentName: reporter?.name || 'ผู้พักอาศัย',
         houseNo: r.house?.houseNo || '-',
         title: r.title,
         description: r.description,
@@ -83,32 +75,16 @@ export async function POST(request: Request) {
         } catch (e) {}
     }
 
-    // 🌟 3. ตรวจสอบและอัปโหลดรูปภาพที่แอดมินส่งมาเข้า Cloudinary
-    let finalUpdateImageUrl = null;
-    if (updateImageUrl && updateImageUrl.startsWith('data:image')) {
-      try {
-        // อัปโหลดรูปภาพหลักฐานจากแอดมินไปเก็บไว้ในโฟลเดอร์ admin_updates
-        const uploadResponse = await cloudinary.uploader.upload(updateImageUrl, {
-          folder: 'admin_updates',
-        });
-        // เปลี่ยนมาใช้ลิงก์ URL สั้นๆ จาก Cloudinary แทนสายอักขระ Base64 เดิม
-        finalUpdateImageUrl = uploadResponse.secure_url;
-      } catch (uploadError) {
-        console.error("Admin Cloudinary Upload Fail:", uploadError);
-        return NextResponse.json({ success: false, error: 'อัปโหลดรูปภาพฝั่งแอดมินเข้าระบบ Cloud ไม่สำเร็จ' }, { status: 500 });
-      }
-    } else {
-      // ถ้ารูปที่ส่งมาไม่ใช่ Base64 (อาจเป็นลิงก์เดิมอยู่แล้ว) ให้ใช้ค่านั้นต่อได้เลย
-      finalUpdateImageUrl = updateImageUrl || null;
-    }
+    // รับลิงก์รูปภาพจาก Frontend โดยตรง (หน้าเว็บอัปโหลดผ่าน Cloudinary มาให้เรียบร้อยแล้ว)
+    const finalUpdateImageUrl = updateImageUrl || null;
 
-    // 🌟 ยัดลิงก์รูปภาพสั้นลงไปในประวัติ Timeline ข้อใหม่ล่าสุด
+    // บันทึกข้อมูลลงในประวัติ Timeline ข้อใหม่ล่าสุด
     extraData.expectedDate = expectedDate || extraData.expectedDate;
     extraData.history.push({
         status: status,
         date: new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' }),
         note: note || 'อัปเดตสถานะโดยนิติบุคคล',
-        imageUrl: finalUpdateImageUrl // บันทึกลิงก์รูปภาพสั้นสะอาดลงตารางโครงสร้าง JSON ของระบบ
+        imageUrl: finalUpdateImageUrl 
     });
 
     // บันทึกลงฐานข้อมูล
@@ -120,23 +96,23 @@ export async function POST(request: Request) {
         }
     });
 
-    // 🌟 ยิง Flex Message เข้า LINE
+    // ยิง Flex Message เข้า LINE
     if (sendLine && existingReport.lineId) {
         const LINE_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN;
         
         if (LINE_TOKEN) {
             let headerBgColor = "#376B64"; 
             let statusTextColor = "#376B64";
-            let statusTextTh = "กำลังดำเนินการ 🔧";
+            let statusTextTh = "กำลังดำเนินการ";
 
             if (status === 'PENDING') {
               headerBgColor = "#f97316"; 
               statusTextColor = "#ea580c";
-              statusTextTh = "รอดำเนินการ ⏳";
+              statusTextTh = "รอดำเนินการ";
             } else if (status === 'COMPLETED') {
               headerBgColor = "#10b981"; 
               statusTextColor = "#059669";
-              statusTextTh = "เสร็จสิ้นเรียบร้อย ✅";
+              statusTextTh = "เสร็จสิ้นเรียบร้อย";
             }
 
             const flexBodyContents: any[] = [
@@ -227,7 +203,7 @@ export async function POST(request: Request) {
               }
             };
 
-            // 🌟 จุดเปลี่ยนสำคัญ: แสดงรูปภาพที่อัปเดตล่าสุดของแอดมินบนตัว Flex Message
+            // แสดงรูปภาพที่อัปเดตล่าสุดของแอดมินบนตัว Flex Message
             const displayImageUrl = finalUpdateImageUrl || existingReport.imageUrl;
             
             if (displayImageUrl) {

@@ -5,7 +5,7 @@ import {
   ChevronLeft, Droplet, Zap, MoreHorizontal, MapPin, 
   ClipboardList, MessageSquareText, Camera, Send, 
   AlertCircle, Wrench, Info, Image as ImageIcon, 
-  Shield, Building, X, Clock, CheckCircle2, CheckCircle, Circle
+  Shield, Building, X, Clock, CheckCircle2, CheckCircle, Circle, Trash2
 } from "lucide-react";
 import liff from "@line/liff"; 
 import Swal from "sweetalert2"; 
@@ -17,7 +17,9 @@ const STATUS_CONFIG: Record<string, any> = {
 };
 
 export default function MaintenancePage() {
+  // 🌟 โครงสร้าง RBAC (จำลองการดึง Role ของผู้ใช้ปัจจุบัน)
   const [userRole, setUserRole] = useState<'RESIDENT' | 'NITI' | 'SUPER_ADMIN'>('RESIDENT');
+  
   const [activeView, setActiveView] = useState<'REPAIR' | 'INFORM' | 'HISTORY'>('REPAIR');
 
   const [selectedCategory, setSelectedCategory] = useState("ประปา");
@@ -41,6 +43,19 @@ export default function MaintenancePage() {
     { id: "ความปลอดภัย", label: "ความปลอดภัย", icon: Shield, colorClass: "text-rose-600", bgClass: "bg-rose-50", borderClass: "border-rose-200" },
     { id: "อื่นๆ", label: "เรื่องอื่นๆ", icon: MoreHorizontal, colorClass: "text-slate-600", bgClass: "bg-slate-50", borderClass: "border-slate-200" },
   ], []);
+
+  // 🌟 การตั้งค่ามาตรฐานสำหรับ SweetAlert2 (ให้ปุ่มยืนยันอยู่ซ้ายมือเสมอ)
+  const swalConfig = useMemo(() => ({
+    showCloseButton: true,
+    confirmButtonColor: '#376B64',
+    confirmButtonText: 'ตกลง',
+    customClass: { 
+      popup: 'rounded-[2rem] w-auto max-w-[90vw]', 
+      actions: 'flex flex-row w-full gap-3 px-4 justify-start', // จัดซ้าย
+      confirmButton: 'rounded-xl px-6 py-2.5 font-bold mr-auto bg-[#376B64] hover:bg-[#2a524c]', // ดันปุ่มไปซ้ายสุด
+      closeButton: 'text-slate-400 hover:text-rose-500 focus:outline-none'
+    }
+  }), []);
 
   useEffect(() => {
     const initLiff = async () => {
@@ -89,12 +104,10 @@ export default function MaintenancePage() {
     if (file) {
       if (file.size > 10 * 1024 * 1024) {
         Swal.fire({ 
+          ...swalConfig,
           icon: 'warning', 
           title: 'ขนาดไฟล์เกินกำหนด', 
           text: 'กรุณาเลือกไฟล์ภาพขนาดไม่เกิน 10MB', 
-          confirmButtonText: 'ตกลง',
-          confirmButtonColor: '#376B64', 
-          customClass: { popup: 'rounded-[2rem]', actions: 'w-full !justify-start px-4', confirmButton: 'mr-auto' } 
         });
         return;
       }
@@ -105,7 +118,7 @@ export default function MaintenancePage() {
       };
       reader.readAsDataURL(file);
     }
-  }, []);
+  }, [swalConfig]);
 
   const removeImage = useCallback(() => {
     setSelectedFile(null);
@@ -119,7 +132,7 @@ export default function MaintenancePage() {
         await liff.sendMessages([
           {
             type: "flex",
-            altText: "แจ้งข้อมูลสำเร็จ",
+            altText: "ระบบได้รับข้อมูลการแจ้งเรื่องของท่านเรียบร้อยแล้ว",
             contents: {
               type: "bubble",
               size: "mega",
@@ -173,24 +186,20 @@ export default function MaintenancePage() {
   const handleSubmit = useCallback(async () => {
     if (!location || !title || !details) {
       Swal.fire({ 
+        ...swalConfig,
         icon: 'warning', 
         title: 'ข้อมูลไม่ครบถ้วน', 
         text: 'กรุณาระบุสถานที่ หัวข้อ และรายละเอียดให้ครบถ้วนก่อนส่งข้อมูล', 
-        confirmButtonText: 'ตกลง',
-        confirmButtonColor: '#376B64', 
-        customClass: { popup: 'rounded-[2rem]', actions: 'w-full !justify-start px-4', confirmButton: 'mr-auto' }
       });
       return;
     }
 
     if (!lineId) {
       Swal.fire({ 
+        ...swalConfig,
         icon: 'error', 
         title: 'ไม่พบข้อมูลยืนยันตัวตน', 
         text: 'กรุณาเข้าใช้งานระบบผ่านแอปพลิเคชัน LINE', 
-        confirmButtonText: 'ตกลง',
-        confirmButtonColor: '#376B64', 
-        customClass: { popup: 'rounded-[2rem]', actions: 'w-full !justify-start px-4', confirmButton: 'mr-auto' } 
       });
       return;
     }
@@ -201,11 +210,12 @@ export default function MaintenancePage() {
     try {
       if (selectedFile) {
         Swal.fire({
+          ...swalConfig,
           title: 'กำลังอัปโหลดข้อมูล',
           text: 'กรุณารอสักครู่ ระบบกำลังดำเนินการบันทึกไฟล์ภาพประกอบ',
           allowOutsideClick: false,
           showConfirmButton: false,
-          customClass: { popup: 'rounded-[2rem]' },
+          showCloseButton: false,
           didOpen: () => {
             Swal.showLoading();
           }
@@ -237,11 +247,12 @@ export default function MaintenancePage() {
         }
       } else {
         Swal.fire({
+          ...swalConfig,
           title: 'กำลังบันทึกข้อมูล',
           text: 'กรุณารอสักครู่',
           allowOutsideClick: false,
           showConfirmButton: false,
-          customClass: { popup: 'rounded-[2rem]' },
+          showCloseButton: false,
           didOpen: () => {
             Swal.showLoading();
           }
@@ -268,12 +279,10 @@ export default function MaintenancePage() {
         await sendFlexMessage(data.ticket);
 
         Swal.fire({ 
+          ...swalConfig,
           icon: 'success', 
           title: 'ส่งข้อมูลสำเร็จ', 
           text: 'ระบบได้รับข้อมูลการแจ้งเรื่องของท่านเรียบร้อยแล้ว',
-          confirmButtonText: 'ตกลง',
-          confirmButtonColor: '#376B64',
-          customClass: { popup: 'rounded-[2rem]', actions: 'w-full !justify-start px-4', confirmButton: 'mr-auto' }
         }).then(() => {
           
           const newTicketData = {
@@ -303,27 +312,23 @@ export default function MaintenancePage() {
         });
       } else {
         Swal.fire({ 
+          ...swalConfig,
           icon: 'error', 
           title: 'เกิดข้อผิดพลาดทางระบบ', 
           text: data.error || 'ไม่สามารถดำเนินการส่งข้อมูลได้', 
-          confirmButtonText: 'ตกลง',
-          confirmButtonColor: '#376B64', 
-          customClass: { popup: 'rounded-[2rem]', actions: 'w-full !justify-start px-4', confirmButton: 'mr-auto' } 
         });
       }
     } catch (error: any) {
       Swal.fire({ 
+        ...swalConfig,
         icon: 'error', 
         title: 'การดำเนินการล้มเหลว', 
         text: error.message || 'กรุณาตรวจสอบสัญญาณอินเทอร์เน็ตและลองใหม่อีกครั้ง', 
-        confirmButtonText: 'ตกลง',
-        confirmButtonColor: '#376B64', 
-        customClass: { popup: 'rounded-[2rem]', actions: 'w-full !justify-start px-4', confirmButton: 'mr-auto' } 
       });
     } finally {
       setIsSubmitting(false);
     }
-  }, [location, title, details, lineId, selectedFile, activeView, selectedCategory, removeImage]);
+  }, [location, title, details, lineId, selectedFile, activeView, selectedCategory, removeImage, swalConfig]);
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-800 pb-24">
@@ -331,7 +336,7 @@ export default function MaintenancePage() {
         <button onClick={() => liff.closeWindow()} className="p-1.5 hover:bg-white/20 rounded-xl transition">
           <ChevronLeft size={24} />
         </button>
-        <h1 className="flex-1 text-center text-base font-bold mr-8">ศูนย์รับเรื่อง</h1>
+        <h1 className="flex-1 text-center text-base font-bold mr-8">ศูนย์บริการผู้พักอาศัย</h1>
       </header>
 
       <main className="p-4 max-w-md mx-auto space-y-4">
@@ -341,31 +346,25 @@ export default function MaintenancePage() {
             onClick={() => setActiveView("REPAIR")}
             className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${activeView === "REPAIR" ? "bg-[#376B64]/10 text-[#376B64] shadow-sm border border-[#376B64]/20" : "text-slate-500 hover:bg-slate-50"}`}
           >
-            <Wrench size={16} /> แจ้งซ่อม
+            <Wrench size={16} /> แจ้งซ่อมบำรุง
           </button>
           <button 
             onClick={() => setActiveView("INFORM")}
             className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${activeView === "INFORM" ? "bg-blue-50 text-blue-700 shadow-sm border border-blue-100" : "text-slate-500 hover:bg-slate-50"}`}
           >
-            <Info size={16} /> แจ้งเพื่อทราบ
+            <Info size={16} /> แจ้งข้อมูลทั่วไป
           </button>
           <button 
             onClick={() => setActiveView("HISTORY")}
             className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${activeView === "HISTORY" ? "bg-amber-50 text-amber-700 shadow-sm border border-amber-100" : "text-slate-500 hover:bg-slate-50"}`}
           >
-            <Clock size={16} /> ประวัติ
+            <Clock size={16} /> ประวัติการแจ้ง
           </button>
         </div>
 
         {(activeView === 'REPAIR' || activeView === 'INFORM') && (
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
             
-            {userRole === 'SUPER_ADMIN' && (
-              <div className="bg-rose-50 text-rose-700 p-3 rounded-xl border border-rose-200 text-xs font-bold flex items-center gap-2">
-                <Shield size={16} /> โหมดสำหรับผู้ดูแลระบบสูงสุด
-              </div>
-            )}
-
             <div className="space-y-2">
               <div className="flex items-center text-slate-700 font-bold text-xs uppercase tracking-wide px-1">
                 <AlertCircle size={16} className="mr-1.5 text-[#376B64]" /> หมวดหมู่
@@ -395,8 +394,8 @@ export default function MaintenancePage() {
               </div>
               <input
                 type="text" value={location} onChange={(e) => setLocation(e.target.value)}
-                placeholder="ระบุสถานที่ เช่น สวนส่วนกลาง, หน้าบ้านเลขที่..."
-                className="w-full border-2 border-slate-200 rounded-xl p-3 text-sm font-semibold focus:outline-none focus:border-[#376B64] focus:ring-2 focus:ring-[#376B64]/20 bg-white transition-all"
+                placeholder="ระบุสถานที่ เช่น สวนส่วนกลาง, อาคารคลับเฮาส์..."
+                className="w-full border-2 border-slate-200 rounded-xl p-3 text-sm font-semibold focus:outline-none focus:border-[#376B64] focus:ring-2 focus:ring-[#376B64]/20 bg-white transition-all appearance-none"
               />
             </div>
 
@@ -407,7 +406,7 @@ export default function MaintenancePage() {
               <input
                 type="text" value={title} onChange={(e) => setTitle(e.target.value)}
                 placeholder="ระบุหัวข้อเรื่องที่ต้องการแจ้ง (โดยสังเขป)"
-                className="w-full border-2 border-slate-200 rounded-xl p-3 text-sm font-semibold focus:outline-none focus:border-[#376B64] focus:ring-2 focus:ring-[#376B64]/20 bg-white transition-all"
+                className="w-full border-2 border-slate-200 rounded-xl p-3 text-sm font-semibold focus:outline-none focus:border-[#376B64] focus:ring-2 focus:ring-[#376B64]/20 bg-white transition-all appearance-none"
               />
             </div>
 
@@ -419,7 +418,7 @@ export default function MaintenancePage() {
                 <textarea
                   rows={4} maxLength={500} value={details} onChange={(e) => setDetails(e.target.value)}
                   placeholder="โปรดอธิบายรายละเอียดเพิ่มเติม เพื่อให้นิติบุคคลตรวจสอบได้อย่างถูกต้อง"
-                  className="w-full border-2 border-slate-200 rounded-xl p-3 text-sm font-medium focus:outline-none focus:border-[#376B64] focus:ring-2 focus:ring-[#376B64]/20 bg-white resize-none transition-all custom-scrollbar"
+                  className="w-full border-2 border-slate-200 rounded-xl p-3 text-sm font-medium focus:outline-none focus:border-[#376B64] focus:ring-2 focus:ring-[#376B64]/20 bg-white resize-none transition-all custom-scrollbar appearance-none"
                 ></textarea>
                 <div className="absolute bottom-3 right-3 text-[10px] text-slate-400 font-bold bg-white/80 px-1 rounded">
                   {details.length}/500
@@ -428,7 +427,7 @@ export default function MaintenancePage() {
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-center text-gray-800 font-semibold text-xs uppercase tracking-wide px-1">
+              <div className="flex items-center text-slate-800 font-semibold text-xs uppercase tracking-wide px-1">
                 <Camera size={16} className="mr-1.5 text-[#376B64]" /> แนบรูปภาพประกอบ
               </div>
               <input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
@@ -441,9 +440,9 @@ export default function MaintenancePage() {
                   </button>
                 </div>
               ) : (
-                <button onClick={() => fileInputRef.current?.click()} className="w-full border-2 border-dashed border-gray-300 rounded-xl py-6 flex flex-col items-center justify-center bg-white text-gray-500 hover:border-[#376B64]/50 hover:bg-[#376B64]/5 active:scale-[0.99] transition-all">
+                <button onClick={() => fileInputRef.current?.click()} className="w-full border-2 border-dashed border-slate-300 rounded-xl py-6 flex flex-col items-center justify-center bg-white text-slate-500 hover:border-[#376B64]/50 hover:bg-[#376B64]/5 active:scale-[0.99] transition-all">
                   <ImageIcon size={24} className="mb-2 text-[#376B64]/70" />
-                  <span className="text-xs font-semibold text-slate-700">กดเพื่อถ่ายภาพ หรือเลือกรูปจากอุปกรณ์</span>
+                  <span className="text-xs font-semibold text-slate-700">แนบรูปภาพ หรือเลือกจากอุปกรณ์</span>
                   <span className="text-[10px] text-slate-400 mt-1">(รองรับขนาดสูงสุด 10MB)</span>
                 </button>
               )}
@@ -467,7 +466,7 @@ export default function MaintenancePage() {
                 <div 
                   key={ticket.id} 
                   onClick={() => setSelectedTicket(ticket)}
-                  className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 active:scale-[0.98] transition-transform cursor-pointer hover:shadow-md"
+                  className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 active:scale-[0.98] transition-transform cursor-pointer hover:shadow-md relative overflow-hidden"
                 >
                   <div className="flex justify-between items-start mb-2">
                     <span className="text-xs font-bold text-slate-400">รหัสอ้างอิง: #{ticket.ticketNo || ticket.id.slice(-6).toUpperCase()}</span>
@@ -482,6 +481,17 @@ export default function MaintenancePage() {
                     <span className="flex items-center gap-1"><MapPin size={12}/> {ticket.category}</span>
                     <span>{ticket.reportedDate}</span>
                   </div>
+
+                  {/* 🌟 แสดงฟังก์ชันเฉพาะ Super Admin ตามระบบ RBAC */}
+                  {userRole === 'SUPER_ADMIN' && (
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); console.log("Super Admin Action: ลบคำร้อง"); }}
+                      className="absolute bottom-3 right-3 p-1.5 bg-rose-50 text-rose-600 rounded-full hover:bg-rose-100 transition-colors"
+                      title="ลบคำร้อง (เฉพาะผู้ดูแลระบบสูงสุด)"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
                 </div>
               ))
             )}
@@ -521,7 +531,7 @@ export default function MaintenancePage() {
                 <p className="text-xs text-slate-600 leading-relaxed mb-3">{selectedTicket.description}</p>
                 {selectedTicket.imageUrl && (
                   /* eslint-disable-next-line @next/next/no-img-element */
-                  <img src={selectedTicket.imageUrl} loading="lazy" alt="หลักฐานการแจ้งเรื่อง" className="w-full h-32 object-cover rounded-xl border border-slate-200 shadow-sm" />
+                  <img src={selectedTicket.imageUrl} loading="lazy" alt="ภาพประกอบการแจ้งเรื่อง" className="w-full h-32 object-cover rounded-xl border border-slate-200 shadow-sm" />
                 )}
               </div>
               <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2 text-sm"><Clock size={16} className="text-[#376B64]" /> ความคืบหน้าการดำเนินงาน</h3>

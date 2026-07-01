@@ -1,30 +1,20 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
-import { v2 as cloudinary } from 'cloudinary'; // 🌟 1. นำเข้า Cloudinary
 
 const prisma = new PrismaClient();
 
-// 🌟 2. ตั้งค่าการเชื่อมต่อ Cloudinary ด้วยคีย์ใน .env
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
-
 // ========================================================
-// 🌟 1. [GET] ระบบดึงประวัติการแจ้งเรื่องของลูกบ้าน
+// 🌟 1. [GET] ระบบดึงประวัติการแจ้งเรื่องของผู้พักอาศัย
 // ========================================================
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const lineId = searchParams.get('lineId');
 
-    // ถ้าไม่มี LineID ส่งมา จะไม่คืนค่าอะไรกลับไป (ความปลอดภัย)
     if (!lineId) {
-      return NextResponse.json({ success: false, error: 'ไม่พบ lineId' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'ข้อมูลยืนยันตัวตนไม่ครบถ้วน' }, { status: 400 });
     }
 
-    // ดึงเฉพาะรายการที่ตรงกับ LineID ของลูกบ้านคนนั้นๆ เรียงจากใหม่ไปเก่า
     const rawReports = await prisma.report.findMany({
       where: { lineId: lineId },
       orderBy: { createdAt: 'desc' },
@@ -48,7 +38,7 @@ export async function GET(request: Request) {
         reportedDate: r.createdAt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }),
         expectedDate: extraData.expectedDate,
         history: extraData.history,
-        imageUrl: r.imageUrl, // 🌟 ตรงนี้จะคืนค่าเป็น URL ของ Cloudinary แทน Base64 แล้ว
+        imageUrl: r.imageUrl, 
       };
     });
 
@@ -60,47 +50,29 @@ export async function GET(request: Request) {
 }
 
 // ========================================================
-// 🌟 2. [POST] ระบบบันทึกการแจ้งเรื่องใหม่ (พร้อมอัปโหลดรูป)
+// 🌟 2. [POST] ระบบบันทึกการแจ้งเรื่องใหม่
 // ========================================================
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { lineId, type, category, location, title, description, imageUrl } = body;
 
-    // 1. หาข้อมูลบ้านที่ลูกบ้านคนนี้อยู่
     const user = await prisma.user.findUnique({
       where: { lineId: lineId },
       include: { residentHouse: true }
     });
 
     if (!user || !user.residentHouse) {
-      return NextResponse.json({ success: false, error: 'ไม่พบข้อมูลบ้านในระบบ กรุณาลงทะเบียนข้อมูลบ้านก่อนครับ' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'ไม่พบข้อมูลบ้านในระบบ กรุณาตรวจสอบข้อมูลการลงทะเบียน' }, { status: 400 });
     }
 
-    // 🌟 3. คัดแยกและอัปโหลดรูปเข้า Cloudinary
-    let databaseImageUrl = null;
-    
-    // ตรวจสอบว่ามีการแนบรูปมา และเป็นไฟล์ Base64 จริงๆ
-    if (imageUrl && imageUrl.startsWith('data:image')) {
-      try {
-        // ยิงรูปขึ้น Cloudinary ไปเก็บไว้ในโฟลเดอร์ village_maintenance
-        const uploadResponse = await cloudinary.uploader.upload(imageUrl, {
-          folder: 'village_maintenance',
-        });
-        // สกัดเอาลิงก์ URL ปลอดภัยมาใช้งาน
-        databaseImageUrl = uploadResponse.secure_url;
-      } catch (uploadError) {
-        console.error("Cloudinary Upload Fail:", uploadError);
-        return NextResponse.json({ success: false, error: 'อัปโหลดรูปภาพไม่สำเร็จ กรุณาลองใหม่' }, { status: 500 });
-      }
-    }
+    // 🌟 รับลิงก์รูปภาพจาก Frontend โดยตรง
+    let databaseImageUrl = imageUrl || null;
 
-    // 2. สร้างเลขที่แจ้งซ่อม (Ticket No) แบบสุ่ม
     const dateStr = new Date().toISOString().slice(2, 10).replace(/-/g, '');
     const randomCode = Math.floor(1000 + Math.random() * 9000);
     const ticketNo = `MT${dateStr}-${randomCode}`;
 
-    // 3. สร้าง History เริ่มต้น เพื่อให้สอดคล้องกับระบบ Timeline ฝั่ง Admin
     const initialDate = new Date().toLocaleDateString('th-TH', { 
         day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' 
     });
@@ -116,7 +88,6 @@ export async function POST(req: Request) {
         ]
     });
 
-    // 4. บันทึกเข้าตาราง Report
     const newReport = await prisma.report.create({
       data: {
         ticketNo: ticketNo,
@@ -126,7 +97,7 @@ export async function POST(req: Request) {
         location: location,
         title: title,
         description: description,
-        imageUrl: databaseImageUrl, // 🌟 เซฟลิงก์สั้นๆ ลง Database (ประหยัดพื้นที่ 99%)
+        imageUrl: databaseImageUrl, 
         residentHouseId: user.residentHouse.id,
         status: "PENDING",
         adminNote: initialAdminNote 
