@@ -17,8 +17,8 @@ const STATUS_CONFIG: Record<string, any> = {
 };
 
 export default function MaintenancePage() {
-  // 🌟 โครงสร้าง RBAC (จำลองการดึง Role ของผู้ใช้ปัจจุบัน)
-  const [userRole, setUserRole] = useState<'RESIDENT' | 'NITI' | 'SUPER_ADMIN'>('RESIDENT');
+  // โครงสร้าง RBAC (จำลองการดึง Role ของผู้ใช้ปัจจุบัน)
+  const [userRole] = useState<'RESIDENT' | 'NITI' | 'SUPER_ADMIN'>('RESIDENT');
   
   const [activeView, setActiveView] = useState<'REPAIR' | 'INFORM' | 'HISTORY'>('REPAIR');
 
@@ -44,7 +44,7 @@ export default function MaintenancePage() {
     { id: "อื่นๆ", label: "เรื่องอื่นๆ", icon: MoreHorizontal, colorClass: "text-slate-600", bgClass: "bg-slate-50", borderClass: "border-slate-200" },
   ], []);
 
-  // 🌟 การตั้งค่ามาตรฐานสำหรับ SweetAlert2 (ให้ปุ่มยืนยันอยู่ซ้ายมือเสมอ)
+  // การตั้งค่ามาตรฐานสำหรับ SweetAlert2 (ให้ปุ่มยืนยันอยู่ซ้ายมือเสมอ)
   const swalConfig = useMemo(() => ({
     showCloseButton: true,
     confirmButtonColor: '#376B64',
@@ -482,7 +482,7 @@ export default function MaintenancePage() {
                     <span>{ticket.reportedDate}</span>
                   </div>
 
-                  {/* 🌟 แสดงฟังก์ชันเฉพาะ Super Admin ตามระบบ RBAC */}
+                  {/* แสดงถังขยะเฉพาะ Super Admin ด้วยระบบ RBAC */}
                   {userRole === 'SUPER_ADMIN' && (
                     <button 
                       onClick={(e) => { e.stopPropagation(); console.log("Super Admin Action: ลบคำร้อง"); }}

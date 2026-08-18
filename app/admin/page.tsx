@@ -6,7 +6,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid 
 } from "recharts";
 import { 
-  TrendingUp, TrendingDown, Wallet, Calendar, Loader2, AlertTriangle, AlertCircle, BarChart3, PieChart as PieIcon
+  TrendingUp, TrendingDown, Wallet, Calendar, Loader2, AlertTriangle, AlertCircle, BarChart3, PieChart as PieIcon, PartyPopper
 } from "lucide-react";
 
 const COLORS = [
@@ -21,7 +21,7 @@ export default function AdminDashboardHome() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   
-  // 🌟 State สำหรับสลับแท็บกราฟ (expense = กราฟวงกลมรายจ่าย, debt = กราฟแท่งหนี้ค้าง)
+  // State สำหรับสลับแท็บกราฟ (expense = กราฟวงกลมรายจ่าย, debt = กราฟแท่งหนี้ค้าง)
   const [activeTab, setActiveTab] = useState<"expense" | "debt">("expense");
 
   const yearOptions = useMemo(() => {
@@ -172,7 +172,7 @@ export default function AdminDashboardHome() {
           </div>
         </div>
 
-        {/* 🌟 ฝั่งขวา: กล่องแสดงกราฟ (ใช้ระบบแท็บในกล่องเดิม ไม่เพิ่มพื้นที่ลงด้านล่าง) */}
+        {/* ฝั่งขวา: กล่องแสดงกราฟ (ใช้ระบบแท็บในกล่องเดิม ไม่เพิ่มพื้นที่ลงด้านล่าง) */}
         <div className="lg:col-span-2 bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col w-full overflow-hidden justify-between">
           
           {/* Header คอนโทรลแท็บสลับกราฟ (คุมโทนสี #376b64 สวยๆ) */}
@@ -208,7 +208,7 @@ export default function AdminDashboardHome() {
           {/* Area วาดกราฟ: จะสลับข้อมูลตามแท็บที่แอดมินกดเลือก */}
           <div className="flex-1 min-h-[300px] sm:min-h-[340px] flex items-center justify-center relative w-full pt-4">
             
-            {/* 📊 แท็บที่ 1: กราฟวงกลมรายจ่าย */}
+            {/* แท็บที่ 1: กราฟวงกลมรายจ่าย */}
             {activeTab === "expense" && (
               <div className="w-full h-full animate-in fade-in duration-200">
                 {pieData.length > 0 ? (
@@ -233,7 +233,7 @@ export default function AdminDashboardHome() {
               </div>
             )}
 
-            {/* 📊 แท็บที่ 2: กราฟแท่งหนี้ค้างชำระ */}
+            {/* แท็บที่ 2: กราฟแท่งหนี้ค้างชำระ */}
             {activeTab === "debt" && (
               <div className="w-full h-full animate-in fade-in duration-200">
                 {topDebtorsData.length > 0 ? (
@@ -252,7 +252,7 @@ export default function AdminDashboardHome() {
                   </ResponsiveContainer>
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full w-full text-emerald-500 font-bold text-sm bg-emerald-50/50 rounded-xl p-6 border border-emerald-100">
-                    <span className="text-xl mb-1">🎉</span>
+                    <PartyPopper className="text-emerald-500 mb-2" size={32} />
                     ไม่มีข้อมูลหนี้ค้างชำระในระบบ
                   </div>
                 )}

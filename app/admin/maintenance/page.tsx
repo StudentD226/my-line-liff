@@ -42,7 +42,7 @@ const STATUS_CONFIG = {
 };
 
 export default function AdminRepairsManagement() {
-  // 🌟 โครงสร้าง RBAC (Role-Based Access Control) 
+  // โครงสร้าง RBAC (Role-Based Access Control)
   const [userRole, setUserRole] = useState<'NITI' | 'SUPER_ADMIN'>('SUPER_ADMIN');
 
   const [tickets, setTickets] = useState<RepairTicket[]>([]);
@@ -578,7 +578,7 @@ export default function AdminRepairsManagement() {
                 </div>
               </div>
 
-              {/* 🌟 จัดตำแหน่งปุ่ม: บันทึกอยู่ซ้าย ยกเลิกอยู่ขวา */}
+              {/* จัดตำแหน่งปุ่ม: ยืนยันซ้าย ยกเลิกขวา */}
               <div className="mt-8 flex flex-row gap-3 pt-5 border-t border-slate-100 justify-start">
                 <button 
                   onClick={handleSaveUpdate} 

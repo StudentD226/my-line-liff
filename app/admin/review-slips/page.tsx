@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 
 // --- Components ---
-// 🌟 ส่วนประกอบจำลองอินเทอร์เฟซแบบกำหนดเอง (Custom Dropdown) เพื่อหลีกเลี่ยง Native OS
+// ส่วนประกอบของปฏิทินที่รองรับหลายภาษา (Custom Dropdown) หลีกเลี่ยง Native OS
 const CustomDropdown = React.memo(({ value, options, onChange, placeholder }: any) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -68,7 +68,7 @@ export default function AdminInvoiceReview() {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
-  // 🌟 Modal States
+  // Modal States
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [approveModalOpen, setApproveModalOpen] = useState(false);
   const [targetInvoiceId, setTargetInvoiceId] = useState<string | null>(null);
@@ -161,7 +161,7 @@ export default function AdminInvoiceReview() {
     setRejectModalOpen(true);
   }, []);
 
-  // 🌟 TC-TRP-000 ดักจับข้อบังคับการกรอกเหตุผลปฏิเสธรายการ (Validation)
+  // TC-TRP-000 ดักจับข้อผิดพลาดกรณีไม่ระบุเหตุผลปฏิเสธ (Validation)
   const handleConfirmReject = useCallback(() => {
     if (!rejectReason || rejectReason.trim() === '') {
       Swal.fire({
@@ -205,7 +205,7 @@ export default function AdminInvoiceReview() {
           </div>
           
           <div className="flex flex-row items-center gap-2 w-full md:w-auto">
-            {/* 🌟 RBAC Check: แสดงปุ่มนี้เฉพาะ SuperAdmin */}
+            {/* RBAC Check: แสดงเฉพาะ SuperAdmin */}
             {isSuperAdmin && (
               <button className="flex-1 sm:flex-none items-center justify-center gap-2 bg-white/10 hover:bg-white/20 transition-all px-4 py-2.5 rounded-xl border border-white/20 text-xs font-bold active:scale-95 flex">
                 <History size={16} /> ประวัติการทำงานระบบ
@@ -325,11 +325,11 @@ export default function AdminInvoiceReview() {
         )}
       </div>
 
-      {/* 🌟 Modal 1: ปฏิเสธสลิป */}
+      {/* Modal 1: ปฏิเสธสลิป */}
       {rejectModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden relative animate-in zoom-in-95 duration-200 border border-slate-100">
-            {/* 🌟 ปุ่ม X มุมขวาบน */}
+            {/* ปุ่ม X มุมขวาบน */}
             <button onClick={() => setRejectModalOpen(false)} className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors z-10">
               <X size={20} />
             </button>
@@ -348,14 +348,14 @@ export default function AdminInvoiceReview() {
               />
 
               <div className="flex flex-row gap-3 mt-8">
-                {/* 🌟 ปุ่มยืนยันฝั่งซ้าย */}
+                {/* ปุ่มยืนยันฝั่งซ้าย */}
                 <button 
                   onClick={handleConfirmReject}
                   className="flex-[2] py-3.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl shadow-md transition-all active:scale-[0.98] text-sm"
                 >
                   ยืนยันการปฏิเสธ
                 </button>
-                {/* 🌟 ปุ่มยกเลิกฝั่งขวา */}
+                {/* ปุ่มยกเลิกฝั่งขวา */}
                 <button 
                   onClick={() => setRejectModalOpen(false)}
                   className="flex-1 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl transition-all active:scale-[0.98] text-sm"
@@ -368,11 +368,11 @@ export default function AdminInvoiceReview() {
         </div>
       )}
 
-      {/* 🌟 Modal 2: ยืนยันสลิป */}
+      {/* Modal 2: ยืนยันสลิป */}
       {approveModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden relative animate-in zoom-in-95 duration-200 border border-slate-100">
-            {/* 🌟 ปุ่ม X มุมขวาบน */}
+            {/* ปุ่ม X มุมขวาบน */}
             <button onClick={() => setApproveModalOpen(false)} className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors z-10">
               <X size={20} />
             </button>
@@ -384,14 +384,14 @@ export default function AdminInvoiceReview() {
               <p className="text-sm text-slate-500 text-center mb-8">ระบบจะดำเนินการหักลบยอดชำระนี้เข้ากับรายการหนี้ค้างที่เก่าที่สุดโดยอัตโนมัติ</p>
               
               <div className="flex flex-row gap-3">
-                {/* 🌟 ปุ่มยืนยันฝั่งซ้าย */}
+                {/* ปุ่มยืนยันฝั่งซ้าย */}
                 <button 
                   onClick={() => submitUpdateStatus(targetInvoiceId!, 'PAID')}
                   className="flex-[2] py-3.5 bg-[#376B64] hover:bg-[#2A524C] text-white font-bold rounded-xl shadow-md transition-all active:scale-[0.98] text-sm"
                 >
                   ยืนยันความถูกต้อง
                 </button>
-                {/* 🌟 ปุ่มยกเลิกฝั่งขวา */}
+                {/* ปุ่มยกเลิกฝั่งขวา */}
                 <button 
                   onClick={() => setApproveModalOpen(false)}
                   className="flex-1 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl transition-all active:scale-[0.98] text-sm"

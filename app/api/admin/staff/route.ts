@@ -1,13 +1,19 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 const prisma = new PrismaClient();
 
-// 🌟 1. เพิ่มฟังก์ชัน GET สำหรับดึงรายชื่อไปแสดงในตาราง (Tab: รายชื่อทีมงาน)
+// เพิ่มฟังก์ชัน GET สำหรับดึงรายชื่อไปแสดงในตาราง (Tab: รายชื่อทีมงาน)
 export async function GET() {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session || ((session.user as any).role !== 'SUPER_ADMIN' && (session.user as any).role !== 'ADMIN')) {
+      return NextResponse.json({ success: false, error: 'ไม่มีสิทธิ์เข้าถึง' }, { status: 403 });
+    }
     const staffList = await prisma.adminUser.findMany({
       select: {
         id: true,
@@ -28,11 +34,13 @@ export async function GET() {
   }
 }
 
-// 🌟 2. อัปเกรดฟังก์ชัน POST เดิม ให้รองรับการรันรหัสอัตโนมัติ
+// อัปเกรดฟังก์ชัน POST เดิม ให้รองรับการรันรหัสอัตโนมัติ
 export async function POST(request: Request) {
   try {
-    // 🌟 ดักสิทธิ์ตรงนี้: (สมมติว่าลูกพี่ดึง Session มาเช็ก)
-    // if (session.user.role !== 'SUPER_ADMIN') return NextResponse.json({ error: 'ไม่มีสิทธิ์' }, { status: 403 });
+    const session = await getServerSession(authOptions);
+    if (!session || ((session.user as any).role !== 'SUPER_ADMIN' && (session.user as any).role !== 'ADMIN')) {
+      return NextResponse.json({ success: false, error: 'ไม่มีสิทธิ์เข้าถึง' }, { status: 403 });
+    }
 
     const body = await request.json();
     const { name, email, password, role } = body;
@@ -43,7 +51,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'อีเมลนี้มีในระบบแล้ว' }, { status: 400 });
     }
 
-    // 🌟 ระบบสร้างรหัสพนักงานอัตโนมัติ (staffCode)
+    // ระบบสร้างรหัสพนักงานอัตโนมัติ (staffCode)
     const prefix = (role === 'SUPER_ADMIN' || role === 'ADMIN') ? 'SP' : 'NITI';
     const currentCount = await prisma.adminUser.count({
       where: { staffCode: { startsWith: prefix } }
@@ -51,7 +59,7 @@ export async function POST(request: Request) {
     const nextNumber = String(currentCount + 1).padStart(4, '0');
     const staffCode = `${prefix}-${nextNumber}`; // จะได้ออกมาเป็น SP-0001 หรือ NITI-0001
 
-    // 🌟 เข้ารหัสผ่านก่อนลง Database (ป้องกันข้อมูลหลุด)
+    // เข้ารหัสผ่านก่อนลง Database (ป้องกันข้อมูลหลุด)
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // บันทึกลง Database

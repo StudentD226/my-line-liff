@@ -605,7 +605,7 @@ export default function AdminInvoicesPage() {
           </div>
         </div>
 
-        {/* Search & Filter - 🌟 แก้ไขให้นำ overflow-x-auto ออกและใช้ flex-wrap เพื่อป้องกัน Dropdown ถูกจำกัดพื้นที่ */}
+        {/* Search & Filter - ดึง overflow-x-auto ออกและ flex-wrap เพื่อป้องกัน Dropdown ถูกจำกัดพื้นที่ */}
         <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col md:flex-row gap-4 items-center">
           <div className="relative w-full md:w-1/4 shrink-0">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />

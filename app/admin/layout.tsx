@@ -131,7 +131,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
             <div className="h-8 w-px bg-slate-200 hidden sm:block shrink-0"></div>
 
-            {/* 🌟 จุดที่แก้ไข: เปลี่ยนจาก div เป็น Link ไปยัง /admin/profile */}
+            {/* จุดนี้: เปลี่ยนจาก div เป็น Link ไปยัง /admin/profile */}
             <Link href="/admin/profile" title="แก้ไขข้อมูลส่วนตัว" className="flex items-center gap-2 md:gap-3 cursor-pointer hover:bg-slate-50 p-1 md:p-1.5 md:pr-3 rounded-full transition-colors">
               <div className="w-9 h-9 bg-[#1A534B]/10 text-[#1A534B] rounded-full flex items-center justify-center border border-[#1A534B]/20 shrink-0">
                 <UserCircle size={24} strokeWidth={1.5} />

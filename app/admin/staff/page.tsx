@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 
-// 🌟 ฟังก์ชันสุ่มรหัสผ่านเริ่มต้น
+// ฟังก์ชันสุ่มรหัสผ่านเริ่มต้น
 const generateDefaultPassword = (role: string) => {
   const prefix = role === 'ADMIN' ? 'SP' : 'NITI';
   const randomNum = Math.floor(1000 + Math.random() * 9000);
@@ -14,7 +14,7 @@ const generateDefaultPassword = (role: string) => {
 };
 
 export default function StaffManagementPage() {
-  // 🌟 (ข้อ 3) จำลองสิทธิ์ผู้ใช้งาน (ในระบบจริงดึงจาก Session)
+  // (ข้อ 3) กรองสิทธิ์การใช้งาน (จำลองการดึง Role จาก Session)
   const [currentUserRole] = useState<"SUPERADMIN" | "NITI">("SUPERADMIN");
   const canManage = currentUserRole === "SUPERADMIN";
 
@@ -41,12 +41,12 @@ export default function StaffManagementPage() {
     }, 4000);
   }, []);
 
-  // 🌟 Auto-gen รหัสผ่านเมื่อเปลี่ยน Role
+  // Auto-gen รหัสผ่านตอนเปลี่ยน Role
   useEffect(() => {
     setFormData(prev => ({ ...prev, password: generateDefaultPassword(prev.role) }));
   }, [formData.role]);
 
-  // 🌟 ดึงข้อมูลรายชื่อพนักงาน
+  // ดึงรายชื่อพนักงาน
   const fetchStaffList = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -94,7 +94,7 @@ export default function StaffManagementPage() {
     }
   };
 
-  // 🌟 (ข้อ 1) กำหนดปุ่มตกลงอยู่ซ้ายมือเสมอ
+  // (ข้อ 1) ปรับสีปุ่มให้ตรงตีม (#376B64) และจัดวางปุ่มตกลงอยู่ซ้ายมือเสมอ
   const swalConfig = useMemo(() => ({
     confirmButtonColor: '#376B64',
     cancelButtonColor: '#94a3b8',
@@ -176,7 +176,7 @@ export default function StaffManagementPage() {
   return (
     <div className="relative p-4 sm:p-6 lg:p-10 max-w-5xl mx-auto bg-[#F8FAFC] min-h-screen font-sans">
       
-      {/* 🌟 Popup Notification (Toast) */}
+      {/* Popup Notification (Toast) */}
       <div 
         className={`fixed top-6 right-4 sm:right-6 z-[100] transition-all duration-300 transform ${
           alert.show ? 'translate-x-0 opacity-100' : 'translate-x-[150%] opacity-0'
@@ -212,7 +212,7 @@ export default function StaffManagementPage() {
         <p className="text-gray-500 mt-1 text-sm">ดูแลบัญชีผู้ใช้งานสำหรับผู้ดูแลระบบและนิติบุคคล</p>
       </div>
 
-      {/* 🌟 Navigation Tabs */}
+      {/* Navigation Tabs */}
       <div className="flex space-x-2 bg-gray-200/50 p-1.5 rounded-2xl w-max mb-6">
         {canManage && (
           <button 
@@ -230,7 +230,7 @@ export default function StaffManagementPage() {
         </button>
       </div>
       
-      {/* 🌟 Tab 1: Create Account */}
+      {/* Tab 1: Create Account */}
       {activeTab === 'CREATE' && canManage && (
         <div className="bg-white p-6 sm:p-8 rounded-[1.5rem] shadow-sm border border-gray-100 animate-in fade-in slide-in-from-bottom-4 duration-300">
           <h2 className="text-lg font-bold text-gray-800 mb-6 border-b border-gray-100 pb-4 flex items-center">
@@ -325,7 +325,7 @@ export default function StaffManagementPage() {
         </div>
       )}
 
-      {/* 🌟 Tab 2: Staff List */}
+      {/* Tab 2: Staff List */}
       {activeTab === 'LIST' && (
         <div className="bg-white rounded-[1.5rem] shadow-sm border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
           <div className="p-5 sm:p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">

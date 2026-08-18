@@ -1,9 +1,9 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import liff from '@line/liff';
 import Swal from 'sweetalert2';
-// 🌟 ใช้ Icon จาก lucide-react แทน Emoji
+// นำเข้า Icon จาก lucide-react
 import { User, Phone, Home, BellRing, BellOff, Edit3, ShieldCheck, UserCircle } from 'lucide-react';
 
 export default function SettingsPage() {
@@ -11,8 +11,32 @@ export default function SettingsPage() {
   const [userData, setUserData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   
-  // 🌟 เพิ่ม State สำหรับเก็บรูปโปรไฟล์ LINE
+  // เพิ่ม State สำหรับเก็บรูปโปรไฟล์ LINE
   const [pictureUrl, setPictureUrl] = useState<string | null>(null);
+
+  const checkUserRegistration = useCallback(async (lineId: string) => {
+    try {
+      const res = await fetch(`/api/user?lineId=${lineId}`);
+      const data = await res.json();
+      
+      if (data.success && data.user) {
+        setUserData(data.user);
+        setLoading(false);
+      } else {
+        router.push('/register');
+      }
+    } catch (err) {
+      console.error(err);
+      Swal.fire({
+        icon: 'error',
+        title: 'ดึงข้อมูลล้มเหลว',
+        text: 'ไม่สามารถโหลดข้อมูลบัญชีได้ โปรดตรวจสอบอินเทอร์เน็ต',
+        confirmButtonColor: '#376B64',
+        customClass: { popup: 'rounded-[2rem]' }
+      });
+      setLoading(false);
+    }
+  }, [router]);
 
   useEffect(() => {
     const initializeLiff = async () => {
@@ -40,33 +64,10 @@ export default function SettingsPage() {
     };
 
     initializeLiff();
-  }, []);
-
-  const checkUserRegistration = async (lineId: string) => {
-    try {
-      const res = await fetch(`/api/user?lineId=${lineId}`);
-      const data = await res.json();
-      
-      if (data.success && data.user) {
-        setUserData(data.user);
-        setLoading(false);
-      } else {
-        router.push('/register');
-      }
-    } catch (err) {
-      console.error(err);
-      Swal.fire({
-        icon: 'error',
-        title: 'ดึงข้อมูลล้มเหลว',
-        text: 'ไม่สามารถโหลดข้อมูลบัญชีได้ โปรดตรวจสอบอินเทอร์เน็ต',
-        confirmButtonColor: '#376B64',
-        customClass: { popup: 'rounded-[2rem]' }
-      });
-      setLoading(false);
     }
   };
 
-  // 🌟 Alert ยืนยันก่อนไปหน้าแก้ไข พร้อมเตือนเรื่องบ้านเลขที่
+  // Alert ยืนยันก่อนไปหน้าแก้ไข พร้อมเตือนเรื่องบ้านเลขที่
   const handleEditConfirm = () => {
     Swal.fire({
       title: 'ต้องการแก้ไขข้อมูล?',
@@ -98,12 +99,12 @@ export default function SettingsPage() {
     <div className="min-h-screen bg-slate-50 p-4 font-sans text-slate-800 flex justify-center items-start pt-10 pb-20">
       <div className="w-full max-w-md bg-white rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-slate-100 overflow-hidden relative animate-in fade-in slide-in-from-bottom-4 duration-500">
         
-        {/* 🌟 Header Banner */}
+        {/* Header Banner */}
         <div className="h-32 bg-gradient-to-r from-[#2A524C] to-[#376B64] relative">
           <div className="absolute inset-0 bg-white/10 opacity-50 mix-blend-overlay"></div>
         </div>
 
-        {/* 🌟 Profile Area (Overlap) */}
+        {/* Profile Area (Overlap) */}
         <div className="px-6 sm:px-8 pb-8 -mt-14 relative z-10">
           <div className="flex justify-between items-end mb-6">
             <div className="relative inline-block">
@@ -139,7 +140,7 @@ export default function SettingsPage() {
             <p className="text-sm font-medium text-slate-500 mt-0.5">จัดการข้อมูลและการตั้งค่าบัญชีของคุณ</p>
           </div>
 
-          {/* 🌟 Information Cards */}
+          {/* Information Cards */}
           <div className="space-y-3">
             
             <div className="flex items-center gap-4 p-4 bg-slate-50 border border-slate-100 rounded-2xl">
@@ -176,7 +177,7 @@ export default function SettingsPage() {
             
           </div>
 
-          {/* 🌟 Action Button */}
+          {/* Action Button */}
           <button 
             onClick={handleEditConfirm}
             className="w-full bg-white text-[#376B64] border-2 border-[#376B64]/20 py-4 rounded-2xl font-black text-sm mt-8 hover:bg-[#376B64]/5 hover:border-[#376B64]/40 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-sm"

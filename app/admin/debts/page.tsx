@@ -14,7 +14,7 @@ export default function DebtTrackerPage() {
   const [sortBy, setSortBy] = useState("debt-desc"); 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  // 🌟 (ข้อ 3) ระบบจำลองสิทธิ์ผู้ใช้งาน (RBAC)
+  // (ข้อ 3) ระบบจำลองสิทธิ์ผู้ใช้งาน (RBAC)
   // TODO: ในอนาคตลูกพี่สามารถดึงค่านี้มาจาก Session หรือ Context ได้เลยครับ
   const [userRole, setUserRole] = useState<"SUPERADMIN" | "ADMIN" | "VIEWER">("SUPERADMIN");
   
@@ -39,14 +39,14 @@ export default function DebtTrackerPage() {
       });
   };
 
-  // 🌟 (ข้อ 1 & 5) ปรับปุ่มตกลงอยู่ซ้าย สี #376B64 และใช้คำทางการ
+  // (ข้อ 1 & 5) ปรับปุ่มตกลงอยู่ซ้าย สี #376B64 และใช้คำทางการ
   const handleNotifyDebt = async (item: any) => {
     const result = await Swal.fire({
       title: 'ยืนยันการส่งแจ้งเตือน?',
       html: `ต้องการส่งข้อความแจ้งเตือนยอดค้างชำระไปยังบ้านเลขที่ <b>${item.houseNumber}</b> ใช่หรือไม่?`,
       icon: 'warning',
       showCancelButton: true,
-      reverseButtons: false, // 🌟 ปุ่มตกลงอยู่ซ้ายเสมอ
+      reverseButtons: false, // ปุ่มตกลงอยู่ซ้ายเสมอ
       confirmButtonColor: '#376B64', 
       cancelButtonColor: '#94a3b8', 
       confirmButtonText: 'ยืนยันการส่ง',
@@ -67,7 +67,7 @@ export default function DebtTrackerPage() {
       html: `ระบบจะดำเนินการส่งแจ้งเตือนไปยังบ้านพักจำนวน <b>${itemsToNotify.length} หลัง</b> ยืนยันหรือไม่?`,
       icon: 'warning',
       showCancelButton: true,
-      reverseButtons: false, // 🌟 ปุ่มตกลงอยู่ซ้ายเสมอ
+      reverseButtons: false, // ปุ่มตกลงอยู่ซ้ายเสมอ
       confirmButtonColor: '#376B64', 
       cancelButtonColor: '#94a3b8', 
       confirmButtonText: `ยืนยันการส่ง ${itemsToNotify.length} รายการ`,
@@ -139,7 +139,7 @@ export default function DebtTrackerPage() {
     }
   };
 
-  // 🌟 (ข้อ 2) ใช้ useMemo จัดการคำนวณ เพื่อให้เว็บไม่ต้องคิดใหม่ซ้ำซ้อนตอนพิมพ์ค้นหา เร็วขึ้นแน่นอน!
+  // (ข้อ 2) ใช้ useMemo จัดการคำนวณ เพื่อให้เว็บไม่ต้องคิดใหม่ซ้ำซ้อนตอนพิมพ์ค้นหา เร็วขึ้นแน่นอน!
   const totalAmountToCollect = useMemo(() => debts.reduce((sum, item) => sum + item.totalOwed, 0), [debts]);
   const totalHousesInDebt = useMemo(() => debts.length, [debts]);
 
@@ -235,7 +235,7 @@ export default function DebtTrackerPage() {
 
           <div className="relative flex items-center w-full sm:w-auto">
             <ArrowUpDown size={16} className="absolute left-4 text-slate-400 pointer-events-none" />
-            {/* 🌟 (ข้อ 7,9) ยกเลิก UI ดั้งเดิม (appearance-none) แล้วใส่ลูกศร ChevronDown เอง */}
+            {/* (ข้อ 7,9) ยกเลิก UI ดั้งเดิม (appearance-none) แล้วใส่ลูกศร ChevronDown เอง */}
             <select 
               value={sortBy} 
               onChange={(e) => setSortBy(e.target.value)}
@@ -270,7 +270,7 @@ export default function DebtTrackerPage() {
               >
                 ยกเลิกการเลือก
               </button>
-              {/* 🌟 (ข้อ 3) ถ้าเป็น Viewer จะไม่เห็นปุ่มนี้ */}
+              {/* (ข้อ 3) ถ้าเป็น Viewer จะไม่เห็นปุ่มนี้ */}
               {canNotify && (
                 <button 
                   onClick={handleBulkNotify} 
@@ -331,7 +331,7 @@ export default function DebtTrackerPage() {
                     </td>
                     <td className="p-4 sm:p-5 text-center whitespace-nowrap">
                       <div className="relative inline-block group">
-                        {/* 🌟 (ข้อ 5) เอาอิโมจิออก เปลี่ยนมาใช้ไอคอน Lucide แทน */}
+                        {/* (ข้อ 5) เอาอิโมจิออก เปลี่ยนมาใช้ไอคอน Lucide แทน */}
                         <span className={`flex items-center justify-center gap-1.5 cursor-pointer px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm ${
                           item.overdueCount >= 3 
                             ? "bg-rose-50 text-rose-600 border border-rose-100" 
@@ -362,7 +362,7 @@ export default function DebtTrackerPage() {
                       </span>
                     </td>
                     <td className="p-4 sm:p-5 text-center whitespace-nowrap">
-                      {/* 🌟 (ข้อ 3) สิทธิ์ Viewer จะไม่เห็นปุ่มแจ้งเตือนรายบุคคล */}
+                      {/* (ข้อ 3) สิทธิ์ Viewer จะไม่เห็นปุ่มแจ้งเตือนรายบุคคล */}
                       {canNotify ? (
                         <button 
                           onClick={() => handleNotifyDebt(item)}
@@ -380,7 +380,7 @@ export default function DebtTrackerPage() {
               ) : (
                 <tr>
                   <td colSpan={6} className="py-16 text-center">
-                    {/* 🌟 (ข้อ 5) ถอดอิโมจิปาร์ตี้ออก ใช้ความทางการ */}
+                    {/* (ข้อ 5) ถอดอิโมจิปาร์ตี้ออก ใช้ความทางการ */}
                     <div className="flex flex-col items-center justify-center">
                       <CheckCircle className="text-emerald-500 mb-3" size={40} strokeWidth={2} />
                       <p className="text-slate-700 font-bold text-base">ไม่พบข้อมูลบัญชีลูกหนี้ค้างชำระ</p>

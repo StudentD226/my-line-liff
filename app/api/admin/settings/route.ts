@@ -1,6 +1,8 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
 const prisma = new PrismaClient();
 
@@ -22,9 +24,14 @@ export async function GET() {
 // ========================================================
 export async function POST(request: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session || ((session.user as any).role !== 'SUPER_ADMIN' && (session.user as any).role !== 'ADMIN')) {
+      return NextResponse.json({ success: false, error: 'ไม่มีสิทธิ์เข้าถึง' }, { status: 403 });
+    }
+
     const body = await request.json();
 
-    // 🌟 ส่วนตรวจสอบความถูกต้องทางบัญชีอย่างเป็นทางการฝั่งหลังบ้าน (TC-SET-006 / 007 / 009 / 010 Validation)
+    // ส่วนตรวจสอบความถูกต้องทางบัญชีอย่างเป็นทางการฝั่งหลังบ้าน (TC-SET-006 / 007 / 009 / 010 Validation)
     if (body.flatRateAmount === undefined || body.flatRateAmount === null || body.flatRateAmount === '') {
       return NextResponse.json({ success: false, error: 'กรุณาระบุข้อมูลอัตราเรียกเก็บมาตรฐานส่วนกลางประจำเดือนให้ครบถ้วน' }, { status: 400 });
     }
@@ -69,7 +76,7 @@ export async function POST(request: Request) {
       });
     }
 
-    // 🌟 การผูกเงื่อนไขเฉพาะการจัดตั้งฐานข้อมูลประจำยูนิตล่วงหน้า (ไม่ส่งผลกระทบต่อรายการประวัติบิลสถานะชำระเงินแล้วเสร็จ)
+    // การผูกเงื่อนไขเฉพาะการจัดตั้งฐานข้อมูลประจำยูนิตล่วงหน้า (ไม่ส่งผลกระทบต่อรายการประวัติบิลสถานะชำระเงินแล้วเสร็จ)
     if (body.applyToAllHouses) {
       await prisma.house.updateMany({
         data: {

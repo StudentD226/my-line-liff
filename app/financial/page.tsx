@@ -148,7 +148,7 @@ export default function ResidentExpenseDashboard() {
             <h3 className="font-bold text-gray-800 text-sm md:text-base mb-4 flex items-center justify-center">
               <PieChartIcon className="w-4 h-4 mr-2 text-[#1A534B] shrink-0" /> สัดส่วนรายจ่ายรอบบิลนี้
             </h3>
-            {/* 🌟 ล็อกความสูงกราฟวงกลม ห้ามยุบเด็ดขาด */}
+            {/* ล็อกความสูงกราฟวงกลม ห้ามยุบเด็ดขาด */}
             <div className="h-[250px] md:h-[280px] w-full relative">
               {pieData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
@@ -221,7 +221,7 @@ export default function ResidentExpenseDashboard() {
             <h3 className="font-bold text-gray-800 text-sm md:text-base mb-4 flex items-center justify-center text-center">
                <TrendingDown className="w-4 h-4 mr-2 text-[#1A534B] shrink-0" /> เทรนด์รายจ่าย ปี พ.ศ. {selectedYear + 543}
             </h3>
-            {/* 🌟 ล็อกความสูงกราฟแท่งแบบตายตัวที่ 250px ห้ามหดหดหายเด็ดขาด */}
+            {/* ล็อกความสูงกราฟแท่งแบบตายตัวที่ 250px ห้ามหดหายเด็ดขาด */}
             <div className="h-[250px] md:h-[300px] w-full mt-2">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={yearlyChartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>

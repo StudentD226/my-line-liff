@@ -6,6 +6,7 @@ import Swal from 'sweetalert2';
 import { User, Phone, Home, Lock, ShieldCheck, CheckCircle2, AlertCircle, Key } from 'lucide-react';
 
 export default function RegisterPage() {
+  const [step, setStep] = useState(1);
   const router = useRouter();
   const [lineId, setLineId] = useState('');
   
@@ -120,7 +121,7 @@ export default function RegisterPage() {
           customClass: { popup: 'rounded-[2rem]' }
         });
       }
-    } catch (error) {
+    } catch {
       Swal.fire({ 
         icon: 'error', 
         title: 'การเชื่อมต่อล้มเหลว', 

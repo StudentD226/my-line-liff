@@ -286,13 +286,13 @@ export default function AdminSettingsPage() {
     fetchHouses();
   }, [fetchConfig, fetchHouses]);
 
-  // 🌟 TC-SET-017 & แก้ไข Toast Error
+  // TC-SET-017 & แก้ Toast Error
   const handleBankAccountChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const originalValue = e.target.value;
     const sanitizedValue = originalValue.replace(/[^0-9-]/g, '');
     
     if (/[^0-9-]/.test(originalValue)) {
-      // 🌟 ใช้ Swal.fire ฝัง Toast ลงไปโดยตรง แทนการเรียกตัวแปรนอก Scope
+      // ย้าย Swal.fire ลงมาใน Component ตรงๆ แทนเรียกผ่านฟังก์ชันภายนอก Scope
       Swal.fire({
         toast: true,
         position: 'top-end',
@@ -692,7 +692,7 @@ export default function AdminSettingsPage() {
         </section>
       </div>
 
-      {/* 🌟 Custom Popup Modal แก้ไขเรทประจำยูนิตพักอาศัย */}
+      {/* Custom Popup Modal สำหรับเพิ่มนิติบุคคล */}
       {isPopupOpen && editHouse && (
         <div className="fixed inset-0 z-50 flex justify-center items-center p-4 animate-in fade-in duration-200">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsPopupOpen(false)}></div>
@@ -742,7 +742,7 @@ export default function AdminSettingsPage() {
                 </p>
               </div>
 
-              {/* 🌟 ปุ่มบันทึกอยู่ด้านซ้าย ปุ่มยกเลิกอยู่ด้านขวา */}
+              {/* ปุ่มบันทึกอยู่ด้านซ้าย ปุ่มยกเลิกอยู่ด้านขวา */}
               <div className="pt-2 flex flex-row gap-3">
                 <button 
                   type="submit" disabled={savingHouse}

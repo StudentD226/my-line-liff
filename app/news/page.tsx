@@ -12,7 +12,7 @@ export type NewsItem = {
   status: string;
   views: number;
   isPinned: boolean;
-  imageUrl?: string; // 🌟 เพิ่มตัวแปรรับลิงก์รูปภาพ
+  imageUrl?: string; // เพิ่มตัวแปรรับลิงก์รูปภาพ
 };
 
 export default function ResidentNewsFeed() {
@@ -88,7 +88,7 @@ export default function ResidentNewsFeed() {
               onClick={() => setSelectedNews(item)}
               className="w-full bg-white rounded-[1.5rem] border border-slate-100 shadow-sm hover:shadow-md transition-all text-left flex flex-col overflow-hidden active:scale-[0.98]"
             >
-              {/* 🌟 แสดงรูปหน้าปกในหน้าฟีด (ถ้ามี) */}
+              {/* แสดงรูปหน้าปกในหน้าฟีด (ถ้ามี) */}
               {item.imageUrl && (
                 <div className="w-full h-36 bg-slate-100 relative">
                   <img src={item.imageUrl} alt="cover" className="w-full h-full object-cover" />
@@ -143,7 +143,7 @@ export default function ResidentNewsFeed() {
           </div>
           
           <div className="flex-1 overflow-y-auto pb-20">
-            {/* 🌟 แสดงรูปหน้าปกขนาดใหญ่ในหน้าอ่านข่าว (ถ้ามี) */}
+            {/* แสดงรูปหน้าปกขนาดใหญ่ในหน้าอ่านข่าว (ถ้ามี) */}
             {selectedNews.imageUrl && (
               <div className="w-full h-56 bg-slate-100 relative">
                 <img src={selectedNews.imageUrl} alt="cover" className="w-full h-full object-cover" />

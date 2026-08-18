@@ -101,7 +101,7 @@ export default function AdminNewsManagement() {
     setIsModalOpen(true);
   };
 
-  // 🌟 ฟังก์ชันจัดการรูปภาพที่อัปเกรดแล้ว (แปลงเป็น Base64)
+  // ฟังก์ชันจัดการรูปภาพอัปโหลด (แปลงเป็น Base64)
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -140,7 +140,7 @@ export default function AdminNewsManagement() {
           category: formData.category,
           content: formData.content,
           status: statusToSave,
-          sendLine: statusToSave === 'PUBLISHED', // 🌟 ส่ง LINE เฉพาะตอนกดเผยแพร่
+          sendLine: statusToSave === 'PUBLISHED', // ส่ง LINE เฉพาะตอนเผยแพร่
           imageUrl: formData.image
         })
       });

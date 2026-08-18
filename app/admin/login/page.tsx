@@ -11,7 +11,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // 🌟 เพิ่ม State สำหรับจัดการเปิด-ปิดรหัสผ่าน
+  // เพิ่ม State สำหรับจัดการเปิด-ปิดรหัสผ่าน
   const [showPassword, setShowPassword] = useState(false);
 
   // State สำหรับเก็บข้อความแจ้งเตือนใต้ Textbox แต่ละช่อง
@@ -141,7 +141,7 @@ export default function LoginPage() {
               <div className="relative">
                 <Lock className={`absolute left-4 top-3.5 size-5 transition-colors shrink-0 ${fieldErrors.password ? 'text-red-400' : 'text-slate-400'}`} />
                 <input
-                  // 🌟 สลับชนิดของ input ตาม state showPassword
+                  // สลับชนิดของ input ตาม state showPassword
                   type={showPassword ? "text" : "password"}
                   className={`appearance-none block w-full pl-11 pr-12 py-3 border rounded-xl focus:outline-none focus:ring-2 font-medium transition-colors
                     ${fieldErrors.password 
@@ -153,7 +153,7 @@ export default function LoginPage() {
                   disabled={isLoading}
                 />
                 
-                {/* 🌟 ปุ่มสลับแสดง/ซ่อนรหัสผ่าน */}
+                {/* ปุ่มสลับแสดง/ซ่อนรหัสผ่าน */}
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
