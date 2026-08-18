@@ -23,7 +23,7 @@ export default function InvoicesPage() {
           const profile = await liff.getProfile();
           fetchData(profile.userId, profile.pictureUrl || '');
         } catch (err) {
-          console.error("❌ ดึงโปรไฟล์ LINE ไม่สำเร็จ:", err);
+          console.error("ดึงโปรไฟล์ LINE ไม่สำเร็จ:", err);
           alert("เกิดข้อผิดพลาดในการเชื่อมต่อกับ LINE");
           setLoading(false);
         }
@@ -31,14 +31,14 @@ export default function InvoicesPage() {
         liff.login();
       }
     }).catch((err) => {
-      console.error('❌ LIFF Error:', err);
+      console.error('LIFF Error:', err);
       setLoading(false);
     });
   }, []);
 
   const fetchData = async (lineId: string, pictureUrl: string) => {
     try {
-      // 🌟 เพิ่ม { cache: 'no-store' } เพื่อสั่ง Next.js ว่าห้ามจำข้อมูลเก่าเด็ดขาด!
+      // เพิ่ม { cache: 'no-store' } เพื่อสั่ง Next.js ว่าห้ามจำข้อมูลเก่าเด็ดขาด!
       const res = await fetch(`/api/user-invoices?lineId=${lineId}&t=${Date.now()}`, {
         cache: 'no-store',
         headers: {
@@ -109,7 +109,7 @@ export default function InvoicesPage() {
         alert(`ดึงข้อมูลไม่สำเร็จ: ${result.error}`);
       }
     } catch (error) {
-      console.error('❌ fetchData error:', error);
+      console.error('fetchData error:', error);
       alert('เซิร์ฟเวอร์ไม่ตอบสนอง กรุณาลองใหม่ครับ');
     } finally {
       setLoading(false);
@@ -122,7 +122,7 @@ export default function InvoicesPage() {
     if (unpaidInvoice) {
       router.push(`/payment?invoice=${unpaidInvoice.invoiceNo}`);
     } else {
-      alert('คุณไม่มียอดค้างชำระในขณะนี้ครับ 🎉');
+      alert('คุณไม่มียอดค้างชำระในขณะนี้ครับ');
     }
   };
 
@@ -146,10 +146,10 @@ export default function InvoicesPage() {
   if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-[#376B64] border-t-transparent rounded-full animate-spin"></div></div>;
 
   return (
-    // 🌟 เปลี่ยนเป็น min-h-screen และเอา overflow-hidden ออก เพื่อให้เลื่อนจอได้ปกติ
+    // เปลี่ยนเป็น min-h-screen และเอา overflow-hidden ออก เพื่อให้เลื่อนจอได้ปกติ
     <div className="min-h-screen bg-[#F5F5F5] font-sans pb-10">
       
-      {/* 🌟 Header สีเขียว (ขนาดเล็กตามเดิม) */}
+      {/* Header สีเขียว (ขนาดเล็กตามเดิม) */}
       <div className="bg-[#376B64] rounded-b-[30px] pt-6 pb-12 px-6 text-white relative shadow-md">
         <div className="flex items-center gap-3 mb-4">
           <img src={userData.pictureUrl} className="w-12 h-12 rounded-full border-2 border-white object-cover" />
@@ -159,7 +159,7 @@ export default function InvoicesPage() {
           </div>
         </div>
         <div className="flex justify-center mt-1">
-          {/* 🌟 วงกลมขนาด 120px เท่าเดิม */}
+          {/* วงกลมขนาด 120px เท่าเดิม */}
           <div className="w-[120px] h-[120px] rounded-full border-2 border-[#548a82] flex flex-col items-center justify-center bg-[#376B64] shadow-[0_0_15px_rgba(0,0,0,0.15)]">
             <p className="text-[11px] font-light mb-0.5">ยอดค้างชำระ</p>
             <p className="text-[20px] font-bold leading-tight">{totalUnpaid.toFixed(2)}</p>
@@ -168,14 +168,14 @@ export default function InvoicesPage() {
         </div>
       </div>
 
-      {/* 🌟 ปุ่มชำระเงิน */}
+      {/* ปุ่มชำระเงิน */}
       <div className="flex justify-center -mt-6 relative z-10 px-8">
         <button onClick={handlePaymentClick} className="w-full max-w-[180px] bg-[#376B64] text-white py-2.5 rounded-full font-bold shadow-lg active:scale-95 transition-transform text-[15px]">
           ชำระเงิน
         </button>
       </div>
 
-      {/* 🌟 พื้นที่รายการบิล (ตอนนี้เลื่อนได้ตามธรรมชาติของเว็บแล้ว) */}
+      {/* พื้นที่รายการบิล (ตอนนี้เลื่อนได้ตามธรรมชาติของเว็บแล้ว) */}
       <div className="px-5 mt-5">
         <h3 className="text-[#376B64] font-bold text-[15px] mb-2">ประวัติชำระเงิน</h3>
         
@@ -185,7 +185,7 @@ export default function InvoicesPage() {
           <div className="bg-white rounded-[12px] border border-[#376B64] overflow-hidden shadow-sm">
             {displayList.map((inv, index) => {
               
-              // 🌟 รูปแบบของบิลรวมปีก่อนๆ (อยู่ล่างสุด)
+              // รูปแบบของบิลรวมปีก่อนๆ (อยู่ล่างสุด)
               if (inv.isPastYearSummary) {
                 return (
                   <div key={inv.id} className={`py-2 px-3 flex justify-between items-center bg-red-50/50 ${index !== displayList.length - 1 ? 'border-b border-gray-100' : ''}`}>
@@ -201,7 +201,7 @@ export default function InvoicesPage() {
                 );
               }
 
-              // 🌟 รูปแบบของบิลปกติ (6 เดือนล่าสุด)
+              // รูปแบบของบิลปกติ (6 เดือนล่าสุด)
               const statusDisplay = getStatusDisplay(inv.status);
               return (
                 <div key={inv.id} className={`py-2 px-3 flex justify-between items-center ${index !== displayList.length - 1 ? 'border-b border-gray-100' : ''}`}>

@@ -512,14 +512,15 @@ export default function FinancialDashboard({ userRole = 'SUPERADMIN' }: Dashboar
       {/* Delete Transaction Modal */}
       {isDeleteModalOpen && isSuperadmin && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-fade-in-down p-6 text-center">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-fade-in-down p-6 text-center relative">
+            <button onClick={() => setIsDeleteModalOpen(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors shrink-0"><X size={20} /></button>
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertTriangle className="text-red-500 shrink-0" size={32} />
             </div>
             <h2 className="font-bold text-xl text-gray-800 mb-2">ยืนยันการลบรายการบัญชี?</h2>
             <p className="text-gray-500 text-sm mb-6">ข้อมูลที่ถูกลบจะไม่สามารถกู้คืนได้ และยอดเงินจะถูกคำนวณใหม่โดยอัตโนมัติ</p>
             <div className="flex space-x-3">
-              {/* 🌟 ปุ่มตกลงอยู่ซ้าย ยกเลิกอยู่ขวา */}
+              {/* ปุ่มตกลงอยู่ซ้าย ยกเลิกอยู่ขวา */}
               <button onClick={confirmDelete} disabled={isSubmitting} className="flex-1 px-4 py-2.5 bg-red-500 text-white font-bold rounded-lg hover:bg-red-600 transition-colors shadow-md flex justify-center items-center">
                 {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : 'ยืนยันการลบ'}
               </button>
@@ -532,14 +533,15 @@ export default function FinancialDashboard({ userRole = 'SUPERADMIN' }: Dashboar
       {/* Delete Category Modal */}
       {categoryToDelete && isSuperadmin && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in-down p-6 text-center">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in-down p-6 text-center relative">
+            <button onClick={() => setCategoryToDelete(null)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors shrink-0"><X size={20} /></button>
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertTriangle className="text-red-500 shrink-0" size={32} />
             </div>
             <h2 className="font-bold text-xl text-gray-800 mb-2">ยืนยันการลบหมวดหมู่?</h2>
             <p className="text-gray-500 text-sm mb-6">หมวดหมู่ที่ถูกนำไปใช้งานแล้วจะไม่สามารถดำเนินการลบได้</p>
             <div className="flex space-x-3">
-              {/* 🌟 ปุ่มตกลงอยู่ซ้าย ยกเลิกอยู่ขวา */}
+              {/* ปุ่มตกลงอยู่ซ้าย ยกเลิกอยู่ขวา */}
               <button onClick={confirmDeleteCategory} disabled={isSubmitting} className="flex-1 px-4 py-2.5 bg-red-500 text-white font-bold rounded-lg hover:bg-red-600 transition-colors shadow-md flex justify-center items-center">
                 {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : 'ยืนยันการลบ'}
               </button>
@@ -571,7 +573,7 @@ export default function FinancialDashboard({ userRole = 'SUPERADMIN' }: Dashboar
                           className="flex-1 w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-medium focus:outline-none focus:border-[#376B64] min-w-0"
                           autoFocus
                         />
-                        {/* 🌟 ปุ่มตกลงอยู่ซ้าย ยกเลิกอยู่ขวา */}
+                        {/* ปุ่มตกลงอยู่ซ้าย ยกเลิกอยู่ขวา */}
                         <button onClick={handleSaveCategoryEdit} className="p-2 bg-emerald-100 text-emerald-600 rounded-lg hover:bg-emerald-200 shrink-0" title="บันทึกข้อมูล"><Save size={16} className="shrink-0" /></button>
                         <button onClick={() => setEditingCategory(null)} className="p-2 bg-gray-200 text-gray-600 rounded-lg hover:bg-gray-300 shrink-0" title="ยกเลิก"><X size={16} className="shrink-0" /></button>
                       </div>
@@ -703,7 +705,7 @@ export default function FinancialDashboard({ userRole = 'SUPERADMIN' }: Dashboar
                 </div>
 
                 <div className="pt-2 pb-1 flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
-                  {/* 🌟 ปุ่มตกลงอยู่ซ้าย ยกเลิกอยู่ขวา */}
+                  {/* ปุ่มตกลงอยู่ซ้าย ยกเลิกอยู่ขวา */}
                   <button type="submit" disabled={isSubmitting || isUploading} className={`flex-1 px-4 py-3 sm:py-2.5 text-white font-bold rounded-xl transition-colors shadow-md flex justify-center items-center ${(isSubmitting || isUploading) ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#376B64] hover:bg-[#2A524C]'}`}>
                     {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : (editingId ? 'บันทึกการแก้ไข' : 'บันทึกข้อมูล')}
                   </button>

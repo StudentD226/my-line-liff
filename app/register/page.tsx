@@ -17,7 +17,7 @@ export default function RegisterPage() {
   const [name, setName] = useState('');
   const [houseNo, setHouseNo] = useState('');
   const [phone, setPhone] = useState('');
-  const [passcode, setPasscode] = useState(''); // 🌟 State สำหรับรหัสลับ
+  const [passcode, setPasscode] = useState(''); // State สำหรับรหัสลับ
   
   const [loading, setLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
@@ -72,7 +72,7 @@ export default function RegisterPage() {
     setLoading(true);
     
     try {
-      // 🌟 1. ตรวจสอบรหัสลับก่อน (ถ้าเป็นลูกบ้านใหม่ที่ยังไม่มีบ้าน)
+      // 1. ตรวจสอบรหัสลับก่อน (ถ้าเป็นลูกบ้านใหม่ที่ยังไม่มีบ้าน)
       if (!hasExistingHouse) {
         const verifyRes = await fetch('/api/auth/verify-passcode', {
           method: 'POST',
@@ -90,11 +90,11 @@ export default function RegisterPage() {
             customClass: { popup: 'rounded-[2rem]' }
           });
           setLoading(false);
-          return; // 🌟 หยุดการทำงาน ไม่ให้เซฟลง Database
+          return; // หยุดการทำงาน ไม่ให้เซฟลง Database
         }
       }
 
-      // 🌟 2. ถ้ารหัสผ่าน หรือเป็นลูกบ้านเก่า ให้เซฟข้อมูลตามปกติ
+      // 2. ถ้ารหัสผ่าน หรือเป็นลูกบ้านเก่า ให้เซฟข้อมูลตามปกติ
       const res = await fetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -146,7 +146,7 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-slate-50 flex flex-col items-center pt-8 pb-12 px-4 font-sans text-slate-800">
       <div className="w-full max-w-md animate-in fade-in slide-in-from-bottom-4 duration-500">
         
-        {/* 🌟 ส่วนหัวแสดงโปรไฟล์ LINE */}
+        {/* ส่วนหัวแสดงโปรไฟล์ LINE */}
         <div className="flex flex-col items-center justify-center mb-6 px-2">
           <div className="relative mb-3">
             {pictureUrl ? (
@@ -168,7 +168,7 @@ export default function RegisterPage() {
           <p className="text-xs font-bold text-[#376B64] uppercase tracking-widest mt-1">ยืนยันตัวตนแล้ว</p>
         </div>
 
-        {/* 🌟 การ์ดแบบฟอร์ม */}
+        {/* การ์ดแบบฟอร์ม */}
         <div className="bg-white p-7 md:p-9 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-[#5b9e94] to-[#376B64]"></div>
           
@@ -232,7 +232,7 @@ export default function RegisterPage() {
               )}
             </div>
 
-            {/* 🌟 4. ช่องกรอกรหัสลับประจำบ้าน (โชว์เฉพาะบ้านใหม่) */}
+            {/* 4. ช่องกรอกรหัสลับประจำบ้าน (โชว์เฉพาะบ้านใหม่) */}
             {!hasExistingHouse && (
               <div className="space-y-1.5 pt-2 animate-in fade-in slide-in-from-top-2 duration-300">
                 <label className="block text-[13px] font-bold text-slate-700 uppercase tracking-wide text-rose-500">รหัสลับประจำบ้าน *</label>

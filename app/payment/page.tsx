@@ -37,7 +37,7 @@ function PaymentForm() {
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 🌟 State ใหม่สำหรับเก็บข้อมูลแอบซ่อนที่ AI แกะมาได้ 
+  // State สำหรับเก็บข้อมูลที่ได้รับจากการประมวลผลของ AI 
   const [senderName, setSenderName] = useState<string>('');
   const [receiverName, setReceiverName] = useState<string>('');
   const [bankRef, setBankRef] = useState<string>('');
@@ -181,7 +181,7 @@ function PaymentForm() {
     setIsTimePickerOpen(true);
   };
 
-  // 🌟 ฟังก์ชันอัปโหลดรูปที่ฝังสมอง AI (Real-time Auto-fill)
+  // ฟังก์ชันอัปโหลดรูปภาพพร้อมประมวลผลด้วย AI
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
@@ -218,7 +218,7 @@ function PaymentForm() {
       if (json.success && json.data) {
         const aiData = json.data;
         
-        // 🎯 4. ถอดรหัส Auto-fill กรอกข้อมูลบนหน้าจอให้อัตโนมัติ!
+        // 4. กรอกข้อมูลลงในฟอร์มโดยอัตโนมัติ
         if (aiData.amount) {
           setCustomAmount(aiData.amount.toString()); // เติมยอดเงิน
           setPayOption(-1); // ยกเลิกการเลือก Option มาตรฐาน
@@ -226,7 +226,7 @@ function PaymentForm() {
         if (aiData.date) setTransferDate(aiData.date); // เติมวันที่
         if (aiData.time) setTransferTime(aiData.time); // เติมเวลา
 
-        // 🎯 5. ซ่อนข้อมูลลับไว้ส่งไปให้แอดมินตอนกดปุ่มยืนยัน
+        // 5. บันทึกข้อมูลเพิ่มเติมเพื่อส่งไปยังผู้ดูแลระบบ
         if (aiData.senderName) setSenderName(aiData.senderName);
         if (aiData.receiverName) setReceiverName(aiData.receiverName);
         if (aiData.bankRef) setBankRef(aiData.bankRef);
@@ -286,7 +286,7 @@ function PaymentForm() {
       formData.append('payOptionMonths', finalAdvanceMonths.toString()); 
       formData.append('fineAmount', fineAmount.toString());
 
-      // 🌟 ส่งข้อมูล AI ลับๆ ไปให้หลังบ้านด้วย
+      // ส่งข้อมูลที่ประมวลผลโดย AI ไปยัง API
       formData.append('senderName', senderName);
       formData.append('receiverName', receiverName);
       formData.append('bankRef', bankRef);
