@@ -9,6 +9,7 @@ import {
   CreditCard, X, Save, ArrowLeft, BellRing, Clock, Landmark, ChevronDown,
   ShieldAlert, AlertCircle
 } from 'lucide-react';
+import InitialBalanceSection from './_components/InitialBalanceSection';
 
 // --- ตัวเลือกการจัดประเภทสถาบันการเงิน ---
 const BANK_OPTIONS = [
@@ -690,6 +691,9 @@ export default function AdminSettingsPage() {
             </div>
           </div>
         </section>
+
+        {/* ส่วนที่ 4: ตั้งค่ายอดลูกหนี้ค้างชำระยกมา (Initial Balance Setup / Data Migration) */}
+        <InitialBalanceSection isSuperAdmin={isSuperAdmin} />
       </div>
 
       {/* Custom Popup Modal สำหรับเพิ่มนิติบุคคล */}
