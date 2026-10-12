@@ -37,10 +37,7 @@ function PaymentForm() {
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // State สำหรับเก็บข้อมูลที่ได้รับจากการประมวลผลของ AI 
-  const [senderName, setSenderName] = useState<string>('');
-  const [receiverName, setReceiverName] = useState<string>('');
-  const [bankRef, setBankRef] = useState<string>('');
+
 
   const [isCustomSelectOpen, setIsCustomSelectOpen] = useState(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
@@ -181,8 +178,8 @@ function PaymentForm() {
     setIsTimePickerOpen(true);
   };
 
-  // ฟังก์ชันอัปโหลดรูปภาพพร้อมประมวลผลด้วย AI
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // ฟังก์ชันอัปโหลดรูปภาพ
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
 
@@ -194,63 +191,8 @@ function PaymentForm() {
       return;
     }
 
-    // 1. โชว์รูปบนหน้าจอให้ลูกบ้านเห็นทันที
     setFile(selectedFile);
     setPreviewUrl(URL.createObjectURL(selectedFile));
-
-    // 2. เด้งหน้าต่างบอกว่า AI กำลังทำงาน
-    Swal.fire({ 
-      title: 'กำลังสแกนสลิป...', 
-      text: 'ระบบ AI กำลังตรวจสอบยอดเงินและเวลา',
-      allowOutsideClick: false,
-      didOpen: () => Swal.showLoading(),
-      customClass: { popup: 'rounded-[2rem] p-6' }
-    });
-
-    const formData = new FormData();
-    formData.append('slip', selectedFile);
-
-    try {
-      // 3. ยิงสลิปไปให้ API AI ทำงาน
-      const res = await fetch('/api/payment/scan-slip', { method: 'POST', body: formData });
-      const json = await res.json();
-
-      if (json.success && json.data) {
-        const aiData = json.data;
-        
-        // 4. กรอกข้อมูลลงในฟอร์มโดยอัตโนมัติ
-        if (aiData.amount) {
-          setCustomAmount(aiData.amount.toString()); // เติมยอดเงิน
-          setPayOption(-1); // ยกเลิกการเลือก Option มาตรฐาน
-        }
-        if (aiData.date) setTransferDate(aiData.date); // เติมวันที่
-        if (aiData.time) setTransferTime(aiData.time); // เติมเวลา
-
-        // 5. บันทึกข้อมูลเพิ่มเติมเพื่อส่งไปยังผู้ดูแลระบบ
-        if (aiData.senderName) setSenderName(aiData.senderName);
-        if (aiData.receiverName) setReceiverName(aiData.receiverName);
-        if (aiData.bankRef) setBankRef(aiData.bankRef);
-
-        Swal.fire({ 
-          icon: 'success', 
-          title: 'สแกนข้อมูลสำเร็จ!', 
-          text: 'กรุณาตรวจสอบความถูกต้องก่อนกดยืนยัน',
-          timer: 2000, 
-          showConfirmButton: false,
-          customClass: { popup: 'rounded-[2rem]' }
-        });
-      } else {
-        Swal.fire({ 
-          icon: 'info', 
-          title: 'สแกนสลิปไม่ชัดเจน', 
-          text: 'กรุณาระบุยอดเงินและเวลาด้วยตนเอง',
-          confirmButtonColor: '#376B64',
-          customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl px-6 py-2.5 font-bold' }
-        });
-      }
-    } catch (err) {
-      Swal.close(); // ปิดโหลดถ้าเกิด Error
-    }
   };
 
   const handleSubmit = async () => {
@@ -285,11 +227,6 @@ function PaymentForm() {
       formData.append('remainingBalance', remainingBalance.toString()); 
       formData.append('payOptionMonths', finalAdvanceMonths.toString()); 
       formData.append('fineAmount', fineAmount.toString());
-
-      // ส่งข้อมูลที่ประมวลผลโดย AI ไปยัง API
-      formData.append('senderName', senderName);
-      formData.append('receiverName', receiverName);
-      formData.append('bankRef', bankRef);
 
       const res = await fetch('/api/payment', { method: 'POST', body: formData });
       const data = await res.json();

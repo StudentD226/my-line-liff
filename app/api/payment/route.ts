@@ -27,11 +27,6 @@ export async function POST(request: Request) {
     const transferDate = formData.get('transferDate') as string;
     const transferTime = formData.get('transferTime') as string;
     
-    // 🌟 รับค่าข้อมูลที่ AI สแกนมาได้
-    const senderName = formData.get('senderName') as string || null;
-    const receiverName = formData.get('receiverName') as string || null;
-    const bankRef = formData.get('bankRef') as string || null;
-    
     const payAmount = truncateDecimals(parseFloat(formData.get('payAmount') as string || '0'));
 
     if (!file || !houseNo || payAmount <= 0) 
@@ -91,10 +86,6 @@ export async function POST(request: Request) {
         slipUrl,
         transferDate,
         transferTime,
-        // 🌟 บันทึกข้อมูล AI ลง Database
-        senderName,
-        receiverName,
-        bankRef,
         residentHouseId: house.id,
         dueDate: now,
         isNotified: false
