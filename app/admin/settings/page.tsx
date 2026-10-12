@@ -693,7 +693,7 @@ export default function AdminSettingsPage() {
         </section>
 
         {/* ส่วนที่ 4: ตั้งค่ายอดลูกหนี้ค้างชำระยกมา (Initial Balance Setup / Data Migration) */}
-        <InitialBalanceSection isSuperAdmin={isSuperAdmin} />
+        <InitialBalanceSection isSuperAdmin={isSuperAdmin} houses={houses} onRefreshHouses={fetchHouses} />
       </div>
 
       {/* Custom Popup Modal สำหรับเพิ่มนิติบุคคล */}

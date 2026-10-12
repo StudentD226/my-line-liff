@@ -5,6 +5,7 @@ export interface DebtPeriodInput {
   billingMonth: number;
   dueDate: string; // "YYYY-MM-DD"
   principalAmount: number;
+  customPenaltyRate?: number; // ถ้ากำหนดเอง เช่น 0, 10, 20
 }
 
 export interface HouseMigrationInput {
@@ -100,7 +101,7 @@ export function processInitialBalances(
       const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
       const daysOverdue = Math.max(0, diffDays);
 
-      const rate = getStepPenaltyRate(daysOverdue);
+      const rate = p.customPenaltyRate !== undefined ? Number(p.customPenaltyRate) : getStepPenaltyRate(daysOverdue);
       const principal = truncate2(Number(p.principalAmount) || 0);
       const penalty = truncate2(principal * (rate / 100));
       const total = truncate2(principal + penalty);
