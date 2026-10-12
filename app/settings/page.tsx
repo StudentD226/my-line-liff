@@ -64,8 +64,7 @@ export default function SettingsPage() {
     };
 
     initializeLiff();
-    }
-  };
+  }, [checkUserRegistration]);
 
   // Alert ยืนยันก่อนไปหน้าแก้ไข พร้อมเตือนเรื่องบ้านเลขที่
   const handleEditConfirm = () => {
