@@ -442,17 +442,60 @@ export default function FinancialDashboard({ userRole }: DashboardProps) {
       return showAlert("ไม่พบข้อมูลสำหรับการส่งออก", "warning");
     }
     try {
-      let csvContent = "วันที่,รายการ,หมวดหมู่,ประเภท,จำนวนเงิน(บาท),หมายเหตุ\n";
+      // คอลัมน์ 8 คอลัมน์ตามลำดับ: วันที่, เวลา, ประเภท, หมวดหมู่, รายการ, บ้านเลขที่, จำนวนเงิน(บาท), หมายเหตุ
+      let csvContent = "วันที่,เวลา,ประเภท,หมวดหมู่,รายการ,บ้านเลขที่,จำนวนเงิน(บาท),หมายเหตุ\n";
       
       filteredAndSortedData.forEach(tx => {
+        // 1. วันที่ (รูปแบบ วัน/เดือน/ปี พ.ศ. เช่น 18/6/2569)
         const date = new Date(tx.date).toLocaleDateString('th-TH');
-        const title = `"${tx.title.replace(/"/g, '""')}"`;
-        const category = `"${tx.category?.name || 'ไม่ได้ระบุ'}"`;
+
+        // 2. เวลา (ดึงเวลา HH:mm หรือเว้นว่างหากไม่มีการระบุ)
+        let time = tx.time || "";
+        if (!time && tx.date) {
+          const d = new Date(tx.date);
+          const hours = d.getHours();
+          const minutes = d.getMinutes();
+          if (hours !== 0 || minutes !== 0) {
+            time = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+          }
+        }
+
+        // 3. ประเภท (รายรับ / รายจ่าย)
         const type = tx.type === 'INCOME' ? 'รายรับ' : 'รายจ่าย';
+
+        // 4. หมวดหมู่ (เช่น ค่าเช่า, ค่าไฟ, รายรับค่าส่วนกลาง)
+        const categoryName = tx.category?.name || 'ไม่ได้ระบุ';
+        const category = `"${categoryName.replace(/"/g, '""')}"`;
+
+        // 5. รายการ (เช่น ทดสอบจ้า, ค่าไฟฟ้าส่วนกลาง, รับโอนค่าส่วนกลาง)
+        const titleParts = (tx.title || '').split(' - ');
+        let itemTitle = titleParts[0];
+        if (tx.isAuto) {
+          itemTitle = 'รับโอนค่าส่วนกลาง';
+        }
+        const title = `"${itemTitle.replace(/"/g, '""')}"`;
+
+        // 6. บ้านเลขที่ (ดึงจาก tx.houseNo หรือค้นหาจากข้อความ title)
+        let houseNo = tx.houseNo || '';
+        if (!houseNo && tx.title) {
+          const match = tx.title.match(/(?:บ้านเลขที่|บ้าน|ห้อง)\s*([0-9\/\-]+)/);
+          if (match) houseNo = match[1];
+        }
+        const house = `"${houseNo.replace(/"/g, '""')}"`;
+
+        // 7. จำนวนเงิน(บาท)
         const amount = tx.amount;
-        const note = tx.isAuto ? 'สร้างอัตโนมัติจากระบบ' : 'บันทึกด้วยตนเอง';
+
+        // 8. หมายเหตุ (บันทึกเอง หรือ สร้างอัตโนมัติจากระบบ)
+        let noteText = 'บันทึกเอง';
+        if (tx.isAuto) {
+          noteText = 'สร้างอัตโนมัติจากระบบ';
+        } else if (titleParts.length > 1 && titleParts[1].trim()) {
+          noteText = `${titleParts.slice(1).join(' - ').trim()} (บันทึกเอง)`;
+        }
+        const note = `"${noteText.replace(/"/g, '""')}"`;
         
-        csvContent += `${date},${title},${category},${type},${amount},${note}\n`;
+        csvContent += `${date},${time},${type},${category},${title},${house},${amount},${note}\n`;
       });
 
       const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });

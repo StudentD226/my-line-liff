@@ -63,23 +63,40 @@ export async function GET(request: Request) {
     });
 
     // 3️⃣ แปลงบิล Invoice ให้หน้าตาเหมือน Transaction
-    const autoTransactions = autoInvoices.map(inv => ({
-      id: `AUTO-${inv.id}`,
-      type: 'INCOME' as TransactionType,
-      categoryId: 'AUTO-INCOME', 
-      category: { id: 'AUTO-INCOME', name: 'รายรับค่าส่วนกลาง', type: 'INCOME', isFavorite: true },
-      description: `ชำระบิลเดือน ${inv.billingMonth}/${inv.billingYear}`,
-      title: `รับโอนค่าส่วนกลาง (บ้านเลขที่ ${inv.house.houseNo})`,
-      amount: inv.paidAmount > 0 ? inv.paidAmount : inv.baseAmount,
-      date: inv.paidAt || inv.updatedAt,
-      recordedBy: 'System',
-      isAuto: true,
-      receiptUrl: inv.slipUrl
-    }));
+    const autoTransactions = autoInvoices.map(inv => {
+      let timeStr = inv.transferTime || '';
+      if (!timeStr && inv.paidAt) {
+        timeStr = new Date(inv.paidAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+      }
+
+      return {
+        id: `AUTO-${inv.id}`,
+        type: 'INCOME' as TransactionType,
+        categoryId: 'AUTO-INCOME', 
+        category: { id: 'AUTO-INCOME', name: 'รายรับค่าส่วนกลาง', type: 'INCOME', isFavorite: true },
+        description: `ชำระบิลเดือน ${inv.billingMonth}/${inv.billingYear}`,
+        title: `รับโอนค่าส่วนกลาง (บ้านเลขที่ ${inv.house.houseNo})`,
+        amount: inv.paidAmount > 0 ? inv.paidAmount : inv.baseAmount,
+        date: inv.paidAt || inv.updatedAt,
+        time: timeStr,
+        houseNo: inv.house?.houseNo || '',
+        recordedBy: 'System',
+        isAuto: true,
+        receiptUrl: inv.slipUrl
+      };
+    });
 
     // 4️⃣ เอามารวมร่างกัน แล้วเรียงวันที่ล่าสุดขึ้นก่อน
-    const allTransactions = [...manualTransactions.map(t => ({...t, title: t.description || 'รายการบัญชี', isAuto: false})), ...autoTransactions]
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const allTransactions = [
+      ...manualTransactions.map(t => ({
+        ...t, 
+        title: t.description || 'รายการบัญชี', 
+        isAuto: false,
+        houseNo: '',
+        time: ''
+      })), 
+      ...autoTransactions
+    ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     // 5️⃣ คำนวณสรุปยอดรวมส่งกลับไปให้หน้าบ้าน
     let totalIncome = 0;
