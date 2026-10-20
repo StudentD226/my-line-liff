@@ -561,7 +561,7 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
                 icon: 'warning',
                 showCancelButton: true,
                 showCloseButton: true,
-                reverseButtons: true, // ปุ่มยืนยันอยู่ด้านซ้ายเสมอตามข้อกำหนด 1
+                reverseButtons: false, // ปุ่มยืนยันอยู่ด้านซ้ายเสมอ
                 confirmButtonColor: '#ef4444',
                 cancelButtonColor: '#94a3b8',
                 confirmButtonText: 'ยืนยันการลบข้อมูล',
@@ -584,7 +584,7 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
                 icon: 'warning',
                 showCancelButton: true,
                 showCloseButton: true,
-                reverseButtons: true, // ปุ่มยืนยันอยู่ด้านซ้ายเสมอตามข้อกำหนด 1
+                reverseButtons: false, // ปุ่มยืนยันอยู่ด้านซ้ายเสมอ
                 confirmButtonColor: '#376B64',
                 cancelButtonColor: '#94a3b8',
                 confirmButtonText: 'ดำเนินการสุ่มรหัสใหม่',

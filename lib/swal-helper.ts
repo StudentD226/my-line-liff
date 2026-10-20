@@ -8,7 +8,7 @@ export const CANCEL_COLOR = '#94A3B8';
 
 /**
  * การตั้งค่าพื้นฐานของ SweetAlert2 เพื่อความสอดคล้องกันทั่วทั้งระบบ:
- * 1. ปุ่มตกลง/ยืนยัน อยู่ทางซ้ายมือเสมอ (reverseButtons: true)
+ * 1. ปุ่มตกลง/ยืนยัน อยู่ทางซ้ายมือเสมอ (reverseButtons: false)
  * 2. มีปุ่มกากบาทปิด (X) ตรงขวาบนเสมอ (showCloseButton: true)
  * 3. ใช้ธีมสี #376B64
  * 4. หน้าตาโมเดิร์น ไร้ขอบ native OS
@@ -16,15 +16,16 @@ export const CANCEL_COLOR = '#94A3B8';
 export const defaultSwalConfig: SweetAlertOptions = {
   confirmButtonColor: THEME_COLOR,
   cancelButtonColor: CANCEL_COLOR,
-  reverseButtons: true, // บังคับให้ปุ่ม Confirm/ตกลง อยู่ด้านซ้ายเสมอตามข้อกำหนด 1
+  reverseButtons: false, // บังคับให้ปุ่ม Confirm/ตกลง อยู่ด้านซ้ายเสมอ (ใน SweetAlert2 ค่า default/false จะวาง Confirm ทางซ้าย และ Cancel ทางขวา)
   showCloseButton: true, // แสดงปุ่มกากบาท (X) ปิดขวาบนเสมอตามข้อกำหนด 10
   focusConfirm: false,
   customClass: {
     popup: 'rounded-2xl shadow-2xl border border-slate-100 p-6 font-sans',
     title: 'text-lg font-bold text-slate-800 tracking-tight',
     htmlContainer: 'text-sm text-slate-600 mt-2',
-    confirmButton: 'rounded-xl font-bold px-6 py-2.5 shadow-md shadow-[#376B64]/20 transition-all active:scale-95 text-white',
-    cancelButton: 'rounded-xl font-bold px-6 py-2.5 transition-all active:scale-95 text-slate-700 bg-slate-100 hover:bg-slate-200',
+    actions: 'flex flex-row items-center justify-center gap-3 w-full',
+    confirmButton: 'order-1 rounded-xl font-bold px-6 py-2.5 shadow-md shadow-[#376B64]/20 transition-all active:scale-95 text-white',
+    cancelButton: 'order-2 rounded-xl font-bold px-6 py-2.5 transition-all active:scale-95 text-slate-700 bg-slate-100 hover:bg-slate-200',
     closeButton: 'text-slate-400 hover:text-slate-600 focus:outline-none focus:ring-0',
   },
 };

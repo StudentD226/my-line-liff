@@ -202,7 +202,7 @@ export default function AdminInvoicesPage() {
       showCancelButton: true,
       showDenyButton: true,
       showCloseButton: true,
-      reverseButtons: true, // ปุ่มยืนยันอยู่ด้านซ้ายเสมอตามข้อกำหนด 1
+      reverseButtons: false, // ปุ่มยืนยันอยู่ด้านซ้ายเสมอ
       confirmButtonText: 'สร้างให้ทุกยูนิต',
       denyButtonText: 'ระบุยูนิตเป้าหมาย',
       cancelButtonText: 'ยกเลิกการทำรายการ',
@@ -227,7 +227,7 @@ export default function AdminInvoicesPage() {
           inputPlaceholder: 'ตัวอย่าง: 123/4',
           showCancelButton: true,
           showCloseButton: true,
-          reverseButtons: true, // ปุ่มยืนยันอยู่ด้านซ้ายเสมอตามข้อกำหนด 1
+          reverseButtons: false, // ปุ่มยืนยันอยู่ด้านซ้ายเสมอ
           confirmButtonText: 'ดำเนินการถัดไป',
           cancelButtonText: 'ยกเลิกการทำรายการ',
           confirmButtonColor: '#376B64',
@@ -319,7 +319,7 @@ export default function AdminInvoicesPage() {
       icon: 'warning',
       showCancelButton: true,
       showCloseButton: true,
-      reverseButtons: true, // ปุ่มยืนยันอยู่ด้านซ้ายเสมอตามข้อกำหนด 1
+      reverseButtons: false, // ปุ่มยืนยันอยู่ด้านซ้ายเสมอ
       confirmButtonColor: '#E11D48',
       cancelButtonColor: '#9CA3AF',
       confirmButtonText: 'ยืนยันการลบ',
