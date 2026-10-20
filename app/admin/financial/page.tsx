@@ -10,6 +10,7 @@ import {
   ArrowUpDown, X, CheckCircle, AlertCircle, FileText, Calendar, Tag,
   Edit, Trash2, AlertTriangle, Settings, Save, Loader2, ChevronLeft, ChevronRight, Search, Download, ChevronDown
 } from "lucide-react";
+import { useAdminRole } from "@/lib/admin-role";
 
 // --- Types & Constants ---
 type Role = 'SUPERADMIN' | 'JURISTIC';
@@ -104,8 +105,9 @@ CustomDropdown.displayName = "CustomDropdown";
 
 
 // --- Main Component ---
-export default function FinancialDashboard({ userRole = 'SUPERADMIN' }: DashboardProps) {
-  const isSuperadmin = userRole === 'SUPERADMIN';
+export default function FinancialDashboard({ userRole }: DashboardProps) {
+  const { isSuperAdmin, isAdmin, role, permissions } = useAdminRole();
+  const isSuperadmin = userRole ? userRole === 'SUPERADMIN' : isSuperAdmin;
 
   const [data, setData] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);

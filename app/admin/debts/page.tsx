@@ -6,6 +6,8 @@ import {
   ArrowUpDown, ChevronDown, CheckCircle 
 } from "lucide-react";
 import Swal from "sweetalert2";
+import { useAdminRole } from "@/lib/admin-role";
+import { defaultSwalConfig } from "@/lib/swal-helper";
 
 export default function DebtTrackerPage() {
   const [debts, setDebts] = useState<any[]>([]);
@@ -14,12 +16,10 @@ export default function DebtTrackerPage() {
   const [sortBy, setSortBy] = useState("debt-desc"); 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  // (ข้อ 3) ระบบจำลองสิทธิ์ผู้ใช้งาน (RBAC)
-  // TODO: ในอนาคตลูกพี่สามารถดึงค่านี้มาจาก Session หรือ Context ได้เลยครับ
-  const [userRole, setUserRole] = useState<"SUPERADMIN" | "ADMIN" | "VIEWER">("SUPERADMIN");
+  const { isSuperAdmin, isAdmin, role, permissions } = useAdminRole();
   
-  // เช็คสิทธิ์การส่งแจ้งเตือน (Superadmin ทำได้ทุกอย่าง นิติทำได้บางอย่าง)
-  const canNotify = userRole === "SUPERADMIN" || userRole === "ADMIN";
+  // เช็คสิทธิ์การส่งแจ้งเตือน (Superadmin / Admin สามารถส่งแจ้งเตือนได้)
+  const canNotify = isAdmin || isSuperAdmin;
 
   useEffect(() => {
     fetchDebts();
@@ -42,16 +42,13 @@ export default function DebtTrackerPage() {
   // (ข้อ 1 & 5) ปรับปุ่มตกลงอยู่ซ้าย สี #376B64 และใช้คำทางการ
   const handleNotifyDebt = async (item: any) => {
     const result = await Swal.fire({
+      ...defaultSwalConfig,
       title: 'ยืนยันการส่งแจ้งเตือน?',
       html: `ต้องการส่งข้อความแจ้งเตือนยอดค้างชำระไปยังบ้านเลขที่ <b>${item.houseNumber}</b> ใช่หรือไม่?`,
       icon: 'warning',
       showCancelButton: true,
-      reverseButtons: false, // ปุ่มตกลงอยู่ซ้ายเสมอ
-      confirmButtonColor: '#376B64', 
-      cancelButtonColor: '#94a3b8', 
       confirmButtonText: 'ยืนยันการส่ง',
       cancelButtonText: 'ยกเลิก',
-      customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl font-bold px-6', cancelButton: 'rounded-xl font-bold px-6' }
     });
 
     if (result.isConfirmed) {
@@ -63,16 +60,13 @@ export default function DebtTrackerPage() {
     const itemsToNotify = debts.filter(d => selectedIds.includes(d.id));
     
     const result = await Swal.fire({
+      ...defaultSwalConfig,
       title: 'ยืนยันการส่งแจ้งเตือนแบบกลุ่ม?',
       html: `ระบบจะดำเนินการส่งแจ้งเตือนไปยังบ้านพักจำนวน <b>${itemsToNotify.length} หลัง</b> ยืนยันหรือไม่?`,
       icon: 'warning',
       showCancelButton: true,
-      reverseButtons: false, // ปุ่มตกลงอยู่ซ้ายเสมอ
-      confirmButtonColor: '#376B64', 
-      cancelButtonColor: '#94a3b8', 
       confirmButtonText: `ยืนยันการส่ง ${itemsToNotify.length} รายการ`,
       cancelButtonText: 'ยกเลิก',
-      customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl font-bold px-6', cancelButton: 'rounded-xl font-bold px-6' }
     });
 
     if (result.isConfirmed) {

@@ -10,13 +10,10 @@ import AutoGenerateButton from './AutoGenerateButton';
 import PasscodeCell from "./_components/PasscodeCell";
 import { redirect } from "next/navigation";
 
-const prisma = new PrismaClient();
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
-// ระบบจำลองสิทธิ์ (RBAC) - สามารถนำไปผูกกับ Session Authentication ได้ในอนาคต
-// TODO: เมื่อเชื่อมต่อระบบ Authentication จริงแล้ว ให้แทนที่ค่าคงที่นี้ด้วยข้อมูลจาก Session ของผู้ใช้งาน
-type Role = 'SUPERADMIN' | 'JURISTIC';
-const currentUserRole: Role = 'SUPERADMIN'; // เปลี่ยนเป็น 'JURISTIC' เพื่อดูผลลัพธ์การซ่อนฟังก์ชัน
-const isSuperAdmin = currentUserRole === 'SUPERADMIN';
+const prisma = new PrismaClient();
 
 // ฟังก์ชันสุ่มรหัสผ่านชั่วคราว
 function generatePasscodeInline(houseNo: string) {
@@ -29,6 +26,10 @@ function generatePasscodeInline(houseNo: string) {
 }
 
 export default async function AdminHousePage(props: { searchParams: Promise<{ edit?: string, add?: string, q?: string, alert?: string }> }) {
+  const session = await getServerSession(authOptions);
+  const userRole = (session?.user as any)?.role;
+  const isSuperAdmin = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
+
   const searchParams = await props.searchParams;
   const editId = searchParams?.edit;
   const isAdding = searchParams?.add === 'true';
@@ -559,12 +560,13 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
                 text: "ข้อมูลที่ถูกเลือกรวมถึงประวัติที่เกี่ยวข้องจะถูกลบและไม่สามารถกู้คืนได้",
                 icon: 'warning',
                 showCancelButton: true,
-                reverseButtons: false, // ปุ่มยืนยันอยู่ด้านซ้ายเสมอ
+                showCloseButton: true,
+                reverseButtons: true, // ปุ่มยืนยันอยู่ด้านซ้ายเสมอตามข้อกำหนด 1
                 confirmButtonColor: '#ef4444',
                 cancelButtonColor: '#94a3b8',
                 confirmButtonText: 'ยืนยันการลบข้อมูล',
                 cancelButtonText: 'ยกเลิกรายการ',
-                customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl font-bold px-6 py-2.5', cancelButton: 'rounded-xl font-bold px-6 py-2.5' }
+                customClass: { popup: 'rounded-2xl shadow-2xl', confirmButton: 'rounded-xl font-bold px-6 py-2.5', cancelButton: 'rounded-xl font-bold px-6 py-2.5' }
               }).then((result) => {
                 if (result.isConfirmed) {
                   const hiddenBtn = deleteBtn.parentElement.querySelector('.hidden-submit-delete, .hidden-submit');
@@ -581,12 +583,13 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
                 text: "ระบบจะดำเนินการสร้างรหัสผ่านชั่วคราวชุดใหม่ให้ยูนิตที่เลือก ข้อมูลเดิมจะถูกระงับทันที",
                 icon: 'warning',
                 showCancelButton: true,
-                reverseButtons: false, // ปุ่มยืนยันอยู่ด้านซ้ายเสมอ
+                showCloseButton: true,
+                reverseButtons: true, // ปุ่มยืนยันอยู่ด้านซ้ายเสมอตามข้อกำหนด 1
                 confirmButtonColor: '#376B64',
                 cancelButtonColor: '#94a3b8',
                 confirmButtonText: 'ดำเนินการสุ่มรหัสใหม่',
                 cancelButtonText: 'ยกเลิกรายการ',
-                customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl font-bold px-6 py-2.5', cancelButton: 'rounded-xl font-bold px-6 py-2.5' }
+                customClass: { popup: 'rounded-2xl shadow-2xl', confirmButton: 'rounded-xl font-bold px-6 py-2.5', cancelButton: 'rounded-xl font-bold px-6 py-2.5' }
               }).then((result) => {
                 if (result.isConfirmed) {
                   const hiddenBtn = generateBtn.parentElement.querySelector('.hidden-submit-generate');

@@ -22,11 +22,12 @@ const ROLE_LABELS: Record<string, string> = {
 };
 const DEFAULT_ROLE_LABEL = 'นิติบุคคล';
 
+import { defaultSwalConfig } from '@/lib/swal-helper';
+
 // โหลด SweetAlert2 แบบ Lazy ผ่าน dynamic import() มาตรฐานของ JS
-// (ไม่ใช้ next/dynamic เพราะออกแบบมาสำหรับ React Component เท่านั้น ไม่ใช่ library ทั่วไป)
 async function fireAlert(options: any) {
   const Swal = (await import('sweetalert2')).default;
-  return Swal.fire(options);
+  return Swal.fire({ ...defaultSwalConfig, ...options });
 }
 
 export default function AdminProfilePage() {

@@ -5,12 +5,13 @@ import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import {
   Home, FileText, CheckCircle, Users, LayoutDashboard,
-  Wrench, Bell, UserCircle, PieChart, Menu, X, Megaphone, Shield, LogOut
+  Wrench, Bell, UserCircle, PieChart, Menu, X, Megaphone, Shield, LogOut, Settings
 } from 'lucide-react';
+import { useAdminRole } from '@/lib/admin-role';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { data: session } = useSession();
+  const { session, role, roleLabel, permissions } = useAdminRole();
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
@@ -24,17 +25,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return <>{children}</>;
   }
 
-  const menuItems = [
-    { icon: LayoutDashboard, label: 'ภาพรวมระบบ', href: '/admin' },
-    { icon: Megaphone, label: 'จัดการข่าวประกาศ', href: '/admin/news' },
-    { icon: Wrench, label: 'ศูนย์รับเรื่อง/แจ้งซ่อม', href: '/admin/maintenance' },
-    { icon: Home, label: 'จัดการข้อมูลบ้าน', href: '/admin/houses' },
-    { icon: FileText, label: 'จัดการบิล/เรียกเก็บ', href: '/admin/invoices' },
-    { icon: CheckCircle, label: 'ตรวจสอบการโอน', href: '/admin/review-slips' },
-    { icon: PieChart, label: 'รายงานการเงิน', href: '/admin/financial' },
-    { icon: Users, label: 'บัญชีลูกหนี้', href: '/admin/debts' },
-    { icon: Shield, label: 'จัดการทีมงาน', href: '/admin/staff' },
+  // กำหนดรายการเมนูตามสิทธิ์การใช้งาน (RBAC)
+  // นิติบุคคล (NITI) จะไม่เห็นเมนูจัดการทีมงานและตั้งค่าระบบ
+  const baseMenuItems = [
+    { icon: LayoutDashboard, label: 'ภาพรวมระบบ', href: '/admin', show: true },
+    { icon: Megaphone, label: 'จัดการข่าวประกาศ', href: '/admin/news', show: permissions.canManageNews },
+    { icon: Wrench, label: 'ศูนย์รับเรื่อง/แจ้งซ่อม', href: '/admin/maintenance', show: permissions.canManageMaintenance },
+    { icon: Home, label: 'จัดการข้อมูลบ้าน', href: '/admin/houses', show: true },
+    { icon: FileText, label: 'จัดการบิล/เรียกเก็บ', href: '/admin/invoices', show: true },
+    { icon: CheckCircle, label: 'ตรวจสอบการโอน', href: '/admin/review-slips', show: permissions.canReviewSlips },
+    { icon: PieChart, label: 'รายงานการเงิน', href: '/admin/financial', show: permissions.canManageFinancial },
+    { icon: Users, label: 'บัญชีลูกหนี้', href: '/admin/debts', show: true },
+    { icon: Shield, label: 'จัดการทีมงาน', href: '/admin/staff', show: permissions.canManageStaff },
+    { icon: Settings, label: 'ตั้งค่าระบบ', href: '/admin/settings', show: permissions.canManageSettings },
   ];
+
+  const menuItems = baseMenuItems.filter(item => item.show);
 
   return (
     <div className="flex min-h-screen bg-slate-50 font-sans text-slate-800 overflow-hidden w-full relative">
@@ -141,7 +147,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   {session?.user?.name || "กำลังโหลด..."}
                 </span>
                 <span className="text-[10px] font-bold text-[#376B64] uppercase tracking-widest mt-1">
-                  {(session?.user as any)?.role === "SUPER_ADMIN" ? "ผู้ดูแลระบบสูงสุด" : (session?.user as any)?.role === "ADMIN" ? "แอดมิน" : "นิติบุคคล"}
+                  {roleLabel}
                 </span>
               </div>
             </Link>

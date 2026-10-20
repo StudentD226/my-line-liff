@@ -6,6 +6,9 @@ import {
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 
+import { useAdminRole } from '@/lib/admin-role';
+import { defaultSwalConfig } from '@/lib/swal-helper';
+
 // ฟังก์ชันสุ่มรหัสผ่านเริ่มต้น
 const generateDefaultPassword = (role: string) => {
   const prefix = role === 'ADMIN' ? 'SP' : 'NITI';
@@ -14,11 +17,10 @@ const generateDefaultPassword = (role: string) => {
 };
 
 export default function StaffManagementPage() {
-  // (ข้อ 3) กรองสิทธิ์การใช้งาน (จำลองการดึง Role จาก Session)
-  const [currentUserRole] = useState<"SUPERADMIN" | "NITI">("SUPERADMIN");
-  const canManage = currentUserRole === "SUPERADMIN";
+  const { isSuperAdmin, isLoading: authLoading } = useAdminRole();
+  const canManage = isSuperAdmin;
 
-  const [activeTab, setActiveTab] = useState<'CREATE' | 'LIST'>(canManage ? 'CREATE' : 'LIST');
+  const [activeTab, setActiveTab] = useState<'CREATE' | 'LIST'>('LIST');
   const [staffList, setStaffList] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -94,13 +96,8 @@ export default function StaffManagementPage() {
     }
   };
 
-  // (ข้อ 1) ปรับสีปุ่มให้ตรงตีม (#376B64) และจัดวางปุ่มตกลงอยู่ซ้ายมือเสมอ
-  const swalConfig = useMemo(() => ({
-    confirmButtonColor: '#376B64',
-    cancelButtonColor: '#94a3b8',
-    reverseButtons: false, // บังคับปุ่มตกลงอยู่ซ้าย
-    customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl font-bold px-6', cancelButton: 'rounded-xl font-bold px-6' }
-  }), []);
+  // ปรับสีปุ่มให้ตรงธีม (#376B64) และจัดวางปุ่มตกลงอยู่ซ้ายมือเสมอ มีปุ่มปิดขวาบน
+  const swalConfig = useMemo(() => defaultSwalConfig, []);
 
   const handleDelete = async (id: string, name: string) => {
     const result = await Swal.fire({

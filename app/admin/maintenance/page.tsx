@@ -8,6 +8,8 @@ import {
   ClipboardList, History, Shield
 } from 'lucide-react';
 import Swal from 'sweetalert2';
+import { useAdminRole } from '@/lib/admin-role';
+import { defaultSwalConfig } from '@/lib/swal-helper';
 
 // --- Types ---
 type RepairStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED';
@@ -42,8 +44,7 @@ const STATUS_CONFIG = {
 };
 
 export default function AdminRepairsManagement() {
-  // โครงสร้าง RBAC (Role-Based Access Control)
-  const [userRole, setUserRole] = useState<'NITI' | 'SUPER_ADMIN'>('SUPER_ADMIN');
+  const { role: userRole, isSuperAdmin } = useAdminRole();
 
   const [tickets, setTickets] = useState<RepairTicket[]>([]);
   const [isLoading, setIsLoading] = useState(true);

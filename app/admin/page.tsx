@@ -6,7 +6,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid 
 } from "recharts";
 import { 
-  TrendingUp, TrendingDown, Wallet, Calendar, Loader2, AlertTriangle, AlertCircle, BarChart3, PieChart as PieIcon, PartyPopper
+  TrendingUp, TrendingDown, Wallet, Calendar, Loader2, AlertTriangle, AlertCircle, BarChart3, PieChart as PieIcon, PartyPopper, ChevronDown
 } from "lucide-react";
 
 const COLORS = [
@@ -112,17 +112,20 @@ export default function AdminDashboardHome() {
         </div>
         
         <div className="flex items-center gap-2 bg-white p-2 rounded-xl shadow-sm border border-gray-100 w-full sm:w-auto">
-          <Calendar className="text-[#1A534B] shrink-0" size={18} />
+          <Calendar className="text-[#376B64] shrink-0" size={18} />
           <span className="text-sm font-bold text-gray-600 shrink-0">ปี:</span>
-          <select 
-            value={selectedYear} 
-            onChange={(e) => setSelectedYear(Number(e.target.value))}
-            className="bg-gray-50 border border-gray-200 text-[#1A534B] text-sm rounded-lg p-1.5 font-bold cursor-pointer flex-1 sm:flex-initial"
-          >
-            {yearOptions.map(year => (
-              <option key={year} value={year}>พ.ศ. {year + 543}</option>
-            ))}
-          </select>
+          <div className="relative flex-1 sm:flex-initial">
+            <select 
+              value={selectedYear} 
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
+              className="bg-gray-50 border border-gray-200 text-[#376B64] text-sm rounded-lg py-1.5 pl-3 pr-8 font-bold cursor-pointer w-full appearance-none focus:ring-2 focus:ring-[#376B64]/30 focus:border-[#376B64] outline-none"
+            >
+              {yearOptions.map(year => (
+                <option key={year} value={year}>พ.ศ. {year + 543}</option>
+              ))}
+            </select>
+            <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#376B64] pointer-events-none" />
+          </div>
         </div>
       </div>
 

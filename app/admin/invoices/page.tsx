@@ -7,6 +7,8 @@ import {
   Search, Filter, CheckCircle2, Receipt, X, ChevronLeft, ChevronRight, ChevronDown 
 } from 'lucide-react';
 import Swal from 'sweetalert2';
+import { useAdminRole } from '@/lib/admin-role';
+import { defaultSwalConfig } from '@/lib/swal-helper';
 
 // --- Types & Constants ---
 type Role = 'SUPERADMIN' | 'JURISTIC';
@@ -102,8 +104,7 @@ CustomDropdown.displayName = "CustomDropdown";
 
 // --- Main Page ---
 export default function AdminInvoicesPage() {
-  const currentUserRole: Role = 'SUPERADMIN'; 
-  const isSuperAdmin = currentUserRole === 'SUPERADMIN';
+  const { isSuperAdmin, role, permissions } = useAdminRole();
 
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -201,7 +202,7 @@ export default function AdminInvoicesPage() {
       showCancelButton: true,
       showDenyButton: true,
       showCloseButton: true,
-      reverseButtons: false, 
+      reverseButtons: true, // ปุ่มยืนยันอยู่ด้านซ้ายเสมอตามข้อกำหนด 1
       confirmButtonText: 'สร้างให้ทุกยูนิต',
       denyButtonText: 'ระบุยูนิตเป้าหมาย',
       cancelButtonText: 'ยกเลิกการทำรายการ',
@@ -226,7 +227,7 @@ export default function AdminInvoicesPage() {
           inputPlaceholder: 'ตัวอย่าง: 123/4',
           showCancelButton: true,
           showCloseButton: true,
-          reverseButtons: false,
+          reverseButtons: true, // ปุ่มยืนยันอยู่ด้านซ้ายเสมอตามข้อกำหนด 1
           confirmButtonText: 'ดำเนินการถัดไป',
           cancelButtonText: 'ยกเลิกการทำรายการ',
           confirmButtonColor: '#376B64',
@@ -318,7 +319,7 @@ export default function AdminInvoicesPage() {
       icon: 'warning',
       showCancelButton: true,
       showCloseButton: true,
-      reverseButtons: false,
+      reverseButtons: true, // ปุ่มยืนยันอยู่ด้านซ้ายเสมอตามข้อกำหนด 1
       confirmButtonColor: '#E11D48',
       cancelButtonColor: '#9CA3AF',
       confirmButtonText: 'ยืนยันการลบ',

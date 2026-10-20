@@ -22,7 +22,13 @@ import {
   Layers,
   ArrowRight,
   Check,
+  TrendingUp,
+  Coins,
+  AlertTriangle,
+  FileSpreadsheet,
+  Home,
 } from 'lucide-react';
+import { defaultSwalConfig } from '@/lib/swal-helper';
 import {
   MigrationCalculationResult,
   PenaltyCalcMode,
@@ -320,19 +326,13 @@ export default function InitialBalanceSection({
          <span class="text-base font-bold text-[#376B64]">ยอดหนี้รวมทั้งสิ้น: ฿${singleCalculation.grandTotal.toLocaleString()}</span>`;
 
     const result = await Swal.fire({
+      ...defaultSwalConfig,
       title: 'ยืนยันการตั้งค่ายอดยกมา?',
       html: confirmHtml,
       icon: 'question',
       showCancelButton: true,
-      confirmButtonColor: '#376B64',
-      cancelButtonColor: '#94a3b8',
       confirmButtonText: 'ยืนยันบันทึกข้อมูล',
       cancelButtonText: 'ยกเลิก',
-      customClass: {
-        popup: 'rounded-[2rem]',
-        confirmButton: 'rounded-xl font-bold px-6',
-        cancelButton: 'rounded-xl font-bold px-6',
-      },
     });
 
     if (!result.isConfirmed) return;
@@ -458,14 +458,13 @@ export default function InitialBalanceSection({
   const handleBatchConfirm = async () => {
     if (!batchPreviewData) return;
     const res = await Swal.fire({
-      title: 'ยืนยันนำเข้าข้อมูลกลุ่ม?',
+      ...defaultSwalConfig,
+      title: 'ยืนยันการนำเข้าข้อมูลกลุ่ม?',
       html: `ต้องการนำเข้าข้อมูลบ้านจำนวน <b>${batchPreviewData.totalProperties} หลัง</b> หรือไม่?`,
       icon: 'question',
       showCancelButton: true,
-      confirmButtonColor: '#376B64',
       confirmButtonText: 'ยืนยันบันทึก',
       cancelButtonText: 'ยกเลิก',
-      customClass: { popup: 'rounded-[2rem]' },
     });
     if (!res.isConfirmed) return;
 
@@ -537,33 +536,33 @@ export default function InitialBalanceSection({
             <button
               type="button"
               onClick={() => setActiveTab('single')}
-              className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+              className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
                 activeTab === 'single'
                   ? 'bg-white text-[#376B64] shadow-sm'
                   : 'text-slate-500 hover:text-slate-700'
               }`}
             >
-              🎯 เลือกทำทีละหลัง (แนะนำ)
+              <Home size={14} className="text-[#376B64]" /> กำหนดรายหลัง (แนะนำ)
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('batch')}
-              className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+              className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
                 activeTab === 'batch'
                   ? 'bg-white text-[#376B64] shadow-sm'
                   : 'text-slate-500 hover:text-slate-700'
               }`}
             >
-              📑 นำเข้าหลายหลัง (CSV)
+              <FileSpreadsheet size={14} className="text-[#376B64]" /> นำเข้าข้อมูลชุด (CSV)
             </button>
           </div>
         </div>
 
         {/* โหมดการคิดค่าปรับ */}
-        <div className="mb-6 p-4 bg-amber-50/80 border border-amber-200/60 rounded-2xl">
+        <div className="mb-6 p-4 bg-[#376B64]/5 border border-[#376B64]/20 rounded-2xl">
           <label className="block text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
-            <Calculator size={16} className="text-amber-600" />
-            วิธีคิดเบี้ยปรับ (Penalty Calculation Mode)
+            <Calculator size={16} className="text-[#376B64]" />
+            วิธีการคิดเบี้ยปรับยอดค้างชำระ (Penalty Calculation Mode)
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <button
@@ -571,26 +570,26 @@ export default function InitialBalanceSection({
               onClick={() => setPenaltyCalcMode('FLAT_PER_MONTH')}
               className={`p-4 rounded-xl border-2 text-left transition-all ${
                 penaltyCalcMode === 'FLAT_PER_MONTH'
-                  ? 'border-amber-500 bg-white shadow-sm'
+                  ? 'border-[#376B64] bg-white shadow-sm'
                   : 'border-slate-200 bg-white/60 hover:border-slate-300'
               }`}
             >
               <div className="flex items-start gap-3">
                 <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
-                  penaltyCalcMode === 'FLAT_PER_MONTH' ? 'bg-amber-500 text-white' : 'border-2 border-slate-300'
+                  penaltyCalcMode === 'FLAT_PER_MONTH' ? 'bg-[#376B64] text-white' : 'border-2 border-slate-300'
                 }`}>
                   {penaltyCalcMode === 'FLAT_PER_MONTH' && <Check size={12} />}
                 </div>
                 <div>
-                  <span className="block font-black text-sm text-slate-800">
-                    💰 คิดค่าปรับต่อเดือน (ตรงกับระบบบิลหลัก)
+                  <span className="flex items-center gap-1.5 font-black text-sm text-slate-800">
+                    <Coins size={16} className="text-[#376B64]" /> คิดค่าปรับคงที่ต่อเดือน
                   </span>
                   <span className="block text-[11px] text-slate-500 mt-1 leading-relaxed">
-                    สูตร: จำนวนเดือนค้าง × <b>฿{penaltyRatePerMonth.toLocaleString()}/เดือน</b>
+                    สูตรคำนวณ: จำนวนเดือนค้างชำระ × <b>฿{penaltyRatePerMonth.toLocaleString()}/เดือน</b>
                     <br />เช่น ค้าง 6 เดือน = 6 × {penaltyRatePerMonth} = <b>฿{(6 * penaltyRatePerMonth).toLocaleString()}</b>
                   </span>
-                  <span className="inline-block mt-1.5 px-2 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-bold rounded-md">
-                    ⭐ แนะนำ — ตรงกับระบบเก็บเงินปัจจุบัน
+                  <span className="inline-block mt-1.5 px-2 py-0.5 bg-[#376B64]/10 text-[#376B64] text-[10px] font-bold rounded-md">
+                    รูปแบบมาตรฐานโครงการ
                   </span>
                 </div>
               </div>
@@ -601,19 +600,19 @@ export default function InitialBalanceSection({
               onClick={() => setPenaltyCalcMode('STEP_RATE_PERCENT')}
               className={`p-4 rounded-xl border-2 text-left transition-all ${
                 penaltyCalcMode === 'STEP_RATE_PERCENT'
-                  ? 'border-amber-500 bg-white shadow-sm'
+                  ? 'border-[#376B64] bg-white shadow-sm'
                   : 'border-slate-200 bg-white/60 hover:border-slate-300'
               }`}
             >
               <div className="flex items-start gap-3">
                 <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
-                  penaltyCalcMode === 'STEP_RATE_PERCENT' ? 'bg-amber-500 text-white' : 'border-2 border-slate-300'
+                  penaltyCalcMode === 'STEP_RATE_PERCENT' ? 'bg-[#376B64] text-white' : 'border-2 border-slate-300'
                 }`}>
                   {penaltyCalcMode === 'STEP_RATE_PERCENT' && <Check size={12} />}
                 </div>
                 <div>
-                  <span className="block font-black text-sm text-slate-800">
-                    📊 คิดเป็น % ของเงินต้น (Step Rate)
+                  <span className="flex items-center gap-1.5 font-black text-sm text-slate-800">
+                    <TrendingUp size={16} className="text-[#376B64]" /> คิดคำนวณอัตราร้อยละขั้นบันได
                   </span>
                   <span className="block text-[11px] text-slate-500 mt-1 leading-relaxed">
                     1-30 วัน: <b>0%</b> · 31-180 วัน: <b>10%</b> · เกิน 180 วัน: <b>20%</b>
@@ -709,11 +708,11 @@ export default function InitialBalanceSection({
                       {isPaidFull && <Check size={14} />}
                     </div>
                     <div>
-                      <span className="block font-black text-sm text-slate-800">
-                        ✅ จ่ายครบแล้ว (ไม่มียอดค้างชำระ)
+                      <span className="flex items-center gap-1.5 font-black text-sm text-slate-800">
+                        <CheckCircle2 size={16} className="text-emerald-600" /> ชำระครบถ้วน (ไม่มียอดค้างชำระ)
                       </span>
                       <span className="block text-xs text-slate-500 mt-1">
-                        เซ็ตยอดหนี้ยกมาเป็น ฿0.00 และบันทึกสถานะเรียบร้อย
+                        กำหนดยอดหนี้ยกมาเป็น ฿0.00 และบันทึกสถานะเรียบร้อย
                       </span>
                     </div>
                   </button>
@@ -738,8 +737,8 @@ export default function InitialBalanceSection({
                       {!isPaidFull && <Check size={14} />}
                     </div>
                     <div>
-                      <span className="block font-black text-sm text-slate-800">
-                        ⚠️ มียอดค้างชำระย้อนหลัง (1-3 ปี)
+                      <span className="flex items-center gap-1.5 font-black text-sm text-slate-800">
+                        <AlertTriangle size={16} className="text-[#376B64]" /> มียอดค้างชำระย้อนหลัง
                       </span>
                       <span className="block text-xs text-slate-500 mt-1">
                         ระบุงวดที่ค้างและเลือกวิธีคิดเบี้ยปรับแต่ละงวดได้
@@ -892,11 +891,11 @@ export default function InitialBalanceSection({
                                 }
                                 className="flex-1 border border-slate-200 rounded-xl p-2.5 bg-white font-bold text-xs text-slate-800 shadow-sm"
                               >
-                                <option value="auto">⚡ Step Rate (อัตโนมัติ)</option>
-                                <option value="0">❌ ยกเว้นค่าปรับ (0%)</option>
-                                <option value="10">⚠️ บังคับ 10%</option>
-                                <option value="20">🚨 บังคับ 20%</option>
-                                <option value="custom">✏️ ระบุ % เอง</option>
+                                <option value="auto">คำนวณขั้นบันไดอัตโนมัติ</option>
+                                <option value="0">ยกเว้นเบี้ยปรับ (0%)</option>
+                                <option value="10">กำหนดอัตรา 10%</option>
+                                <option value="20">กำหนดอัตรา 20%</option>
+                                <option value="custom">กำหนดอัตราร้อยละเอง</option>
                               </select>
 
                               {row.penaltyMode === 'custom' && (
@@ -925,9 +924,9 @@ export default function InitialBalanceSection({
                                 }
                                 className="flex-1 border border-slate-200 rounded-xl p-2.5 bg-white font-bold text-xs text-slate-800 shadow-sm"
                               >
-                                <option value="auto">⚡ อัตโนมัติ (฿{penaltyRatePerMonth}/ด.)</option>
-                                <option value="none">❌ ยกเว้นค่าปรับ (฿0)</option>
-                                <option value="custom">✏️ ระบุจำนวนเงินเอง</option>
+                                <option value="auto">คำนวณอัตโนมัติ (฿{penaltyRatePerMonth}/เดือน)</option>
+                                <option value="none">ยกเว้นเบี้ยปรับ (฿0)</option>
+                                <option value="custom">กำหนดจำนวนเงินเอง</option>
                               </select>
 
                               {row.flatPenaltyOverride === 'custom' && (

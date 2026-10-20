@@ -3,9 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Plus, Search, Edit, Trash2, Image as ImageIcon, 
-  Calendar, X, Send, Pin, FileText, CheckCircle, Save
+  Calendar, X, Send, Pin, FileText, CheckCircle, Save, Megaphone
 } from 'lucide-react';
 import Swal from 'sweetalert2';
+import { defaultSwalConfig } from '@/lib/swal-helper';
 
 export type NewsItem = {
   id: string;
@@ -169,15 +170,13 @@ export default function AdminNewsManagement() {
 
   const handleDelete = (id: string) => {
     Swal.fire({
+      ...defaultSwalConfig,
       title: 'ยืนยันการลบประกาศ?',
       text: "หากลบแล้วจะไม่สามารถกู้คืนข้อมูลได้",
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonColor: '#ef4444',
-      cancelButtonColor: '#9ca3af',
-      confirmButtonText: 'ลบทิ้ง',
+      confirmButtonText: 'ยืนยันการลบ',
       cancelButtonText: 'ยกเลิก',
-      customClass: { popup: 'rounded-[2rem]' }
     }).then(async (result) => {
       if (result.isConfirmed) {
         setIsLoading(true);
@@ -415,7 +414,9 @@ export default function AdminNewsManagement() {
                   {/* Body */}
                   <div className="p-4 flex flex-col gap-2">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[10px] font-bold text-slate-800 flex-1">📢 ข่าวประกาศหมู่บ้าน</span>
+                      <span className="text-[10px] font-bold text-slate-800 flex-1 flex items-center gap-1.5">
+                        <Megaphone size={12} className="text-[#376B64]" /> ข่าวประกาศโครงการ
+                      </span>
                       <span className={`px-2 py-0.5 rounded text-[10px] font-bold text-white bg-emerald-600`}>{formData.category}</span>
                     </div>
                     <h4 className="font-bold text-slate-800 text-sm leading-snug line-clamp-2">{formData.title || 'หัวข้อประกาศจะแสดงที่นี่...'}</h4>
