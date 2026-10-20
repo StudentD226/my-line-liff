@@ -1,11 +1,19 @@
 // lib/initial-balance.ts
 
+/**
+ * โหมดการคำนวณเบี้ยปรับ:
+ * - STEP_RATE_PERCENT: คิดเป็น % ของเงินต้น ตามจำนวนวันค้างชำระ (1-30 วัน=0%, 31-180 วัน=10%, >180 วัน=20%)
+ * - FLAT_PER_MONTH: คิดเป็นจำนวนเดือนค้างชำระ × อัตราต่อเดือน (ตรงกับระบบบิลหลัก)
+ */
+export type PenaltyCalcMode = 'STEP_RATE_PERCENT' | 'FLAT_PER_MONTH';
+
 export interface DebtPeriodInput {
   billingYear: number;
   billingMonth: number;
   dueDate: string; // "YYYY-MM-DD"
   principalAmount: number;
-  customPenaltyRate?: number; // ถ้ากำหนดเอง เช่น 0, 10, 20
+  customPenaltyRate?: number; // สำหรับ STEP_RATE_PERCENT: เช่น 0, 10, 20
+  customFlatPenalty?: number; // สำหรับ FLAT_PER_MONTH: จำนวนเงินค่าปรับตายตัว (override)
 }
 
 export interface HouseMigrationInput {
@@ -18,8 +26,11 @@ export interface CalculatedPeriod {
   billingMonth: number;
   dueDate: string;
   daysOverdue: number;
+  monthsOverdue: number;
   principalAmount: number;
-  penaltyRatePercent: number; // 0, 10, 20
+  penaltyCalcMode: PenaltyCalcMode;
+  penaltyRatePercent: number; // สำหรับ STEP_RATE_PERCENT (0, 10, 20)
+  flatPenaltyPerMonth: number; // สำหรับ FLAT_PER_MONTH (อัตราต่อเดือน)
   penaltyAmount: number;
   totalAmount: number;
 }
@@ -36,6 +47,7 @@ export interface CalculatedHouse {
 
 export interface MigrationCalculationResult {
   cutoffDate: string;
+  penaltyCalcMode: PenaltyCalcMode;
   totalProperties: number;
   fullyPaidProperties: number;
   overdueProperties: number;
@@ -60,11 +72,24 @@ export function getStepPenaltyRate(daysOverdue: number): number {
 }
 
 /**
+ * คำนวณจำนวนเดือนค้างชำระ (ตรงกับระบบบิลหลัก: floor(days / 30))
+ */
+export function getOverdueMonths(daysOverdue: number): number {
+  return Math.floor(daysOverdue / 30);
+}
+
+/**
  * ฟังก์ชันหลักในการคำนวณยอดยกมาตั้งต้น
+ * @param items - รายการบ้านและงวดค้างชำระ
+ * @param cutoffDateStr - วันที่ตัดยอด (YYYY-MM-DD)
+ * @param penaltyCalcMode - โหมดการคำนวณเบี้ยปรับ (STEP_RATE_PERCENT หรือ FLAT_PER_MONTH)
+ * @param flatPenaltyPerMonth - อัตราค่าปรับต่อเดือน (ใช้เมื่อ mode เป็น FLAT_PER_MONTH, default 100)
  */
 export function processInitialBalances(
   items: HouseMigrationInput[],
-  cutoffDateStr: string
+  cutoffDateStr: string,
+  penaltyCalcMode: PenaltyCalcMode = 'FLAT_PER_MONTH',
+  flatPenaltyPerMonth: number = 100
 ): MigrationCalculationResult {
   const cutoff = new Date(cutoffDateStr);
   cutoff.setHours(23, 59, 59, 999);
@@ -100,10 +125,28 @@ export function processInitialBalances(
       const diffTime = cutoff.getTime() - due.getTime();
       const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
       const daysOverdue = Math.max(0, diffDays);
+      const monthsOverdue = getOverdueMonths(daysOverdue);
 
-      const rate = p.customPenaltyRate !== undefined ? Number(p.customPenaltyRate) : getStepPenaltyRate(daysOverdue);
       const principal = truncate2(Number(p.principalAmount) || 0);
-      const penalty = truncate2(principal * (rate / 100));
+      let penalty = 0;
+      let ratePercent = 0;
+      let usedFlatPerMonth = flatPenaltyPerMonth;
+
+      if (penaltyCalcMode === 'STEP_RATE_PERCENT') {
+        // โหมด Step Rate: คิดเป็น % ของเงินต้น
+        ratePercent = p.customPenaltyRate !== undefined ? Number(p.customPenaltyRate) : getStepPenaltyRate(daysOverdue);
+        penalty = truncate2(principal * (ratePercent / 100));
+      } else {
+        // โหมด Flat Per Month: คิดเป็น จำนวนเดือน × อัตราต่อเดือน (ตรงกับระบบบิลหลัก)
+        if (p.customFlatPenalty !== undefined && p.customFlatPenalty !== null) {
+          // Admin กำหนดค่าปรับตายตัวเอง (override)
+          penalty = truncate2(Number(p.customFlatPenalty));
+        } else {
+          penalty = truncate2(monthsOverdue * flatPenaltyPerMonth);
+        }
+        usedFlatPerMonth = flatPenaltyPerMonth;
+      }
+
       const total = truncate2(principal + penalty);
 
       housePrincipal += principal;
@@ -114,8 +157,11 @@ export function processInitialBalances(
         billingMonth: Number(p.billingMonth),
         dueDate: p.dueDate,
         daysOverdue,
+        monthsOverdue,
         principalAmount: principal,
-        penaltyRatePercent: rate,
+        penaltyCalcMode,
+        penaltyRatePercent: ratePercent,
+        flatPenaltyPerMonth: usedFlatPerMonth,
         penaltyAmount: penalty,
         totalAmount: total,
       };
@@ -144,6 +190,7 @@ export function processInitialBalances(
 
   return {
     cutoffDate: cutoffDateStr,
+    penaltyCalcMode,
     totalProperties: items.length,
     fullyPaidProperties: fullyPaidHouses,
     overdueProperties: overdueHouses,

@@ -25,7 +25,9 @@ import {
 } from 'lucide-react';
 import {
   MigrationCalculationResult,
+  PenaltyCalcMode,
   getStepPenaltyRate,
+  getOverdueMonths,
   truncate2,
 } from '@/lib/initial-balance';
 
@@ -40,20 +42,26 @@ interface PeriodRow {
   billingMonth: number;
   dueDate: string;
   principalAmount: number | '';
+  // สำหรับ STEP_RATE_PERCENT mode
   penaltyMode: 'auto' | '0' | '10' | '20' | 'custom';
   customPenaltyRate: number | '';
+  // สำหรับ FLAT_PER_MONTH mode
+  flatPenaltyOverride: 'auto' | 'custom' | 'none';
+  customFlatPenalty: number | '';
 }
 
 interface InitialBalanceSectionProps {
   isSuperAdmin: boolean;
   houses: any[];
   onRefreshHouses?: () => void;
+  penaltyRatePerMonth?: number;
 }
 
 export default function InitialBalanceSection({
   isSuperAdmin,
   houses = [],
   onRefreshHouses,
+  penaltyRatePerMonth = 100,
 }: InitialBalanceSectionProps) {
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
   const currentYear = useMemo(() => new Date().getFullYear(), []);
@@ -61,6 +69,9 @@ export default function InitialBalanceSection({
   // แท็บหลัก: 'single' (ทีละหลัง) หรือ 'batch' (นำเข้าหลายหลัง)
   const [activeTab, setActiveTab] = useState<'single' | 'batch'>('single');
   const [cutoffDate, setCutoffDate] = useState<string>(todayStr);
+
+  // โหมดการคิดค่าปรับ: FLAT_PER_MONTH (ตรงกับระบบบิลหลัก) หรือ STEP_RATE_PERCENT (% ของเงินต้น)
+  const [penaltyCalcMode, setPenaltyCalcMode] = useState<PenaltyCalcMode>('FLAT_PER_MONTH');
 
   // ----------------------------------------------------
   // Single Mode State (กรอกทีละหลัง - ใช้งานง่าย ไม่พลาด)
@@ -95,6 +106,8 @@ export default function InitialBalanceSection({
             principalAmount: defaultRate,
             penaltyMode: 'auto',
             customPenaltyRate: '',
+            flatPenaltyOverride: 'auto',
+            customFlatPenalty: '',
           },
         ]);
       }
@@ -130,6 +143,8 @@ export default function InitialBalanceSection({
         principalAmount: defaultRate,
         penaltyMode: 'auto',
         customPenaltyRate: '',
+        flatPenaltyOverride: 'auto',
+        customFlatPenalty: '',
       },
     ]);
   };
@@ -188,6 +203,8 @@ export default function InitialBalanceSection({
         principalAmount: defaultRate,
         penaltyMode: 'auto',
         customPenaltyRate: '',
+        flatPenaltyOverride: 'auto',
+        customFlatPenalty: '',
       });
     }
 
@@ -218,18 +235,34 @@ export default function InitialBalanceSection({
 
       const diffTime = cutoff.getTime() - due.getTime();
       const daysOverdue = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
-
-      let rate = 0;
-      if (p.penaltyMode === 'auto') {
-        rate = getStepPenaltyRate(daysOverdue);
-      } else if (p.penaltyMode === 'custom') {
-        rate = Number(p.customPenaltyRate) || 0;
-      } else {
-        rate = Number(p.penaltyMode);
-      }
+      const monthsOverdue = getOverdueMonths(daysOverdue);
 
       const principal = truncate2(Number(p.principalAmount) || 0);
-      const penalty = truncate2(principal * (rate / 100));
+      let penalty = 0;
+      let rate = 0;
+
+      if (penaltyCalcMode === 'STEP_RATE_PERCENT') {
+        // โหมด Step Rate: คิดเป็น % ของเงินต้น
+        if (p.penaltyMode === 'auto') {
+          rate = getStepPenaltyRate(daysOverdue);
+        } else if (p.penaltyMode === 'custom') {
+          rate = Number(p.customPenaltyRate) || 0;
+        } else {
+          rate = Number(p.penaltyMode);
+        }
+        penalty = truncate2(principal * (rate / 100));
+      } else {
+        // โหมด Flat Per Month: คิดเป็น จำนวนเดือน × อัตราต่อเดือน
+        if (p.flatPenaltyOverride === 'none') {
+          penalty = 0;
+        } else if (p.flatPenaltyOverride === 'custom') {
+          penalty = truncate2(Number(p.customFlatPenalty) || 0);
+        } else {
+          // auto
+          penalty = truncate2(monthsOverdue * penaltyRatePerMonth);
+        }
+      }
+
       const total = truncate2(principal + penalty);
 
       housePrincipal += principal;
@@ -238,6 +271,7 @@ export default function InitialBalanceSection({
       return {
         ...p,
         daysOverdue,
+        monthsOverdue,
         rate,
         principal,
         penalty,
@@ -251,7 +285,7 @@ export default function InitialBalanceSection({
       grandTotal: truncate2(housePrincipal + housePenalty),
       calculatedPeriods,
     };
-  }, [isPaidFull, periods, cutoffDate]);
+  }, [isPaidFull, periods, cutoffDate, penaltyCalcMode, penaltyRatePerMonth]);
 
   // บันทึกยอดยกมาของบ้านหลังที่เลือก
   const handleSaveSingleHouse = async () => {
@@ -315,13 +349,21 @@ export default function InitialBalanceSection({
       // ส่งข้อมูลไปยัง API
       const unpaidPeriodsPayload = isPaidFull
         ? []
-        : singleCalculation.calculatedPeriods.map((p) => ({
-            billingYear: p.billingYear,
-            billingMonth: p.billingMonth,
-            dueDate: p.dueDate,
-            principalAmount: p.principal,
-            customPenaltyRate: p.rate,
-          }));
+        : singleCalculation.calculatedPeriods.map((p) => {
+            const base: any = {
+              billingYear: p.billingYear,
+              billingMonth: p.billingMonth,
+              dueDate: p.dueDate,
+              principalAmount: p.principal,
+            };
+            if (penaltyCalcMode === 'STEP_RATE_PERCENT') {
+              base.customPenaltyRate = p.rate;
+            } else {
+              // สำหรับ FLAT_PER_MONTH ส่งค่าปรับที่คำนวณแล้วเป็น customFlatPenalty
+              base.customFlatPenalty = p.penalty;
+            }
+            return base;
+          });
 
       const res = await fetch('/api/admin/initial-balance', {
         method: 'POST',
@@ -329,6 +371,8 @@ export default function InitialBalanceSection({
         body: JSON.stringify({
           action: 'confirm',
           cutoffDate,
+          penaltyCalcMode,
+          flatPenaltyPerMonth: penaltyRatePerMonth,
           items: [
             {
               houseNo: selectedHouseNo,
@@ -393,7 +437,7 @@ export default function InitialBalanceSection({
       const res = await fetch('/api/admin/initial-balance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'preview', cutoffDate, rawCsvText: rawText }),
+        body: JSON.stringify({ action: 'preview', cutoffDate, rawCsvText: rawText, penaltyCalcMode, flatPenaltyPerMonth: penaltyRatePerMonth }),
       });
       const json = await res.json();
       if (json.success) setBatchPreviewData(json.data);
@@ -429,7 +473,7 @@ export default function InitialBalanceSection({
       const resp = await fetch('/api/admin/initial-balance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'confirm', cutoffDate, rawCsvText: rawText }),
+        body: JSON.stringify({ action: 'confirm', cutoffDate, rawCsvText: rawText, penaltyCalcMode, flatPenaltyPerMonth: penaltyRatePerMonth }),
       });
       const json = await resp.json();
       if (json.success) {
@@ -511,6 +555,72 @@ export default function InitialBalanceSection({
               }`}
             >
               📑 นำเข้าหลายหลัง (CSV)
+            </button>
+          </div>
+        </div>
+
+        {/* โหมดการคิดค่าปรับ */}
+        <div className="mb-6 p-4 bg-amber-50/80 border border-amber-200/60 rounded-2xl">
+          <label className="block text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
+            <Calculator size={16} className="text-amber-600" />
+            วิธีคิดเบี้ยปรับ (Penalty Calculation Mode)
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setPenaltyCalcMode('FLAT_PER_MONTH')}
+              className={`p-4 rounded-xl border-2 text-left transition-all ${
+                penaltyCalcMode === 'FLAT_PER_MONTH'
+                  ? 'border-amber-500 bg-white shadow-sm'
+                  : 'border-slate-200 bg-white/60 hover:border-slate-300'
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
+                  penaltyCalcMode === 'FLAT_PER_MONTH' ? 'bg-amber-500 text-white' : 'border-2 border-slate-300'
+                }`}>
+                  {penaltyCalcMode === 'FLAT_PER_MONTH' && <Check size={12} />}
+                </div>
+                <div>
+                  <span className="block font-black text-sm text-slate-800">
+                    💰 คิดค่าปรับต่อเดือน (ตรงกับระบบบิลหลัก)
+                  </span>
+                  <span className="block text-[11px] text-slate-500 mt-1 leading-relaxed">
+                    สูตร: จำนวนเดือนค้าง × <b>฿{penaltyRatePerMonth.toLocaleString()}/เดือน</b>
+                    <br />เช่น ค้าง 6 เดือน = 6 × {penaltyRatePerMonth} = <b>฿{(6 * penaltyRatePerMonth).toLocaleString()}</b>
+                  </span>
+                  <span className="inline-block mt-1.5 px-2 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-bold rounded-md">
+                    ⭐ แนะนำ — ตรงกับระบบเก็บเงินปัจจุบัน
+                  </span>
+                </div>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setPenaltyCalcMode('STEP_RATE_PERCENT')}
+              className={`p-4 rounded-xl border-2 text-left transition-all ${
+                penaltyCalcMode === 'STEP_RATE_PERCENT'
+                  ? 'border-amber-500 bg-white shadow-sm'
+                  : 'border-slate-200 bg-white/60 hover:border-slate-300'
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
+                  penaltyCalcMode === 'STEP_RATE_PERCENT' ? 'bg-amber-500 text-white' : 'border-2 border-slate-300'
+                }`}>
+                  {penaltyCalcMode === 'STEP_RATE_PERCENT' && <Check size={12} />}
+                </div>
+                <div>
+                  <span className="block font-black text-sm text-slate-800">
+                    📊 คิดเป็น % ของเงินต้น (Step Rate)
+                  </span>
+                  <span className="block text-[11px] text-slate-500 mt-1 leading-relaxed">
+                    1-30 วัน: <b>0%</b> · 31-180 วัน: <b>10%</b> · เกิน 180 วัน: <b>20%</b>
+                    <br />เช่น เงินต้น 500 ค้าง 90 วัน = 500 × 10% = <b>฿50</b>
+                  </span>
+                </div>
+              </div>
             </button>
           </div>
         </div>
@@ -766,42 +876,77 @@ export default function InitialBalanceSection({
                           />
                         </div>
 
-                        {/* รูปแบบการคิดเบี้ยปรับ */}
+                        {/* รูปแบบการคิดเบี้ยปรับ — แสดง UI ตามโหมดที่เลือก */}
                         <div className="md:col-span-3">
                           <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
                             การคิดเบี้ยปรับ
                           </label>
-                          <div className="flex gap-1.5">
-                            <select
-                              value={row.penaltyMode}
-                              onChange={(e) =>
-                                handleUpdatePeriod(row.id, 'penaltyMode', e.target.value)
-                              }
-                              className="flex-1 border border-slate-200 rounded-xl p-2.5 bg-white font-bold text-xs text-slate-800 shadow-sm"
-                            >
-                              <option value="auto">⚡ Step Rate (อัตโนมัติ)</option>
-                              <option value="0">❌ ยกเว้นค่าปรับ (0%)</option>
-                              <option value="10">⚠️ บังคับ 10%</option>
-                              <option value="20">🚨 บังคับ 20%</option>
-                              <option value="custom">✏️ ระบุ % เอง</option>
-                            </select>
 
-                            {row.penaltyMode === 'custom' && (
-                              <input
-                                type="number"
-                                placeholder="%"
-                                value={row.customPenaltyRate}
+                          {penaltyCalcMode === 'STEP_RATE_PERCENT' ? (
+                            /* UI สำหรับ Step Rate % */
+                            <div className="flex gap-1.5">
+                              <select
+                                value={row.penaltyMode}
                                 onChange={(e) =>
-                                  handleUpdatePeriod(
-                                    row.id,
-                                    'customPenaltyRate',
-                                    e.target.value === '' ? '' : Number(e.target.value)
-                                  )
+                                  handleUpdatePeriod(row.id, 'penaltyMode', e.target.value)
                                 }
-                                className="w-16 border border-slate-200 rounded-xl p-2 bg-white font-bold text-xs text-center"
-                              />
-                            )}
-                          </div>
+                                className="flex-1 border border-slate-200 rounded-xl p-2.5 bg-white font-bold text-xs text-slate-800 shadow-sm"
+                              >
+                                <option value="auto">⚡ Step Rate (อัตโนมัติ)</option>
+                                <option value="0">❌ ยกเว้นค่าปรับ (0%)</option>
+                                <option value="10">⚠️ บังคับ 10%</option>
+                                <option value="20">🚨 บังคับ 20%</option>
+                                <option value="custom">✏️ ระบุ % เอง</option>
+                              </select>
+
+                              {row.penaltyMode === 'custom' && (
+                                <input
+                                  type="number"
+                                  placeholder="%"
+                                  value={row.customPenaltyRate}
+                                  onChange={(e) =>
+                                    handleUpdatePeriod(
+                                      row.id,
+                                      'customPenaltyRate',
+                                      e.target.value === '' ? '' : Number(e.target.value)
+                                    )
+                                  }
+                                  className="w-16 border border-slate-200 rounded-xl p-2 bg-white font-bold text-xs text-center"
+                                />
+                              )}
+                            </div>
+                          ) : (
+                            /* UI สำหรับ Flat Per Month */
+                            <div className="flex gap-1.5">
+                              <select
+                                value={row.flatPenaltyOverride}
+                                onChange={(e) =>
+                                  handleUpdatePeriod(row.id, 'flatPenaltyOverride', e.target.value)
+                                }
+                                className="flex-1 border border-slate-200 rounded-xl p-2.5 bg-white font-bold text-xs text-slate-800 shadow-sm"
+                              >
+                                <option value="auto">⚡ อัตโนมัติ (฿{penaltyRatePerMonth}/ด.)</option>
+                                <option value="none">❌ ยกเว้นค่าปรับ (฿0)</option>
+                                <option value="custom">✏️ ระบุจำนวนเงินเอง</option>
+                              </select>
+
+                              {row.flatPenaltyOverride === 'custom' && (
+                                <input
+                                  type="number"
+                                  placeholder="฿"
+                                  value={row.customFlatPenalty}
+                                  onChange={(e) =>
+                                    handleUpdatePeriod(
+                                      row.id,
+                                      'customFlatPenalty',
+                                      e.target.value === '' ? '' : Number(e.target.value)
+                                    )
+                                  }
+                                  className="w-20 border border-slate-200 rounded-xl p-2 bg-white font-bold text-xs text-center"
+                                />
+                              )}
+                            </div>
+                          )}
                         </div>
 
                         {/* ยอดที่คิดได้ + ปุ่มลบ */}
@@ -811,7 +956,10 @@ export default function InitialBalanceSection({
                               ฿{(calc?.total || 0).toLocaleString()}
                             </span>
                             <span className="block text-[10px] text-slate-400">
-                              (ปรับ ฿{(calc?.penalty || 0).toLocaleString()} / {calc?.daysOverdue || 0} วัน)
+                              {penaltyCalcMode === 'FLAT_PER_MONTH'
+                                ? `(ปรับ ฿${(calc?.penalty || 0).toLocaleString()} / ${calc?.monthsOverdue || 0} เดือน)`
+                                : `(ปรับ ฿${(calc?.penalty || 0).toLocaleString()} / ${calc?.daysOverdue || 0} วัน)`
+                              }
                             </span>
                           </div>
 

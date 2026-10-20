@@ -4,6 +4,7 @@ import {
   processInitialBalances,
   parseCsvOrTextMigration,
   HouseMigrationInput,
+  PenaltyCalcMode,
 } from '@/lib/initial-balance';
 
 export const dynamic = 'force-dynamic';
@@ -17,11 +18,15 @@ export async function POST(req: Request) {
       cutoffDate,
       items,
       rawCsvText,
+      penaltyCalcMode = 'FLAT_PER_MONTH',
+      flatPenaltyPerMonth,
     } = body as {
       action?: 'preview' | 'confirm';
       cutoffDate?: string;
       items?: HouseMigrationInput[];
       rawCsvText?: string;
+      penaltyCalcMode?: PenaltyCalcMode;
+      flatPenaltyPerMonth?: number;
     };
 
     if (!cutoffDate) {
@@ -29,6 +34,13 @@ export async function POST(req: Request) {
         { success: false, error: 'กรุณาระบุวันที่ตัดยอด (Cut-off Date)' },
         { status: 400 }
       );
+    }
+
+    // ดึงค่า penaltyRatePerDay จาก SystemConfig เป็น fallback (ชื่อ field หลอก — จริงๆ คือต่อเดือน)
+    let resolvedFlatPenalty = flatPenaltyPerMonth;
+    if (resolvedFlatPenalty === undefined || resolvedFlatPenalty === null) {
+      const config = await prisma.systemConfig.findFirst();
+      resolvedFlatPenalty = config?.penaltyRatePerDay ? Number(config.penaltyRatePerDay) : 100;
     }
 
     // แปลงข้อมูลจาก CSV หรือใช้ JSON Array
@@ -46,8 +58,8 @@ export async function POST(req: Request) {
       );
     }
 
-    // 1. ประมวลผลคำนวณเบี้ยปรับแบบ Step Rate
-    const calculation = processInitialBalances(parsedItems, cutoffDate);
+    // 1. ประมวลผลคำนวณเบี้ยปรับตามโหมดที่เลือก
+    const calculation = processInitialBalances(parsedItems, cutoffDate, penaltyCalcMode, resolvedFlatPenalty);
 
     // 2. ถ้าเป็นแค่โหมด Preview ให้ส่งผลลัพธ์การคำนวณกลับไปให้ผู้ใช้ตรวจทาน
     if (action === 'preview') {
