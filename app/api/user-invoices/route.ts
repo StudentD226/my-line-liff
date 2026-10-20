@@ -58,11 +58,15 @@ export async function GET(request: Request) {
         dueDate.setHours(0, 0, 0, 0);
 
         if (today > dueDate) {
-          const diffTime = today.getTime() - dueDate.getTime();
-          const overdueDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-          const overdueMonths = Math.floor(overdueDays / 30);
-          
-          penalty = overdueMonths * flatPenaltyPerMonth;
+          // ถ้าเป็นบิลยอดยกมาตั้งต้น (INIT-) ที่มีค่าปรับบันทึกไว้แล้ว (เช่น คิดแบบ % ขั้นบันได) ให้คงค่านั้นไว้
+          const isInitialBalance = inv.invoiceNo.startsWith('INIT-');
+          if (!isInitialBalance || penalty === 0) {
+            const diffTime = today.getTime() - dueDate.getTime();
+            const overdueDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            const overdueMonths = Math.floor(overdueDays / 30);
+            
+            penalty = overdueMonths * flatPenaltyPerMonth;
+          }
           inv.status = inv.status === 'PARTIAL' ? 'PARTIAL' : 'OVERDUE';
         }
         
