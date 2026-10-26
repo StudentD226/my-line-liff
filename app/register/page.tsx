@@ -296,33 +296,25 @@ export default function RegisterPage() {
         </div>
 
         {/* การ์ดแบบฟอร์ม */}
-        <div className="bg-white p-7 md:p-9 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 relative">
+        <div className="bg-white p-6 sm:p-8 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 relative">
           <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-[#5b9e94] to-[#376B64] rounded-t-[2.5rem]"></div>
           
-          <div className="mb-8 mt-2">
-            <h1 className="text-2xl font-black text-slate-900 mb-2">ข้อมูลผู้พักอาศัย</h1>
-            <p className="text-sm text-slate-500 font-medium">กรุณาตรวจสอบและกรอกข้อมูลให้ครบถ้วน เพื่อรับการแจ้งเตือนค่าส่วนกลาง</p>
+          <div className="mb-6 mt-1">
+            <h1 className="text-2xl font-black text-slate-900 mb-1">ข้อมูลผู้พักอาศัย</h1>
+            <p className="text-xs text-slate-400 font-medium">กรอกข้อมูลเพื่อลงทะเบียนรับการแจ้งเตือนค่าส่วนกลาง</p>
           </div>
 
-          <form onSubmit={handleRegister} className="space-y-5">
+          <form onSubmit={handleRegister} className="space-y-4">
             
-            {/* 1. เลขที่บ้าน / เลขห้อง (ค้นหา / พิมพ์ใน dropdown ได้) */}
+            {/* 1. บ้านเลขที่ */}
             <div className="space-y-1.5" ref={dropdownRef}>
               <div className="flex justify-between items-center">
-                <label className="block text-[13px] font-bold text-slate-700 uppercase tracking-wide">
-                  เลขที่บ้าน / เลขห้อง *
+                <label className="block text-sm font-bold text-slate-700">
+                  บ้านเลขที่ *
                 </label>
-                {hasExistingHouse ? (
+                {hasExistingHouse && (
                   <span className="text-[11px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full flex items-center gap-1 border border-rose-100">
-                    <Lock size={11} /> ล็อคข้อมูลแล้ว
-                  </span>
-                ) : houseNo ? (
-                  <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-1 border border-emerald-100">
-                    <Check size={11} className="text-emerald-600" /> เลือกแล้ว
-                  </span>
-                ) : (
-                  <span className="text-[11px] font-medium text-slate-400">
-                    {isLoadingHouses ? 'กำลังโหลด...' : `มีทั้งหมด ${housesList.length} หลัง`}
+                    <Lock size={11} /> ล็อคแล้ว
                   </span>
                 )}
               </div>
@@ -332,7 +324,7 @@ export default function RegisterPage() {
                   <Home size={18} className="absolute left-4 text-slate-400 z-10 pointer-events-none" />
                   
                   {hasExistingHouse ? (
-                    // ถ้ามีบ้านแล้ว: แสดงแบบล็อค ไม่ให้แก้ไข
+                    // ถ้ามีบ้านแล้ว: แสดงแบบล็อค
                     <div className="w-full relative flex items-center">
                       <input 
                         type="text" 
@@ -344,7 +336,7 @@ export default function RegisterPage() {
                       <Lock size={16} className="absolute right-4 text-rose-400" />
                     </div>
                   ) : (
-                    // ถ้ายังไม่มีบ้าน: ช่องค้นหา / พิมพ์เลขที่บ้าน + Dropdown
+                    // ถ้ายังไม่มีบ้าน: ช่องค้นหา / พิมพ์บ้านเลขที่ + Dropdown
                     <div className="w-full relative flex items-center">
                       <input
                         ref={searchInputRef}
@@ -353,7 +345,7 @@ export default function RegisterPage() {
                         value={searchQuery}
                         onChange={(e) => handleSearchChange(e.target.value)}
                         onFocus={() => setIsDropdownOpen(true)}
-                        placeholder={isLoadingHouses ? 'กำลังโหลดข้อมูลบ้าน...' : 'พิมพ์ค้นหาหรือเลือกเลขที่บ้าน...'}
+                        placeholder={isLoadingHouses ? 'กำลังโหลดข้อมูล...' : 'พิมพ์ค้นหาหรือเลือกบ้านเลขที่...'}
                         className="w-full pl-11 pr-16 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:outline-none focus:border-[#376B64] focus:ring-4 focus:ring-[#376B64]/10 text-sm font-bold text-slate-800 transition-all placeholder:text-slate-400 placeholder:font-normal disabled:bg-slate-100 disabled:cursor-not-allowed"
                       />
 
@@ -387,23 +379,19 @@ export default function RegisterPage() {
                 {/* Dropdown Menu รายการบ้านเลขที่ (ค้นหาได้) */}
                 {!hasExistingHouse && isDropdownOpen && (
                   <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden z-30 animate-in fade-in zoom-in-95 duration-150">
-                    {/* Header ใน Dropdown */}
-                    <div className="p-2.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between text-xs text-slate-500 font-semibold px-3.5">
-                      <span className="flex items-center gap-1.5">
+                    <div className="p-2.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between text-xs text-slate-400 font-semibold px-3.5">
+                      <span className="flex items-center gap-1.5 text-slate-600">
                         <Search size={13} className="text-[#376B64]" />
-                        {searchQuery ? `ค้นหา: "${searchQuery}"` : 'เลือกบ้านเลขที่ของคุณ'}
+                        {searchQuery ? `ค้นหา: "${searchQuery}"` : 'เลือกบ้านเลขที่'}
                       </span>
-                      <span className="text-[11px] font-normal text-slate-400">
-                        {filteredHouses.length} รายการ
-                      </span>
+                      <span>{filteredHouses.length} รายการ</span>
                     </div>
 
-                    {/* รายการบ้าน */}
                     <div className="max-h-56 overflow-y-auto divide-y divide-slate-50 overscroll-contain">
                       {isLoadingHouses ? (
                         <div className="p-5 text-center text-xs text-slate-400 font-medium flex items-center justify-center gap-2">
                           <div className="w-4 h-4 border-2 border-[#376B64]/30 border-t-[#376B64] rounded-full animate-spin"></div>
-                          กำลังโหลดรายการบ้าน...
+                          กำลังโหลด...
                         </div>
                       ) : filteredHouses.length > 0 ? (
                         filteredHouses.map((h) => {
@@ -442,39 +430,22 @@ export default function RegisterPage() {
                         })
                       ) : (
                         <div className="p-6 text-center">
-                          <p className="text-xs font-bold text-slate-600 mb-1">ไม่พบบ้านเลขที่นี้ในระบบ</p>
-                          <p className="text-[11px] text-slate-400">
-                            กรุณาตรวจสอบเลขที่บ้าน หรือติดต่อนิติบุคคลเพื่อเพิ่มข้อมูล
-                          </p>
+                          <p className="text-xs font-bold text-slate-600 mb-1">ไม่พบบ้านเลขที่นี้</p>
+                          <p className="text-[11px] text-slate-400">กรุณาตรวจสอบหรือติดต่อนิติบุคคล</p>
                         </div>
                       )}
                     </div>
                   </div>
                 )}
               </div>
-              
-              {hasExistingHouse ? (
-                <p className="text-[11px] text-rose-500 font-bold mt-1.5 flex items-center gap-1.5">
-                  <AlertCircle size={12} /> ไม่สามารถแก้ไขบ้านเลขที่ได้ กรุณาติดต่อนิติบุคคล
-                </p>
-              ) : (
-                <p className="text-[11px] text-slate-400 font-medium mt-1.5">
-                  สามารถพิมพ์ค้นหาหรือเลือกจากรายการได้ (แก้ไขภายหลังไม่ได้)
-                </p>
-              )}
             </div>
 
-            {/* 2. ช่องกรอกรหัสลับประจำบ้าน (Passcode) - โชว์เฉพาะตอนลงทะเบียนบ้านครั้งแรก รองรับทั้งตัวพิมพ์เล็กและใหญ่ */}
+            {/* 2. รหัสผ่านประจำบ้าน (Passcode) */}
             {!hasExistingHouse && (
-              <div className="space-y-1.5 pt-1 animate-in fade-in slide-in-from-top-2 duration-300">
-                <div className="flex justify-between items-center">
-                  <label className="block text-[13px] font-bold text-slate-700 uppercase tracking-wide">
-                    รหัสลับประจำบ้าน (Passcode) *
-                  </label>
-                  <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md flex items-center gap-1 border border-emerald-100">
-                    <ShieldCheck size={11} className="text-emerald-600" /> พิมพ์เล็ก/ใหญ่ก็ได้
-                  </span>
-                </div>
+              <div className="space-y-1.5 pt-1">
+                <label className="block text-sm font-bold text-slate-700">
+                  รหัสผ่าน (Passcode) *
+                </label>
                 
                 <div className="relative flex items-center">
                   <Key size={18} className="absolute left-4 text-amber-500" />
@@ -484,21 +455,18 @@ export default function RegisterPage() {
                     autoCapitalize="characters"
                     autoCorrect="off"
                     spellCheck={false}
-                    placeholder="เช่น 99/1-A1B2 หรือรหัสที่ได้รับจากนิติ" 
+                    placeholder="กรอก Passcode ประจำบ้าน" 
                     value={passcode} 
                     onChange={(e) => setPasscode(e.target.value)}
                     className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:outline-none focus:border-[#376B64] focus:ring-4 focus:ring-[#376B64]/10 text-sm font-bold text-slate-800 transition-all placeholder:text-slate-400 placeholder:font-normal font-mono uppercase" 
                   />
                 </div>
-                <p className="text-[11px] text-slate-500 font-medium mt-1.5 flex items-center gap-1">
-                  <ShieldCheck size={12} className="text-[#376B64] shrink-0" /> ขอรับรหัสนี้ได้จากนิติบุคคลหรือเจ้าของบ้าน (ระบบรองรับทั้งตัวพิมพ์เล็กและพิมพ์ใหญ่)
-                </p>
               </div>
             )}
 
-            {/* 3. ชื่อ - นามสกุล (สามารถแก้ไขได้ตลอดเวลา) */}
+            {/* 3. ชื่อ - นามสกุล */}
             <div className="space-y-1.5 pt-1">
-              <label className="block text-[13px] font-bold text-slate-700 uppercase tracking-wide">
+              <label className="block text-sm font-bold text-slate-700">
                 ชื่อ - นามสกุล *
               </label>
               <div className="relative flex items-center">
@@ -514,10 +482,10 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            {/* 4. หมายเลขโทรศัพท์ (สามารถแก้ไขได้ตลอดเวลา) */}
+            {/* 4. เบอร์โทรศัพท์ */}
             <div className="space-y-1.5 pt-1">
-              <label className="block text-[13px] font-bold text-slate-700 uppercase tracking-wide">
-                หมายเลขโทรศัพท์ *
+              <label className="block text-sm font-bold text-slate-700">
+                เบอร์โทรศัพท์ *
               </label>
               <div className="relative flex items-center">
                 <Phone size={18} className="absolute left-4 text-slate-400" />
@@ -530,16 +498,13 @@ export default function RegisterPage() {
                   className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:outline-none focus:border-[#376B64] focus:ring-4 focus:ring-[#376B64]/10 text-sm font-semibold transition-all placeholder:text-slate-400 placeholder:font-normal" 
                 />
               </div>
-              <p className="text-[11px] text-slate-400 font-medium mt-1">
-                ชื่อและเบอร์โทรศัพท์สามารถกลับมาแก้ไขได้ตลอดเวลา
-              </p>
             </div>
 
             {/* ปุ่มยืนยัน */}
             <button 
               type="submit" 
               disabled={loading}
-              className={`w-full py-4 rounded-2xl font-black text-[15px] mt-8 flex items-center justify-center gap-2 shadow-lg transition-all active:scale-[0.98] 
+              className={`w-full py-4 rounded-2xl font-black text-[15px] mt-6 flex items-center justify-center gap-2 shadow-lg transition-all active:scale-[0.98] 
                 ${loading ? 'bg-slate-400 text-white cursor-not-allowed shadow-none' : 'bg-[#376B64] text-white hover:bg-[#2A524C] hover:-translate-y-0.5 shadow-[#376B64]/30'}`}
             >
               {loading ? (
@@ -548,10 +513,10 @@ export default function RegisterPage() {
                 <CheckCircle2 size={20} />
               )}
               {loading 
-                ? 'กำลังตรวจสอบข้อมูล...' 
+                ? 'กำลังตรวจสอบ...' 
                 : hasExistingHouse 
-                  ? 'บันทึกการแก้ไขข้อมูล' 
-                  : 'บันทึกข้อมูลการลงทะเบียน'}
+                  ? 'บันทึกข้อมูล' 
+                  : 'ลงทะเบียนเข้าสู่ระบบ'}
             </button>
             
           </form>
