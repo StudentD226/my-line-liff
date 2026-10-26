@@ -870,32 +870,48 @@ export default function InitialBalanceSection({
 
       <div className={`p-5 sm:p-6 md:p-8 ${!isSuperAdmin ? 'opacity-30 pointer-events-none select-none' : ''}`}>
         {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-6 border-b border-slate-100">
+        <div className="flex flex-col gap-5 mb-6 pb-6 border-b border-slate-100">
           <div>
             <h2 className="text-lg sm:text-xl font-black text-slate-800 flex items-center gap-2">
               <span className="p-2 bg-[#376B64]/10 text-[#376B64] rounded-lg shrink-0">
                 <History size={20} />
               </span>
-              <span className="truncate">ตั้งค่ายอดลูกหนี้ค้างชำระยกมา (Initial Balance Setup)</span>
+              <span>ตั้งค่ายอดลูกหนี้ค้างชำระยกมา (Initial Balance Setup)</span>
             </h2>
-            <p className="text-xs sm:text-sm text-slate-500 mt-1">
+            <p className="text-xs sm:text-sm text-slate-500 mt-1 leading-relaxed">
               นำเข้ายอดค้างชำระย้อนหลัง (ตั้งแต่ ก.ย. 2564 ถึง ธ.ค. 2569) หรือระบุบ้านที่จ่ายครบแล้ว พร้อมคำนวณหรือยกเว้นเบี้ยปรับแยกรายแปลงอย่างปลอดภัย
             </p>
           </div>
 
-          {/* Mode Switcher Tabs */}
-          <div className="flex items-center bg-slate-100 p-1 rounded-xl shrink-0 gap-1.5 flex-wrap">
-            <button
-              type="button"
-              onClick={() => setActiveTab('single')}
-              className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                activeTab === 'single'
-                  ? 'bg-white text-[#376B64] shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <Home size={14} className="text-[#376B64]" /> กำหนดรายหลัง (แนะนำ)
-            </button>
+          {/* Mode Switcher Tabs & Multi-House Action Button */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
+            {/* View Mode Tabs: Single vs Batch */}
+            <div className="inline-flex items-center bg-slate-100 p-1.5 rounded-2xl gap-1 w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={() => setActiveTab('single')}
+                className={`flex-1 sm:flex-initial px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
+                  activeTab === 'single'
+                    ? 'bg-white text-[#376B64] shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Home size={15} className="text-[#376B64]" /> กำหนดรายหลัง (แนะนำ)
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('batch')}
+                className={`flex-1 sm:flex-initial px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
+                  activeTab === 'batch'
+                    ? 'bg-white text-[#376B64] shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <FileSpreadsheet size={15} className="text-[#376B64]" /> นำเข้าข้อมูลชุด (CSV)
+              </button>
+            </div>
+
+            {/* Quick Action Button: เลือกหลายหลังพร้อมกัน (Popup) */}
             <button
               type="button"
               onClick={() => {
@@ -903,20 +919,10 @@ export default function InitialBalanceSection({
                 setMultiSearchQuery('');
                 setIsMultiModalOpen(true);
               }}
-              className="px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 bg-[#376B64] hover:bg-[#2A524C] text-white shadow-sm active:scale-95"
+              className="w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 bg-[#376B64] hover:bg-[#2A524C] text-white shadow-md active:scale-95 shrink-0"
             >
-              <Users size={14} /> เลือกหลายหลังพร้อมกัน (Popup)
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('batch')}
-              className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                activeTab === 'batch'
-                  ? 'bg-white text-[#376B64] shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <FileSpreadsheet size={14} className="text-[#376B64]" /> นำเข้าข้อมูลชุด (CSV)
+              <Users size={16} />
+              เลือกหลายหลังพร้อมกัน (Popup)
             </button>
           </div>
         </div>
