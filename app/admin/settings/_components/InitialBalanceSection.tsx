@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import Swal from 'sweetalert2';
 import {
   History,
@@ -111,6 +112,22 @@ export default function InitialBalanceSection({
   const [multiFeeMode, setMultiFeeMode] = useState<'house_rate' | 'custom'>('house_rate');
   const [multiCustomAmount, setMultiCustomAmount] = useState<number | ''>(500);
   const [submittingMulti, setSubmittingMulti] = useState<boolean>(false);
+  const [mounted, setMounted] = useState<boolean>(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (isMultiModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isMultiModalOpen]);
 
   // รายชื่อบ้านที่ผ่านการกรองค้นหาใน Modal
   const filteredHousesForMulti = useMemo(() => {
@@ -836,7 +853,7 @@ export default function InitialBalanceSection({
   };
 
   return (
-    <section className="bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-sm border border-slate-100 relative mt-8 z-0">
+    <section className="bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-sm border border-slate-100 relative mt-8">
       {!isSuperAdmin && (
         <div className="absolute inset-0 z-20 bg-slate-100/40 backdrop-blur-[1px] flex flex-col items-center justify-center rounded-[1.5rem] sm:rounded-[2rem]">
           <div className="bg-white p-6 rounded-2xl shadow-xl border border-slate-200 flex flex-col items-center text-center max-w-sm">
@@ -1581,9 +1598,15 @@ export default function InitialBalanceSection({
       {/* ============================================================== */}
       {/* POPUP MODAL: เลือกบ้านหลายหลังพร้อมกัน (Batch Multi-House)       */}
       {/* ============================================================== */}
-      {isMultiModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
-          <div className="bg-white w-full max-w-4xl rounded-[2rem] shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-200">
+      {mounted && isMultiModalOpen && typeof document !== 'undefined' && createPortal(
+        <div 
+          className="fixed inset-0 z-[99999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 overflow-y-auto"
+          onClick={() => setIsMultiModalOpen(false)}
+        >
+          <div 
+            className="bg-white w-full max-w-4xl rounded-[2rem] shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[92vh] my-auto animate-in fade-in zoom-in-95 duration-200 relative z-10"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Modal Header */}
             <div className="px-6 py-5 bg-gradient-to-r from-slate-50 to-[#376B64]/10 border-b border-slate-100 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -1945,7 +1968,8 @@ export default function InitialBalanceSection({
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </section>
   );
