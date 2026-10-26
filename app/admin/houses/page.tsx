@@ -90,47 +90,7 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
     redirect(`/admin/houses${editId ? `?edit=${editId}&` : '?'}alert=remove_success`);
   };
 
-  const deleteMultipleHouses = async (formData: FormData) => {
-    'use server';
-    if (!isSuperAdmin) return;
-    const ids = formData.getAll('houseIds') as string[];
-    if (ids.length > 0) {
-      await prisma.invoice.deleteMany({ where: { residentHouseId: { in: ids } } });
-      await prisma.report.deleteMany({ where: { residentHouseId: { in: ids } } });
-      await prisma.user.deleteMany({ where: { residentHouseId: { in: ids } } });
-      await prisma.house.deleteMany({ where: { id: { in: ids } } });
-      redirect('/admin/houses?alert=delete_multiple_success');
-    }
-  };
 
-  const generateMultiplePasscodes = async (formData: FormData) => {
-    'use server';
-    if (!isSuperAdmin) return;
-    const ids = formData.getAll('houseIds') as string[];
-    if (ids.length > 0) {
-      const targetHouses = await prisma.house.findMany({
-        where: { id: { in: ids } },
-        select: { id: true, houseNo: true }
-      });
-      for (const h of targetHouses) {
-        await prisma.house.update({
-          where: { id: h.id },
-          data: { passcode: generatePasscodeInline(h.houseNo) }
-        });
-      }
-      redirect('/admin/houses?alert=generate_multiple_success');
-    }
-  };
-
-  const deleteSingleHouse = async (id: string) => {
-    'use server';
-    if (!isSuperAdmin) return;
-    await prisma.invoice.deleteMany({ where: { residentHouseId: id } });
-    await prisma.report.deleteMany({ where: { residentHouseId: id } });
-    await prisma.user.deleteMany({ where: { residentHouseId: id } });
-    await prisma.house.delete({ where: { id } });
-    redirect('/admin/houses?alert=delete_success');
-  };
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans p-4 sm:p-6 md:p-8 w-full overflow-x-hidden">
@@ -183,9 +143,9 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
         </div>
 
         {/* Table Card */}
-        <form action={deleteMultipleHouses} className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden relative w-full">
+        <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden relative w-full">
           
-          {/* Bulk Action Bar (แสดงผลเฉพาะ Superadmin) */}
+          {/* Bulk Action Bar (แสดงผลเฉพาะ Admin) */}
           {isSuperAdmin && (
             <div id="bulkActionBar" className="hidden bg-slate-900 text-white px-4 sm:px-6 py-4 flex-col sm:flex-row justify-between items-start sm:items-center gap-4 animate-in slide-in-from-top duration-300 z-10 relative">
               <span className="text-sm font-bold flex items-center gap-2 whitespace-nowrap">
@@ -196,12 +156,10 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
                 <button type="button" className="generate-passcode-btn flex items-center justify-center w-full sm:w-auto px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl transition shadow-sm active:scale-[0.98] whitespace-nowrap">
                   <Key size={14} className="mr-1.5 shrink-0" /> สุ่มรหัสผ่านใหม่
                 </button>
-                <button formAction={generateMultiplePasscodes} type="submit" className="hidden hidden-submit-generate" />
 
-                <button type="button" className="delete-btn flex items-center justify-center w-full sm:w-auto px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition shadow-sm active:scale-[0.98] whitespace-nowrap">
+                <button type="button" className="bulk-delete-btn flex items-center justify-center w-full sm:w-auto px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition shadow-sm active:scale-[0.98] whitespace-nowrap">
                   <Trash2 size={14} className="mr-1.5 shrink-0" /> ลบข้อมูลรายการที่เลือก
                 </button>
-                <button type="submit" className="hidden hidden-submit-delete" />
               </div>
             </div>
           )}
@@ -311,12 +269,15 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
                               <Pencil size={16} className="shrink-0" />
                             </Link>
                             {isSuperAdmin && (
-                              <div className="relative">
-                                <button type="button" className="delete-btn p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all shadow-sm hover:shadow" title="ลบข้อมูล">
-                                  <Trash2 size={16} className="shrink-0" />
-                                </button>
-                                <button formAction={deleteSingleHouse.bind(null, house.id)} type="submit" className="hidden hidden-submit-delete" />
-                              </div>
+                              <button 
+                                type="button" 
+                                data-house-id={house.id}
+                                data-house-no={house.houseNo}
+                                className="single-delete-btn p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all shadow-sm hover:shadow" 
+                                title="ลบข้อมูล"
+                              >
+                                <Trash2 size={16} className="shrink-0" />
+                              </button>
                             )}
                           </div>
                         </div>
@@ -327,7 +288,7 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
               </tbody>
             </table>
           </div>
-        </form>
+        </div>
       </div>
 
       {/* Modal เพิ่ม / แก้ไขข้อมูลยูนิต */}
@@ -438,15 +399,15 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
                             </span>
                           </div>
                           {isSuperAdmin && (
-                            <form action={handleRemoveResident} className="shrink-0">
-                              <input type="hidden" name="userId" value={user.id} />
-                              <div className="relative">
-                                <button type="button" className="delete-btn p-1.5 sm:p-2 text-red-400 hover:text-white hover:bg-red-500 rounded-xl transition-colors" title="นำข้อมูลออก">
-                                  <UserMinus size={16} className="shrink-0" />
-                                </button>
-                                <button type="submit" className="hidden hidden-submit" />
-                              </div>
-                            </form>
+                            <button 
+                              type="button" 
+                              data-user-id={user.id}
+                              data-user-name={user.name || ''}
+                              className="remove-resident-btn p-1.5 sm:p-2 text-red-400 hover:text-white hover:bg-red-500 rounded-xl transition-colors shrink-0" 
+                              title="นำข้อมูลออก"
+                            >
+                              <UserMinus size={16} className="shrink-0" />
+                            </button>
                           )}
                         </li>
                       ))}
@@ -552,51 +513,259 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
             }
           });
 
-          document.addEventListener('click', function(e) {
-            const deleteBtn = e.target.closest('.delete-btn');
-            if (deleteBtn && typeof Swal !== 'undefined') {
+          document.addEventListener('click', async function(e) {
+            // 1. ลบบ้านทีละหลัง (Single Delete)
+            const singleDeleteBtn = e.target.closest('.single-delete-btn');
+            if (singleDeleteBtn && typeof Swal !== 'undefined') {
               e.preventDefault();
-              Swal.fire({
+              const houseId = singleDeleteBtn.getAttribute('data-house-id');
+              const houseNo = singleDeleteBtn.getAttribute('data-house-no');
+
+              const result = await Swal.fire({
                 title: 'ยืนยันการลบข้อมูล?',
-                text: "ข้อมูลที่ถูกเลือกรวมถึงประวัติที่เกี่ยวข้องจะถูกลบและไม่สามารถกู้คืนได้",
+                html: 'ต้องการลบข้อมูลบ้านเลขที่ <b>' + (houseNo || '') + '</b> ใช่หรือไม่?<br/><span class="text-xs text-slate-400">ข้อมูลและประวัติที่เกี่ยวข้องทั้งหมดจะถูกลบออกจากระบบ</span>',
                 icon: 'warning',
                 showCancelButton: true,
                 showCloseButton: true,
-                reverseButtons: false, // ปุ่มยืนยันอยู่ด้านซ้ายเสมอ
                 confirmButtonColor: '#ef4444',
                 cancelButtonColor: '#94a3b8',
                 confirmButtonText: 'ยืนยันการลบข้อมูล',
                 cancelButtonText: 'ยกเลิกรายการ',
                 customClass: { popup: 'rounded-2xl shadow-2xl', confirmButton: 'rounded-xl font-bold px-6 py-2.5', cancelButton: 'rounded-xl font-bold px-6 py-2.5' }
-              }).then((result) => {
-                if (result.isConfirmed) {
-                  const hiddenBtn = deleteBtn.parentElement.querySelector('.hidden-submit-delete, .hidden-submit');
-                  if (hiddenBtn) hiddenBtn.click();
-                }
               });
+
+              if (result.isConfirmed) {
+                Swal.fire({
+                  title: 'กำลังลบข้อมูล...',
+                  allowOutsideClick: false,
+                  didOpen: () => Swal.showLoading()
+                });
+
+                try {
+                  const res = await fetch('/api/admin/houses', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: houseId })
+                  });
+                  const data = await res.json();
+                  if (data.success) {
+                    await Swal.fire({
+                      icon: 'success',
+                      title: 'ดำเนินการเสร็จสิ้น',
+                      text: data.message || 'ลบข้อมูลบ้านพักเรียบร้อยแล้ว',
+                      confirmButtonColor: '#376B64',
+                      confirmButtonText: 'รับทราบ',
+                      customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl font-bold px-8' }
+                    });
+                    window.location.reload();
+                  } else {
+                    Swal.fire({
+                      icon: 'error',
+                      title: 'ไม่สามารถลบข้อมูลได้',
+                      text: data.error || 'เกิดข้อผิดพลาดในการลบข้อมูล',
+                      confirmButtonColor: '#ef4444',
+                      customClass: { popup: 'rounded-[2rem]' }
+                    });
+                  }
+                } catch (err) {
+                  Swal.fire({
+                    icon: 'error',
+                    title: 'เกิดข้อผิดพลาด',
+                    text: 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้',
+                    confirmButtonColor: '#ef4444',
+                    customClass: { popup: 'rounded-[2rem]' }
+                  });
+                }
+              }
+              return;
             }
 
-            const generateBtn = e.target.closest('.generate-passcode-btn');
-            if (generateBtn && typeof Swal !== 'undefined') {
+            // 2. ลบบ้านเป็นชุด (Bulk Delete)
+            const bulkDeleteBtn = e.target.closest('.bulk-delete-btn');
+            if (bulkDeleteBtn && typeof Swal !== 'undefined') {
               e.preventDefault();
-              Swal.fire({
-                title: 'ยืนยันการสุ่มรหัสผ่านใหม่?',
-                text: "ระบบจะดำเนินการสร้างรหัสผ่านชั่วคราวชุดใหม่ให้ยูนิตที่เลือก ข้อมูลเดิมจะถูกระงับทันที",
+              const ids = Array.from(selectedHouseIds);
+              if (ids.length === 0) {
+                Swal.fire({
+                  icon: 'warning',
+                  title: 'กรุณาเลือกรายการ',
+                  text: 'โปรดเลือกบ้านเลขที่ที่ต้องการลบอย่างน้อย 1 รายการ',
+                  confirmButtonColor: '#376B64',
+                  customClass: { popup: 'rounded-[2rem]' }
+                });
+                return;
+              }
+
+              const result = await Swal.fire({
+                title: 'ยืนยันการลบข้อมูล?',
+                html: 'ต้องการลบข้อมูลบ้านที่เลือกทั้งหมด <b>' + ids.length + ' รายการ</b> ใช่หรือไม่?<br/><span class="text-xs text-slate-400">ข้อมูลที่ถูกเลือกรวมถึงประวัติที่เกี่ยวข้องจะถูกลบและไม่สามารถกู้คืนได้</span>',
                 icon: 'warning',
                 showCancelButton: true,
                 showCloseButton: true,
-                reverseButtons: false, // ปุ่มยืนยันอยู่ด้านซ้ายเสมอ
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#94a3b8',
+                confirmButtonText: 'ยืนยันการลบข้อมูล',
+                cancelButtonText: 'ยกเลิกรายการ',
+                customClass: { popup: 'rounded-2xl shadow-2xl', confirmButton: 'rounded-xl font-bold px-6 py-2.5', cancelButton: 'rounded-xl font-bold px-6 py-2.5' }
+              });
+
+              if (result.isConfirmed) {
+                Swal.fire({
+                  title: 'กำลังลบข้อมูล...',
+                  allowOutsideClick: false,
+                  didOpen: () => Swal.showLoading()
+                });
+
+                try {
+                  const res = await fetch('/api/admin/houses', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ids: ids })
+                  });
+                  const data = await res.json();
+                  if (data.success) {
+                    await Swal.fire({
+                      icon: 'success',
+                      title: 'ดำเนินการเสร็จสิ้น',
+                      text: data.message || 'ลบข้อมูลบ้านพักเรียบร้อยแล้ว',
+                      confirmButtonColor: '#376B64',
+                      confirmButtonText: 'รับทราบ',
+                      customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl font-bold px-8' }
+                    });
+                    window.location.reload();
+                  } else {
+                    Swal.fire({
+                      icon: 'error',
+                      title: 'ไม่สามารถลบข้อมูลได้',
+                      text: data.error || 'เกิดข้อผิดพลาดในการลบข้อมูล',
+                      confirmButtonColor: '#ef4444',
+                      customClass: { popup: 'rounded-[2rem]' }
+                    });
+                  }
+                } catch (err) {
+                  Swal.fire({
+                    icon: 'error',
+                    title: 'เกิดข้อผิดพลาด',
+                    text: 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้',
+                    confirmButtonColor: '#ef4444',
+                    customClass: { popup: 'rounded-[2rem]' }
+                  });
+                }
+              }
+              return;
+            }
+
+            // 3. สุ่มรหัสผ่านใหม่เป็นชุด (Bulk Generate Passcode)
+            const generateBtn = e.target.closest('.generate-passcode-btn');
+            if (generateBtn && typeof Swal !== 'undefined') {
+              e.preventDefault();
+              const ids = Array.from(selectedHouseIds);
+              if (ids.length === 0) {
+                Swal.fire({
+                  icon: 'warning',
+                  title: 'กรุณาเลือกรายการ',
+                  text: 'โปรดเลือกบ้านเลขที่ที่ต้องการสุ่มรหัสผ่านอย่างน้อย 1 รายการ',
+                  confirmButtonColor: '#376B64',
+                  customClass: { popup: 'rounded-[2rem]' }
+                });
+                return;
+              }
+
+              const result = await Swal.fire({
+                title: 'ยืนยันการสุ่มรหัสผ่านใหม่?',
+                html: 'ระบบจะดำเนินการสร้างรหัสผ่านชั่วคราวชุดใหม่ให้ <b>' + ids.length + ' ยูนิต</b> ที่เลือก ข้อมูลเดิมจะถูกระงับทันที',
+                icon: 'warning',
+                showCancelButton: true,
+                showCloseButton: true,
                 confirmButtonColor: '#376B64',
                 cancelButtonColor: '#94a3b8',
                 confirmButtonText: 'ดำเนินการสุ่มรหัสใหม่',
                 cancelButtonText: 'ยกเลิกรายการ',
                 customClass: { popup: 'rounded-2xl shadow-2xl', confirmButton: 'rounded-xl font-bold px-6 py-2.5', cancelButton: 'rounded-xl font-bold px-6 py-2.5' }
-              }).then((result) => {
-                if (result.isConfirmed) {
-                  const hiddenBtn = generateBtn.parentElement.querySelector('.hidden-submit-generate');
-                  if (hiddenBtn) hiddenBtn.click();
-                }
               });
+
+              if (result.isConfirmed) {
+                Swal.fire({
+                  title: 'กำลังสุ่มรหัสผ่านใหม่...',
+                  allowOutsideClick: false,
+                  didOpen: () => Swal.showLoading()
+                });
+
+                try {
+                  const res = await fetch('/api/admin/houses', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'regenerate_passcode', ids: ids })
+                  });
+                  const data = await res.json();
+                  if (data.success) {
+                    await Swal.fire({
+                      icon: 'success',
+                      title: 'ดำเนินการเสร็จสิ้น',
+                      text: data.message || 'สร้างรหัสผ่านชั่วคราวให้ยูนิตที่เลือกเรียบร้อยแล้ว',
+                      confirmButtonColor: '#376B64',
+                      confirmButtonText: 'รับทราบ',
+                      customClass: { popup: 'rounded-[2rem]', confirmButton: 'rounded-xl font-bold px-8' }
+                    });
+                    window.location.reload();
+                  } else {
+                    Swal.fire({
+                      icon: 'error',
+                      title: 'เกิดข้อผิดพลาด',
+                      text: data.error || 'ไม่สามารถสุ่มรหัสผ่านได้',
+                      confirmButtonColor: '#ef4444',
+                      customClass: { popup: 'rounded-[2rem]' }
+                    });
+                  }
+                } catch (err) {
+                  Swal.fire({
+                    icon: 'error',
+                    title: 'เกิดข้อผิดพลาด',
+                    text: 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้',
+                    confirmButtonColor: '#ef4444',
+                    customClass: { popup: 'rounded-[2rem]' }
+                  });
+                }
+              }
+              return;
+            }
+
+            // 4. นำสมาชิกออกจากบ้าน (Remove Resident in Modal)
+            const removeResidentBtn = e.target.closest('.remove-resident-btn');
+            if (removeResidentBtn && typeof Swal !== 'undefined') {
+              e.preventDefault();
+              const userId = removeResidentBtn.getAttribute('data-user-id');
+              const userName = removeResidentBtn.getAttribute('data-user-name');
+
+              const result = await Swal.fire({
+                title: 'นำผู้พักอาศัยออกจากบ้าน?',
+                html: 'ต้องการนำ <b>' + (userName || 'ผู้พักอาศัย') + '</b> ออกจากบ้านหลังนี้ใช่หรือไม่?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#94a3b8',
+                confirmButtonText: 'ยืนยันนำออก',
+                cancelButtonText: 'ยกเลิก',
+                customClass: { popup: 'rounded-2xl shadow-2xl', confirmButton: 'rounded-xl font-bold px-6 py-2.5', cancelButton: 'rounded-xl font-bold px-6 py-2.5' }
+              });
+
+              if (result.isConfirmed) {
+                try {
+                  const res = await fetch('/api/admin/houses', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'remove_resident', userId: userId })
+                  });
+                  const data = await res.json();
+                  if (data.success) {
+                    window.location.reload();
+                  } else {
+                    Swal.fire({ icon: 'error', title: 'ผิดพลาด', text: data.error, confirmButtonColor: '#ef4444' });
+                  }
+                } catch (err) {
+                  Swal.fire({ icon: 'error', title: 'ผิดพลาด', text: 'ไม่สามารถดำเนินการได้', confirmButtonColor: '#ef4444' });
+                }
+              }
             }
           });
         })();
