@@ -1252,46 +1252,54 @@ export default function InitialBalanceSection({
                   <div className="grid grid-cols-1 sm:grid-cols-5 gap-2.5 items-center">
                     {/* ตั้งแต่ */}
                     <div className="sm:col-span-2 flex gap-1.5 items-center">
-                      <span className="text-xs font-bold text-slate-500 whitespace-nowrap shrink-0">ตั้งแต่:</span>
+                      <span className="text-xs font-black text-slate-700 whitespace-nowrap shrink-0">ตั้งแต่:</span>
                       <select
                         value={rangeStartMonth}
                         onChange={(e) => setRangeStartMonth(Number(e.target.value))}
-                        className="flex-1 border border-slate-200 rounded-xl p-2.5 bg-white text-xs font-bold text-slate-800 shadow-sm"
+                        className="flex-1 border border-slate-300 rounded-xl p-2.5 bg-white text-xs font-black text-slate-900 shadow-sm focus:border-[#376B64] focus:ring-2 focus:ring-[#376B64]/30 outline-none"
                       >
                         {THAI_MONTHS.map((m, idx) => (
-                          <option key={idx + 1} value={idx + 1}>{idx + 1}. {m}</option>
+                          <option key={idx + 1} value={idx + 1} className="text-slate-900 bg-white font-bold py-1">
+                            {idx + 1}. {m}
+                          </option>
                         ))}
                       </select>
                       <select
                         value={rangeStartYear}
                         onChange={(e) => setRangeStartYear(Number(e.target.value))}
-                        className="flex-1 border border-slate-200 rounded-xl p-2.5 bg-white text-xs font-bold text-slate-800 shadow-sm"
+                        className="flex-1 border border-slate-300 rounded-xl p-2.5 bg-white text-xs font-black text-slate-900 shadow-sm focus:border-[#376B64] focus:ring-2 focus:ring-[#376B64]/30 outline-none"
                       >
                         {AVAILABLE_YEARS.map((y) => (
-                          <option key={y} value={y}>{y + 543}</option>
+                          <option key={y} value={y} className="text-slate-900 bg-white font-bold py-1">
+                            {y + 543}
+                          </option>
                         ))}
                       </select>
                     </div>
 
                     {/* ถึง */}
                     <div className="sm:col-span-2 flex gap-1.5 items-center">
-                      <span className="text-xs font-bold text-slate-500 whitespace-nowrap shrink-0">ถึง:</span>
+                      <span className="text-xs font-black text-slate-700 whitespace-nowrap shrink-0">ถึง:</span>
                       <select
                         value={rangeEndMonth}
                         onChange={(e) => setRangeEndMonth(Number(e.target.value))}
-                        className="flex-1 border border-slate-200 rounded-xl p-2.5 bg-white text-xs font-bold text-slate-800 shadow-sm"
+                        className="flex-1 border border-slate-300 rounded-xl p-2.5 bg-white text-xs font-black text-slate-900 shadow-sm focus:border-[#376B64] focus:ring-2 focus:ring-[#376B64]/30 outline-none"
                       >
                         {THAI_MONTHS.map((m, idx) => (
-                          <option key={idx + 1} value={idx + 1}>{idx + 1}. {m}</option>
+                          <option key={idx + 1} value={idx + 1} className="text-slate-900 bg-white font-bold py-1">
+                            {idx + 1}. {m}
+                          </option>
                         ))}
                       </select>
                       <select
                         value={rangeEndYear}
                         onChange={(e) => setRangeEndYear(Number(e.target.value))}
-                        className="flex-1 border border-slate-200 rounded-xl p-2.5 bg-white text-xs font-bold text-slate-800 shadow-sm"
+                        className="flex-1 border border-slate-300 rounded-xl p-2.5 bg-white text-xs font-black text-slate-900 shadow-sm focus:border-[#376B64] focus:ring-2 focus:ring-[#376B64]/30 outline-none"
                       >
                         {AVAILABLE_YEARS.map((y) => (
-                          <option key={y} value={y}>{y + 543}</option>
+                          <option key={y} value={y} className="text-slate-900 bg-white font-bold py-1">
+                            {y + 543}
+                          </option>
                         ))}
                       </select>
                     </div>
@@ -1335,10 +1343,10 @@ export default function InitialBalanceSection({
                             onChange={(e) =>
                               handleUpdatePeriod(row.id, 'billingYear', Number(e.target.value))
                             }
-                            className="w-full border border-slate-200 rounded-xl p-2.5 bg-white font-bold text-xs text-slate-800 shadow-sm"
+                            className="w-full border border-slate-300 rounded-xl p-2.5 bg-white font-black text-xs text-slate-900 shadow-sm focus:border-[#376B64] focus:ring-2 focus:ring-[#376B64]/30 outline-none"
                           >
                             {AVAILABLE_YEARS.map((y) => (
-                              <option key={y} value={y}>
+                              <option key={y} value={y} className="text-slate-900 bg-white font-bold py-1">
                                 {y} (พ.ศ. {y + 543})
                               </option>
                             ))}
@@ -1347,7 +1355,7 @@ export default function InitialBalanceSection({
 
                         {/* เดือน */}
                         <div className="md:col-span-2">
-                          <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
+                          <label className="block text-[10px] font-bold text-slate-700 uppercase mb-1">
                             เดือน
                           </label>
                           <select
@@ -1355,10 +1363,10 @@ export default function InitialBalanceSection({
                             onChange={(e) =>
                               handleUpdatePeriod(row.id, 'billingMonth', Number(e.target.value))
                             }
-                            className="w-full border border-slate-200 rounded-xl p-2.5 bg-white font-bold text-xs text-slate-800 shadow-sm"
+                            className="w-full border border-slate-300 rounded-xl p-2.5 bg-white font-black text-xs text-slate-900 shadow-sm focus:border-[#376B64] focus:ring-2 focus:ring-[#376B64]/30 outline-none"
                           >
                             {THAI_MONTHS.map((mName, mIdx) => (
-                              <option key={mIdx + 1} value={mIdx + 1}>
+                              <option key={mIdx + 1} value={mIdx + 1} className="text-slate-900 bg-white font-bold py-1">
                                 {mIdx + 1}. {mName}
                               </option>
                             ))}
@@ -1604,7 +1612,7 @@ export default function InitialBalanceSection({
           onClick={() => setIsMultiModalOpen(false)}
         >
           <div 
-            className="bg-white w-full max-w-4xl rounded-[2rem] shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[92vh] my-auto animate-in fade-in zoom-in-95 duration-200 relative z-10"
+            className="bg-white text-slate-900 w-full max-w-4xl rounded-[2rem] shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh] my-auto animate-in fade-in zoom-in-95 duration-200 relative z-10"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
@@ -1614,10 +1622,10 @@ export default function InitialBalanceSection({
                   <Users size={20} />
                 </span>
                 <div>
-                  <h3 className="text-base sm:text-lg font-black text-slate-800">
+                  <h3 className="text-base sm:text-lg font-black text-slate-900">
                     กำหนดงวดค้างชำระหลายบ้านพร้อมกัน (Batch Multi-House)
                   </h3>
-                  <p className="text-xs text-slate-500 font-bold mt-0.5">
+                  <p className="text-xs text-slate-700 font-bold mt-0.5">
                     เลือกบ้านที่มีเงื่อนไขหรือช่วงเวลาค้างชำระเหมือนกัน แล้วบันทึกครั้งเดียว
                   </p>
                 </div>
@@ -1749,10 +1757,10 @@ export default function InitialBalanceSection({
                       {multiIsPaidFull && <Check size={12} />}
                     </div>
                     <div>
-                      <span className="block font-black text-xs text-slate-800">
+                      <span className="block font-black text-xs text-slate-900">
                         ชำระครบถ้วน (ไม่มียอดหนี้ ฿0.00)
                       </span>
-                      <span className="block text-[11px] text-slate-500 mt-0.5">
+                      <span className="block text-[11px] text-slate-700 font-medium mt-0.5">
                         ตั้งค่ายอดหนี้ยกมาเป็น ฿0.00 สำหรับทุกบ้านที่เลือก
                       </span>
                     </div>
@@ -1775,10 +1783,10 @@ export default function InitialBalanceSection({
                       {!multiIsPaidFull && <Check size={12} />}
                     </div>
                     <div>
-                      <span className="block font-black text-xs text-slate-800">
+                      <span className="block font-black text-xs text-slate-900">
                         มียอดค้างชำระย้อนหลัง
                       </span>
-                      <span className="block text-[11px] text-slate-500 mt-0.5">
+                      <span className="block text-[11px] text-slate-700 font-medium mt-0.5">
                         กำหนดช่วงเดือนที่ค้างชำระให้เหมือนกัน
                       </span>
                     </div>
@@ -1789,11 +1797,11 @@ export default function InitialBalanceSection({
                 {!multiIsPaidFull && (
                   <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <span className="text-xs font-black text-slate-700 flex items-center gap-1.5">
+                      <span className="text-xs font-black text-slate-900 flex items-center gap-1.5">
                         <Calendar size={15} className="text-[#376B64]" /> ช่วงเดือนที่ค้างชำระ:
                       </span>
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-[10px] font-bold text-slate-400">ปุ่มลัด:</span>
+                        <span className="text-[10px] font-bold text-slate-600">ปุ่มลัด:</span>
                         <button
                           type="button"
                           onClick={() => {
@@ -1847,45 +1855,53 @@ export default function InitialBalanceSection({
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
                       <div className="flex gap-1.5 items-center">
-                        <span className="text-xs font-bold text-slate-500 whitespace-nowrap shrink-0">ตั้งแต่:</span>
+                        <span className="text-xs font-black text-slate-700 whitespace-nowrap shrink-0">ตั้งแต่:</span>
                         <select
                           value={multiStartMonth}
                           onChange={(e) => setMultiStartMonth(Number(e.target.value))}
-                          className="flex-1 border border-slate-200 rounded-xl p-2 bg-white text-xs font-bold"
+                          className="flex-1 border border-slate-300 rounded-xl p-2.5 bg-white text-xs font-black text-slate-900 shadow-sm focus:border-[#376B64] focus:ring-2 focus:ring-[#376B64]/30 outline-none"
                         >
                           {THAI_MONTHS.map((m, idx) => (
-                            <option key={idx + 1} value={idx + 1}>{idx + 1}. {m}</option>
+                            <option key={idx + 1} value={idx + 1} className="text-slate-900 bg-white font-bold py-1">
+                              {idx + 1}. {m}
+                            </option>
                           ))}
                         </select>
                         <select
                           value={multiStartYear}
                           onChange={(e) => setMultiStartYear(Number(e.target.value))}
-                          className="flex-1 border border-slate-200 rounded-xl p-2 bg-white text-xs font-bold"
+                          className="flex-1 border border-slate-300 rounded-xl p-2.5 bg-white text-xs font-black text-slate-900 shadow-sm focus:border-[#376B64] focus:ring-2 focus:ring-[#376B64]/30 outline-none"
                         >
                           {AVAILABLE_YEARS.map((y) => (
-                            <option key={y} value={y}>{y + 543}</option>
+                            <option key={y} value={y} className="text-slate-900 bg-white font-bold py-1">
+                              {y + 543}
+                            </option>
                           ))}
                         </select>
                       </div>
 
                       <div className="flex gap-1.5 items-center">
-                        <span className="text-xs font-bold text-slate-500 whitespace-nowrap shrink-0">ถึง:</span>
+                        <span className="text-xs font-black text-slate-700 whitespace-nowrap shrink-0">ถึง:</span>
                         <select
                           value={multiEndMonth}
                           onChange={(e) => setMultiEndMonth(Number(e.target.value))}
-                          className="flex-1 border border-slate-200 rounded-xl p-2 bg-white text-xs font-bold"
+                          className="flex-1 border border-slate-300 rounded-xl p-2.5 bg-white text-xs font-black text-slate-900 shadow-sm focus:border-[#376B64] focus:ring-2 focus:ring-[#376B64]/30 outline-none"
                         >
                           {THAI_MONTHS.map((m, idx) => (
-                            <option key={idx + 1} value={idx + 1}>{idx + 1}. {m}</option>
+                            <option key={idx + 1} value={idx + 1} className="text-slate-900 bg-white font-bold py-1">
+                              {idx + 1}. {m}
+                            </option>
                           ))}
                         </select>
                         <select
                           value={multiEndYear}
                           onChange={(e) => setMultiEndYear(Number(e.target.value))}
-                          className="flex-1 border border-slate-200 rounded-xl p-2 bg-white text-xs font-bold"
+                          className="flex-1 border border-slate-300 rounded-xl p-2.5 bg-white text-xs font-black text-slate-900 shadow-sm focus:border-[#376B64] focus:ring-2 focus:ring-[#376B64]/30 outline-none"
                         >
                           {AVAILABLE_YEARS.map((y) => (
-                            <option key={y} value={y}>{y + 543}</option>
+                            <option key={y} value={y} className="text-slate-900 bg-white font-bold py-1">
+                              {y + 543}
+                            </option>
                           ))}
                         </select>
                       </div>
@@ -1893,31 +1909,31 @@ export default function InitialBalanceSection({
 
                     {/* การคิดเงินต้น */}
                     <div className="pt-2 border-t border-slate-200/80">
-                      <span className="text-xs font-black text-slate-700 block mb-2">
+                      <span className="text-xs font-black text-slate-900 block mb-2">
                         อัตราเงินต้นต่อเดือน:
                       </span>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <label className="flex items-center gap-2 p-2.5 bg-white border border-slate-200 rounded-xl cursor-pointer">
+                        <label className="flex items-center gap-2 p-2.5 bg-white border border-slate-200 rounded-xl cursor-pointer hover:border-[#376B64]/50 transition-colors">
                           <input
                             type="radio"
                             name="multiFeeMode"
                             checked={multiFeeMode === 'house_rate'}
                             onChange={() => setMultiFeeMode('house_rate')}
-                            className="accent-[#376B64]"
+                            className="accent-[#376B64] w-4 h-4 cursor-pointer"
                           />
-                          <span className="text-xs font-bold text-slate-700">
+                          <span className="text-xs font-black text-slate-900">
                             ใช้อัตราค่าส่วนกลางของแต่ละบ้านตามระบบ (แนะนำ)
                           </span>
                         </label>
-                        <label className="flex items-center gap-2 p-2.5 bg-white border border-slate-200 rounded-xl cursor-pointer">
+                        <label className="flex items-center gap-2 p-2.5 bg-white border border-slate-200 rounded-xl cursor-pointer hover:border-[#376B64]/50 transition-colors">
                           <input
                             type="radio"
                             name="multiFeeMode"
                             checked={multiFeeMode === 'custom'}
                             onChange={() => setMultiFeeMode('custom')}
-                            className="accent-[#376B64]"
+                            className="accent-[#376B64] w-4 h-4 cursor-pointer"
                           />
-                          <span className="text-xs font-bold text-slate-700 whitespace-nowrap">
+                          <span className="text-xs font-black text-slate-900 whitespace-nowrap">
                             กำหนดยอดคงที่เท่ากันทุกหลัง:
                           </span>
                           {multiFeeMode === 'custom' && (
@@ -1926,7 +1942,7 @@ export default function InitialBalanceSection({
                               value={multiCustomAmount}
                               onChange={(e) => setMultiCustomAmount(e.target.value === '' ? '' : Number(e.target.value))}
                               placeholder="500"
-                              className="w-20 px-2 py-1 border border-slate-300 rounded-lg text-xs font-black text-center"
+                              className="w-24 px-2.5 py-1 bg-white border border-slate-300 rounded-lg text-xs font-black text-slate-900 text-center shadow-sm focus:border-[#376B64] focus:ring-2 focus:ring-[#376B64]/30 outline-none"
                             />
                           )}
                         </label>
