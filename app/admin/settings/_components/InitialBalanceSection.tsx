@@ -27,6 +27,7 @@ import {
   AlertTriangle,
   FileSpreadsheet,
   Home,
+  ShieldCheck,
 } from 'lucide-react';
 import { defaultSwalConfig } from '@/lib/swal-helper';
 import {
@@ -41,6 +42,9 @@ const THAI_MONTHS = [
   'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
   'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม',
 ];
+
+// รายการปีรองรับตั้งแต่ปี 2021 (พ.ศ. 2564) จนถึง 2027 (พ.ศ. 2570)
+const AVAILABLE_YEARS = [2027, 2026, 2025, 2024, 2023, 2022, 2021];
 
 interface PeriodRow {
   id: string;
@@ -76,8 +80,15 @@ export default function InitialBalanceSection({
   const [activeTab, setActiveTab] = useState<'single' | 'batch'>('single');
   const [cutoffDate, setCutoffDate] = useState<string>(todayStr);
 
-  // โหมดการคิดค่าปรับ: FLAT_PER_MONTH (ตรงกับระบบบิลหลัก) หรือ STEP_RATE_PERCENT (% ของเงินต้น)
-  const [penaltyCalcMode, setPenaltyCalcMode] = useState<PenaltyCalcMode>('FLAT_PER_MONTH');
+  // โหมดการคิดค่าปรับ: NO_PENALTY (ปลอดเบี้ยปรับ) | FLAT_PER_MONTH | STEP_RATE_PERCENT
+  const [penaltyCalcMode, setPenaltyCalcMode] = useState<PenaltyCalcMode>('NO_PENALTY');
+
+  // Date Range Picker States สำหรับสร้างงวดค้างชำระตามช่วงเวลา (เช่น ก.ย. 64 ถึง ธ.ค. 69)
+  const [rangeStartYear, setRangeStartYear] = useState<number>(2021);
+  const [rangeStartMonth, setRangeStartMonth] = useState<number>(9);
+  const [rangeEndYear, setRangeEndYear] = useState<number>(2026);
+  const [rangeEndMonth, setRangeEndMonth] = useState<number>(12);
+  const [markingAllPaid, setMarkingAllPaid] = useState<boolean>(false);
 
   // ----------------------------------------------------
   // Single Mode State (กรอกทีละหลัง - ใช้งานง่าย ไม่พลาด)
@@ -91,6 +102,13 @@ export default function InitialBalanceSection({
   const currentHouse = useMemo(() => {
     return houses.find((h) => h.houseNo === selectedHouseNo);
   }, [houses, selectedHouseNo]);
+
+  // คำนวณจำนวนเดือนทั้งหมดในช่วงที่เลือก
+  const totalMonthsInRange = useMemo(() => {
+    const startTotal = rangeStartYear * 12 + rangeStartMonth;
+    const endTotal = rangeEndYear * 12 + rangeEndMonth;
+    return Math.max(0, endTotal - startTotal + 1);
+  }, [rangeStartYear, rangeStartMonth, rangeEndYear, rangeEndMonth]);
 
   // ตั้งค่าเริ่มต้นเมื่อเลือกบ้าน
   useEffect(() => {
@@ -110,9 +128,9 @@ export default function InitialBalanceSection({
             billingMonth: targetMonth,
             dueDate: `${targetYear}-${monthPad}-07`,
             principalAmount: defaultRate,
-            penaltyMode: 'auto',
+            penaltyMode: '0',
             customPenaltyRate: '',
-            flatPenaltyOverride: 'auto',
+            flatPenaltyOverride: 'none',
             customFlatPenalty: '',
           },
         ]);
@@ -147,9 +165,9 @@ export default function InitialBalanceSection({
         billingMonth: nextMonth,
         dueDate: `${nextYear}-${monthPad}-07`,
         principalAmount: defaultRate,
-        penaltyMode: 'auto',
+        penaltyMode: penaltyCalcMode === 'NO_PENALTY' ? '0' : 'auto',
         customPenaltyRate: '',
-        flatPenaltyOverride: 'auto',
+        flatPenaltyOverride: penaltyCalcMode === 'NO_PENALTY' ? 'none' : 'auto',
         customFlatPenalty: '',
       },
     ]);
@@ -207,15 +225,145 @@ export default function InitialBalanceSection({
         billingMonth: m,
         dueDate: `${y}-${mPad}-07`,
         principalAmount: defaultRate,
-        penaltyMode: 'auto',
+        penaltyMode: penaltyCalcMode === 'NO_PENALTY' ? '0' : 'auto',
         customPenaltyRate: '',
-        flatPenaltyOverride: 'auto',
+        flatPenaltyOverride: penaltyCalcMode === 'NO_PENALTY' ? 'none' : 'auto',
         customFlatPenalty: '',
       });
     }
 
     setPeriods(generated);
     setIsPaidFull(false);
+  };
+
+  // 🌟 สร้างงวดค้างชำระตามช่วงเวลาอัตโนมัติ (เช่น ก.ย. 64 ถึง ธ.ค. 69)
+  const handleGenerateDateRange = () => {
+    if (!selectedHouseNo) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'กรุณาเลือกบ้านเลขที่ก่อน',
+        text: 'โปรดเลือกบ้านเลขที่ที่จะสร้างงวดค้างชำระ',
+        confirmButtonColor: '#376B64',
+        customClass: { popup: 'rounded-[2rem]' },
+      });
+      return;
+    }
+
+    const startTotal = rangeStartYear * 12 + rangeStartMonth;
+    const endTotal = rangeEndYear * 12 + rangeEndMonth;
+    if (startTotal > endTotal) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'ช่วงเวลาไม่ถูกต้อง',
+        text: 'เดือน/ปีเริ่มต้น ต้องมาก่อนหรือเท่ากับเดือน/ปีสิ้นสุด',
+        confirmButtonColor: '#376B64',
+        customClass: { popup: 'rounded-[2rem]' },
+      });
+      return;
+    }
+
+    const defaultRate = currentHouse ? Number(currentHouse.feeRate) || 500 : 500;
+    const generated: PeriodRow[] = [];
+
+    // วนสร้างงวดตั้งแต่งวดเริ่มต้นจนถึงสิ้นสุด
+    for (let current = startTotal; current <= endTotal; current++) {
+      const year = Math.floor((current - 1) / 12);
+      const month = ((current - 1) % 12) + 1;
+      const monthPad = String(month).padStart(2, '0');
+
+      generated.push({
+        id: String(Date.now() + Math.random() + current),
+        billingYear: year,
+        billingMonth: month,
+        dueDate: `${year}-${monthPad}-07`,
+        principalAmount: defaultRate,
+        penaltyMode: penaltyCalcMode === 'NO_PENALTY' ? '0' : 'auto',
+        customPenaltyRate: '',
+        flatPenaltyOverride: penaltyCalcMode === 'NO_PENALTY' ? 'none' : 'auto',
+        customFlatPenalty: '',
+      });
+    }
+
+    setPeriods(generated);
+    setIsPaidFull(false);
+  };
+
+  // 🌟 ฟังก์ชันตั้งค่าบ้านที่เหลือทั้งหมดในระบบให้เป็น "จ่ายครบแล้ว (฿0.00)" ในคลิกเดียว
+  const handleMarkAllOtherHousesPaid = async () => {
+    if (!houses || houses.length === 0) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'ไม่พบข้อมูลบ้าน',
+        text: 'ระบบยังไม่มีข้อมูลบ้านในโครงการ',
+        confirmButtonColor: '#376B64',
+        customClass: { popup: 'rounded-[2rem]' },
+      });
+      return;
+    }
+
+    const result = await Swal.fire({
+      ...defaultSwalConfig,
+      title: 'ตั้งค่าบ้านทั้งหมดเป็น "จ่ายครบแล้ว"?',
+      html: `ต้องการบันทึกสถานะ <b>"ชำระครบถ้วน (ไม่มียอดหนี้ยกมา)"</b> ให้กับบ้านทั้งหมด <b>${houses.length} หลัง</b> ในโครงการใช่หรือไม่?<br/><br/>
+             <span class="text-xs text-slate-500">*สำหรับบ้านที่มียอดค้างชำระจริง ท่านสามารถเข้ามาเลือกระบุงวดค้างชำระรายหลังได้ตลอดเวลา</span>`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'ยืนยันตั้งค่าจ่ายครบทั้งหมด',
+      cancelButtonText: 'ยกเลิก',
+    });
+
+    if (!result.isConfirmed) return;
+
+    setMarkingAllPaid(true);
+    Swal.fire({
+      title: 'กำลังบันทึกข้อมูล...',
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading(),
+      customClass: { popup: 'rounded-[2rem]' },
+    });
+
+    try {
+      const itemsPayload = houses.map((h) => ({
+        houseNo: h.houseNo,
+        unpaidPeriods: [],
+      }));
+
+      const res = await fetch('/api/admin/initial-balance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'confirm',
+          cutoffDate,
+          penaltyCalcMode: 'NO_PENALTY',
+          flatPenaltyPerMonth: 0,
+          items: itemsPayload,
+        }),
+      });
+
+      const json = await res.json();
+      if (json.success) {
+        await Swal.fire({
+          icon: 'success',
+          title: 'ตั้งค่าสำเร็จ!',
+          html: `บันทึกสถานะจ่ายครบถ้วนให้กับบ้าน <b>${houses.length} หลัง</b> เรียบร้อยแล้ว`,
+          confirmButtonColor: '#376B64',
+          customClass: { popup: 'rounded-[2rem]' },
+        });
+        onRefreshHouses?.();
+      } else {
+        throw new Error(json.error);
+      }
+    } catch (err: any) {
+      Swal.fire({
+        icon: 'error',
+        title: 'เกิดข้อผิดพลาด',
+        text: err.message || 'ไม่สามารถบันทึกข้อมูลได้',
+        confirmButtonColor: '#e11d48',
+        customClass: { popup: 'rounded-[2rem]' },
+      });
+    } finally {
+      setMarkingAllPaid(false);
+    }
   };
 
   // คำนวณยอดสด (Live Calculation) สำหรับบ้านหลังที่เลือก
@@ -247,7 +395,11 @@ export default function InitialBalanceSection({
       let penalty = 0;
       let rate = 0;
 
-      if (penaltyCalcMode === 'STEP_RATE_PERCENT') {
+      if (penaltyCalcMode === 'NO_PENALTY') {
+        // โหมด No Penalty: ไม่คิดค่าปรับทุกกรณี (฿0)
+        penalty = 0;
+        rate = 0;
+      } else if (penaltyCalcMode === 'STEP_RATE_PERCENT') {
         // โหมด Step Rate: คิดเป็น % ของเงินต้น
         if (p.penaltyMode === 'auto') {
           rate = getStepPenaltyRate(daysOverdue);
@@ -356,7 +508,10 @@ export default function InitialBalanceSection({
               dueDate: p.dueDate,
               principalAmount: p.principal,
             };
-            if (penaltyCalcMode === 'STEP_RATE_PERCENT') {
+            if (penaltyCalcMode === 'NO_PENALTY') {
+              base.customFlatPenalty = 0;
+              base.customPenaltyRate = 0;
+            } else if (penaltyCalcMode === 'STEP_RATE_PERCENT') {
               base.customPenaltyRate = p.rate;
             } else {
               // สำหรับ FLAT_PER_MONTH ส่งค่าปรับที่คำนวณแล้วเป็น customFlatPenalty
@@ -527,7 +682,7 @@ export default function InitialBalanceSection({
               <span className="truncate">ตั้งค่ายอดลูกหนี้ค้างชำระยกมา (Initial Balance Setup)</span>
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 mt-1">
-              นำเข้ายอดค้างชำระย้อนหลัง (1-3 ปี) หรือระบุบ้านที่จ่ายครบแล้ว พร้อมคำนวณเบี้ยปรับแยกรายแปลงอย่างปลอดภัย
+              นำเข้ายอดค้างชำระย้อนหลัง (ตั้งแต่ ก.ย. 2564 ถึง ธ.ค. 2569) หรือระบุบ้านที่จ่ายครบแล้ว พร้อมคำนวณหรือยกเว้นเบี้ยปรับแยกรายแปลงอย่างปลอดภัย
             </p>
           </div>
 
@@ -564,13 +719,44 @@ export default function InitialBalanceSection({
             <Calculator size={16} className="text-[#376B64]" />
             วิธีการคิดเบี้ยปรับยอดค้างชำระ (Penalty Calculation Mode)
           </label>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {/* โหมด 1: ไม่คิดค่าปรับ (NO_PENALTY) */}
+            <button
+              type="button"
+              onClick={() => setPenaltyCalcMode('NO_PENALTY')}
+              className={`p-4 rounded-xl border-2 text-left transition-all ${
+                penaltyCalcMode === 'NO_PENALTY'
+                  ? 'border-emerald-600 bg-white shadow-sm ring-2 ring-emerald-500/20'
+                  : 'border-slate-200 bg-white/60 hover:border-slate-300'
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
+                  penaltyCalcMode === 'NO_PENALTY' ? 'bg-emerald-600 text-white' : 'border-2 border-slate-300'
+                }`}>
+                  {penaltyCalcMode === 'NO_PENALTY' && <Check size={12} />}
+                </div>
+                <div>
+                  <span className="flex items-center gap-1.5 font-black text-sm text-slate-800">
+                    <ShieldCheck size={16} className="text-emerald-600" /> ไม่คิดค่าปรับ (฿0 ทุกงวด)
+                  </span>
+                  <span className="block text-[11px] text-slate-500 mt-1 leading-relaxed">
+                    ยกเว้นค่าปรับย้อนหลังทั้งหมด ค้างชำระเฉพาะเงินต้นค่าส่วนกลางเพียวๆ
+                  </span>
+                  <span className="inline-block mt-1.5 px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-md">
+                    แนะนำ ปลอดเบี้ยปรับ
+                  </span>
+                </div>
+              </div>
+            </button>
+
+            {/* โหมด 2: คิดค่าปรับคงที่ต่อเดือน (FLAT_PER_MONTH) */}
             <button
               type="button"
               onClick={() => setPenaltyCalcMode('FLAT_PER_MONTH')}
               className={`p-4 rounded-xl border-2 text-left transition-all ${
                 penaltyCalcMode === 'FLAT_PER_MONTH'
-                  ? 'border-[#376B64] bg-white shadow-sm'
+                  ? 'border-[#376B64] bg-white shadow-sm ring-2 ring-[#376B64]/20'
                   : 'border-slate-200 bg-white/60 hover:border-slate-300'
               }`}
             >
@@ -585,22 +771,22 @@ export default function InitialBalanceSection({
                     <Coins size={16} className="text-[#376B64]" /> คิดค่าปรับคงที่ต่อเดือน
                   </span>
                   <span className="block text-[11px] text-slate-500 mt-1 leading-relaxed">
-                    สูตรคำนวณ: จำนวนเดือนค้างชำระ × <b>฿{penaltyRatePerMonth.toLocaleString()}/เดือน</b>
-                    <br />เช่น ค้าง 6 เดือน = 6 × {penaltyRatePerMonth} = <b>฿{(6 * penaltyRatePerMonth).toLocaleString()}</b>
+                    สูตร: จำนวนเดือนค้าง × <b>฿{penaltyRatePerMonth.toLocaleString()}/ด.</b>
                   </span>
                   <span className="inline-block mt-1.5 px-2 py-0.5 bg-[#376B64]/10 text-[#376B64] text-[10px] font-bold rounded-md">
-                    รูปแบบมาตรฐานโครงการ
+                    มาตรฐานโครงการ
                   </span>
                 </div>
               </div>
             </button>
 
+            {/* โหมด 3: คิดอัตราร้อยละขั้นบันได (STEP_RATE_PERCENT) */}
             <button
               type="button"
               onClick={() => setPenaltyCalcMode('STEP_RATE_PERCENT')}
               className={`p-4 rounded-xl border-2 text-left transition-all ${
                 penaltyCalcMode === 'STEP_RATE_PERCENT'
-                  ? 'border-[#376B64] bg-white shadow-sm'
+                  ? 'border-[#376B64] bg-white shadow-sm ring-2 ring-[#376B64]/20'
                   : 'border-slate-200 bg-white/60 hover:border-slate-300'
               }`}
             >
@@ -612,11 +798,10 @@ export default function InitialBalanceSection({
                 </div>
                 <div>
                   <span className="flex items-center gap-1.5 font-black text-sm text-slate-800">
-                    <TrendingUp size={16} className="text-[#376B64]" /> คิดคำนวณอัตราร้อยละขั้นบันได
+                    <TrendingUp size={16} className="text-[#376B64]" /> คิดอัตราร้อยละขั้นบันได
                   </span>
                   <span className="block text-[11px] text-slate-500 mt-1 leading-relaxed">
-                    1-30 วัน: <b>0%</b> · 31-180 วัน: <b>10%</b> · เกิน 180 วัน: <b>20%</b>
-                    <br />เช่น เงินต้น 500 ค้าง 90 วัน = 500 × 10% = <b>฿50</b>
+                    1-30 วัน <b>0%</b> · 31-180 วัน <b>10%</b> · &gt;180 วัน <b>20%</b>
                   </span>
                 </div>
               </div>
@@ -664,6 +849,20 @@ export default function InitialBalanceSection({
                     }}
                     className="w-44 border border-slate-200 rounded-xl px-3 py-3 bg-white focus:ring-2 focus:ring-[#376B64]/50 font-bold text-sm text-slate-800 shadow-sm"
                   />
+                </div>
+                <div className="mt-2.5 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleMarkAllOtherHousesPaid}
+                    disabled={markingAllPaid}
+                    className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm"
+                  >
+                    <CheckCircle2 size={13} />
+                    {markingAllPaid ? 'กำลังตั้งค่า...' : 'ตั้งค่าบ้านทั้งหมดให้เป็น "จ่ายครบแล้ว (฿0)" ในคลิกเดียว'}
+                  </button>
+                  <span className="text-[11px] text-slate-400 hidden sm:inline">
+                    (ช่วยให้ไม่ต้องกดทีละหลังสำหรับบ้านที่จ่ายครบ)
+                  </span>
                 </div>
               </div>
 
@@ -763,37 +962,128 @@ export default function InitialBalanceSection({
                     </span>
                   </div>
 
-                  {/* ปุ่มสร้างงวดย้อนหลังด่วน */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-500 shrink-0">สร้างด่วน:</span>
-                    <button
-                      type="button"
-                      onClick={() => handleQuickGenerate(6)}
-                      className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-all"
-                    >
-                      6 เดือน
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleQuickGenerate(12)}
-                      className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-all"
-                    >
-                      1 ปี (12 ด.)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleQuickGenerate(24)}
-                      className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-all"
-                    >
-                      2 ปี (24 ด.)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleQuickGenerate(36)}
-                      className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-all"
-                    >
-                      3 ปี (36 ด.)
-                    </button>
+                  {/* กล่องสร้างงวดค้างชำระตามช่วงเวลาอัตโนมัติ (เช่น ก.ย. 64 ถึง ธ.ค. 69) */}
+                </div>
+
+                <div className="p-4 sm:p-5 bg-gradient-to-r from-emerald-50/80 via-teal-50/40 to-slate-50 border border-emerald-200 rounded-2xl space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Sparkles size={18} className="text-[#376B64]" />
+                      <span className="font-black text-sm text-slate-800">
+                        สร้างงวดค้างชำระตามช่วงเวลาอัตโนมัติ
+                      </span>
+                    </div>
+                    {/* ปุ่มลัดช่วงเวลายอดนิยม */}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[11px] font-bold text-slate-400">ปุ่มลัด:</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRangeStartYear(2021);
+                          setRangeStartMonth(9);
+                          setRangeEndYear(2026);
+                          setRangeEndMonth(12);
+                        }}
+                        className="px-2.5 py-1 bg-white hover:bg-emerald-100 text-[#376B64] border border-[#376B64]/30 rounded-lg text-xs font-black transition-all shadow-sm"
+                      >
+                        ก.ย. 64 – ธ.ค. 69
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRangeStartYear(2024);
+                          setRangeStartMonth(1);
+                          setRangeEndYear(2024);
+                          setRangeEndMonth(12);
+                        }}
+                        className="px-2 py-1 bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 rounded-lg text-xs font-bold"
+                      >
+                        ปี 67
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRangeStartYear(2025);
+                          setRangeStartMonth(1);
+                          setRangeEndYear(2025);
+                          setRangeEndMonth(12);
+                        }}
+                        className="px-2 py-1 bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 rounded-lg text-xs font-bold"
+                      >
+                        ปี 68
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRangeStartYear(2026);
+                          setRangeStartMonth(1);
+                          setRangeEndYear(2026);
+                          setRangeEndMonth(12);
+                        }}
+                        className="px-2 py-1 bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 rounded-lg text-xs font-bold"
+                      >
+                        ปี 69
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-5 gap-2.5 items-center">
+                    {/* ตั้งแต่ */}
+                    <div className="sm:col-span-2 flex gap-1.5 items-center">
+                      <span className="text-xs font-bold text-slate-500 whitespace-nowrap shrink-0">ตั้งแต่:</span>
+                      <select
+                        value={rangeStartMonth}
+                        onChange={(e) => setRangeStartMonth(Number(e.target.value))}
+                        className="flex-1 border border-slate-200 rounded-xl p-2.5 bg-white text-xs font-bold text-slate-800 shadow-sm"
+                      >
+                        {THAI_MONTHS.map((m, idx) => (
+                          <option key={idx + 1} value={idx + 1}>{idx + 1}. {m}</option>
+                        ))}
+                      </select>
+                      <select
+                        value={rangeStartYear}
+                        onChange={(e) => setRangeStartYear(Number(e.target.value))}
+                        className="flex-1 border border-slate-200 rounded-xl p-2.5 bg-white text-xs font-bold text-slate-800 shadow-sm"
+                      >
+                        {AVAILABLE_YEARS.map((y) => (
+                          <option key={y} value={y}>{y + 543}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* ถึง */}
+                    <div className="sm:col-span-2 flex gap-1.5 items-center">
+                      <span className="text-xs font-bold text-slate-500 whitespace-nowrap shrink-0">ถึง:</span>
+                      <select
+                        value={rangeEndMonth}
+                        onChange={(e) => setRangeEndMonth(Number(e.target.value))}
+                        className="flex-1 border border-slate-200 rounded-xl p-2.5 bg-white text-xs font-bold text-slate-800 shadow-sm"
+                      >
+                        {THAI_MONTHS.map((m, idx) => (
+                          <option key={idx + 1} value={idx + 1}>{idx + 1}. {m}</option>
+                        ))}
+                      </select>
+                      <select
+                        value={rangeEndYear}
+                        onChange={(e) => setRangeEndYear(Number(e.target.value))}
+                        className="flex-1 border border-slate-200 rounded-xl p-2.5 bg-white text-xs font-bold text-slate-800 shadow-sm"
+                      >
+                        {AVAILABLE_YEARS.map((y) => (
+                          <option key={y} value={y}>{y + 543}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* ปุ่มกดสร้าง */}
+                    <div className="sm:col-span-1">
+                      <button
+                        type="button"
+                        onClick={handleGenerateDateRange}
+                        className="w-full py-2.5 px-3 bg-[#376B64] hover:bg-[#2A524C] text-white rounded-xl text-xs font-black shadow-md transition-all flex items-center justify-center gap-1 active:scale-95"
+                      >
+                        <Sparkles size={14} /> สร้าง ({totalMonthsInRange} งวด)
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -825,13 +1115,11 @@ export default function InitialBalanceSection({
                             }
                             className="w-full border border-slate-200 rounded-xl p-2.5 bg-white font-bold text-xs text-slate-800 shadow-sm"
                           >
-                            {[currentYear + 1, currentYear, currentYear - 1, currentYear - 2, currentYear - 3, currentYear - 4].map(
-                              (y) => (
-                                <option key={y} value={y}>
-                                  {y} (พ.ศ. {y + 543})
-                                </option>
-                              )
-                            )}
+                            {AVAILABLE_YEARS.map((y) => (
+                              <option key={y} value={y}>
+                                {y} (พ.ศ. {y + 543})
+                              </option>
+                            ))}
                           </select>
                         </div>
 

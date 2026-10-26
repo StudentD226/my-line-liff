@@ -170,6 +170,35 @@ describe('Initial Balance & Debt Calculation Logic', () => {
       assert.equal(result.details[0].totalPenalty, 50);
       assert.equal(result.details[0].grandTotal, 1050);
     });
+
+    it('should set penalty to 0 for all periods when using NO_PENALTY mode', () => {
+      const items: HouseMigrationInput[] = [
+        {
+          houseNo: '20/1',
+          unpaidPeriods: [
+            {
+              billingYear: 2021,
+              billingMonth: 9,
+              dueDate: '2021-09-07', // Very old overdue
+              principalAmount: 500,
+            },
+            {
+              billingYear: 2026,
+              billingMonth: 12,
+              dueDate: '2026-12-07',
+              principalAmount: 500,
+            },
+          ],
+        },
+      ];
+
+      const result = processInitialBalances(items, '2026-12-31', 'NO_PENALTY');
+      assert.equal(result.details[0].totalPenalty, 0);
+      assert.equal(result.details[0].totalPrincipal, 1000);
+      assert.equal(result.details[0].grandTotal, 1000);
+      assert.equal(result.details[0].periods[0].penaltyAmount, 0);
+      assert.equal(result.details[0].periods[1].penaltyAmount, 0);
+    });
   });
 
   describe('parseCsvOrTextMigration', () => {

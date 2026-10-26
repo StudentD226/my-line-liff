@@ -2,10 +2,11 @@
 
 /**
  * โหมดการคำนวณเบี้ยปรับ:
+ * - NO_PENALTY: ไม่คิดค่าปรับทุกกรณี (ค่าปรับ = ฿0)
  * - STEP_RATE_PERCENT: คิดเป็น % ของเงินต้น ตามจำนวนวันค้างชำระ (1-30 วัน=0%, 31-180 วัน=10%, >180 วัน=20%)
  * - FLAT_PER_MONTH: คิดเป็นจำนวนเดือนค้างชำระ × อัตราต่อเดือน (ตรงกับระบบบิลหลัก)
  */
-export type PenaltyCalcMode = 'STEP_RATE_PERCENT' | 'FLAT_PER_MONTH';
+export type PenaltyCalcMode = 'STEP_RATE_PERCENT' | 'FLAT_PER_MONTH' | 'NO_PENALTY';
 
 export interface DebtPeriodInput {
   billingYear: number;
@@ -132,7 +133,12 @@ export function processInitialBalances(
       let ratePercent = 0;
       let usedFlatPerMonth = flatPenaltyPerMonth;
 
-      if (penaltyCalcMode === 'STEP_RATE_PERCENT') {
+      if (penaltyCalcMode === 'NO_PENALTY') {
+        // โหมด No Penalty: ไม่คิดค่าปรับทุกกรณี (฿0)
+        penalty = 0;
+        ratePercent = 0;
+        usedFlatPerMonth = 0;
+      } else if (penaltyCalcMode === 'STEP_RATE_PERCENT') {
         // โหมด Step Rate: คิดเป็น % ของเงินต้น
         ratePercent = p.customPenaltyRate !== undefined ? Number(p.customPenaltyRate) : getStepPenaltyRate(daysOverdue);
         penalty = truncate2(principal * (ratePercent / 100));
