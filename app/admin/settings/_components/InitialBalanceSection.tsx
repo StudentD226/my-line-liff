@@ -28,11 +28,18 @@ import {
   FileSpreadsheet,
   Home,
   ShieldCheck,
+  Users,
+  Search,
+  X,
+  CheckSquare,
+  Square,
 } from 'lucide-react';
 import { defaultSwalConfig } from '@/lib/swal-helper';
 import {
   MigrationCalculationResult,
   PenaltyCalcMode,
+  HouseMigrationInput,
+  DebtPeriodInput,
   getStepPenaltyRate,
   getOverdueMonths,
   truncate2,
@@ -89,6 +96,51 @@ export default function InitialBalanceSection({
   const [rangeEndYear, setRangeEndYear] = useState<number>(2026);
   const [rangeEndMonth, setRangeEndMonth] = useState<number>(12);
   const [markingAllPaid, setMarkingAllPaid] = useState<boolean>(false);
+
+  // ----------------------------------------------------
+  // Multi-House Popup Modal State (เลือกหลายหลังที่ค้างเท่ากัน)
+  // ----------------------------------------------------
+  const [isMultiModalOpen, setIsMultiModalOpen] = useState<boolean>(false);
+  const [multiSelectedHouseNos, setMultiSelectedHouseNos] = useState<string[]>([]);
+  const [multiSearchQuery, setMultiSearchQuery] = useState<string>('');
+  const [multiIsPaidFull, setMultiIsPaidFull] = useState<boolean>(false);
+  const [multiStartYear, setMultiStartYear] = useState<number>(2021);
+  const [multiStartMonth, setMultiStartMonth] = useState<number>(9);
+  const [multiEndYear, setMultiEndYear] = useState<number>(2026);
+  const [multiEndMonth, setMultiEndMonth] = useState<number>(12);
+  const [multiFeeMode, setMultiFeeMode] = useState<'house_rate' | 'custom'>('house_rate');
+  const [multiCustomAmount, setMultiCustomAmount] = useState<number | ''>(500);
+  const [submittingMulti, setSubmittingMulti] = useState<boolean>(false);
+
+  // รายชื่อบ้านที่ผ่านการกรองค้นหาใน Modal
+  const filteredHousesForMulti = useMemo(() => {
+    if (!multiSearchQuery.trim()) return houses;
+    const q = multiSearchQuery.trim().toLowerCase();
+    return houses.filter((h) => h.houseNo.toLowerCase().includes(q));
+  }, [houses, multiSearchQuery]);
+
+  // จำนวนเดือนทั้งหมดใน Modal
+  const multiTotalMonths = useMemo(() => {
+    const start = multiStartYear * 12 + multiStartMonth;
+    const end = multiEndYear * 12 + multiEndMonth;
+    return Math.max(0, end - start + 1);
+  }, [multiStartYear, multiStartMonth, multiEndYear, multiEndMonth]);
+
+  const handleSelectAllHousesForMulti = () => {
+    const currentFilteredNos = filteredHousesForMulti.map((h) => h.houseNo);
+    const newSet = new Set([...multiSelectedHouseNos, ...currentFilteredNos]);
+    setMultiSelectedHouseNos(Array.from(newSet));
+  };
+
+  const handleDeselectAllHousesForMulti = () => {
+    setMultiSelectedHouseNos([]);
+  };
+
+  const handleToggleHouseForMulti = (houseNo: string) => {
+    setMultiSelectedHouseNos((prev) =>
+      prev.includes(houseNo) ? prev.filter((no) => no !== houseNo) : [...prev, houseNo]
+    );
+  };
 
   // ----------------------------------------------------
   // Single Mode State (กรอกทีละหลัง - ใช้งานง่าย ไม่พลาด)
@@ -363,6 +415,134 @@ export default function InitialBalanceSection({
       });
     } finally {
       setMarkingAllPaid(false);
+    }
+  };
+
+  // 🌟 บันทึกข้อมูลหลายบ้านพร้อมกัน (Batch Multi-House Save)
+  const handleSubmitMultiHouses = async () => {
+    if (multiSelectedHouseNos.length === 0) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'ยังไม่ได้เลือกบ้าน',
+        text: 'กรุณาเลือกบ้านเลขที่อย่างน้อย 1 หลังที่ต้องการกำหนดข้อมูล',
+        confirmButtonColor: '#376B64',
+        customClass: { popup: 'rounded-[2rem]' },
+      });
+      return;
+    }
+
+    const startTotal = multiStartYear * 12 + multiStartMonth;
+    const endTotal = multiEndYear * 12 + multiEndMonth;
+    if (!multiIsPaidFull && startTotal > endTotal) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'ช่วงเวลาไม่ถูกต้อง',
+        text: 'เดือน/ปีเริ่มต้น ต้องมาก่อนหรือเท่ากับเดือน/ปีสิ้นสุด',
+        confirmButtonColor: '#376B64',
+        customClass: { popup: 'rounded-[2rem]' },
+      });
+      return;
+    }
+
+    const confirmHtml = multiIsPaidFull
+      ? `ต้องการบันทึกสถานะ <b>"ชำระครบถ้วน (฿0.00)"</b><br/>ให้กับบ้านที่เลือกทั้งหมด <b>${multiSelectedHouseNos.length} หลัง</b> ใช่หรือไม่?`
+      : `ต้องการบันทึกงวดค้างชำระจำนวน <b>${multiTotalMonths} งวด</b><br/>
+         (ตั้งแต่ ${multiStartMonth}/${multiStartYear + 543} ถึง ${multiEndMonth}/${multiEndYear + 543})<br/>
+         ให้กับบ้านที่เลือกทั้งหมด <b>${multiSelectedHouseNos.length} หลัง</b><br/>
+         <span class="text-xs text-slate-500">*คิดเงินต้นตามอัตราที่เลือก และปลอดค่าปรับ (฿0)</span>`;
+
+    const result = await Swal.fire({
+      ...defaultSwalConfig,
+      title: `ยืนยันบันทึก ${multiSelectedHouseNos.length} หลังพร้อมกัน?`,
+      html: confirmHtml,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'ยืนยันบันทึกข้อมูล',
+      cancelButtonText: 'ยกเลิก',
+    });
+
+    if (!result.isConfirmed) return;
+
+    setSubmittingMulti(true);
+    Swal.fire({
+      title: 'กำลังบันทึกข้อมูล...',
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading(),
+      customClass: { popup: 'rounded-[2rem]' },
+    });
+
+    try {
+      const periodsList: Array<{ year: number; month: number }> = [];
+      if (!multiIsPaidFull) {
+        for (let cur = startTotal; cur <= endTotal; cur++) {
+          const y = Math.floor((cur - 1) / 12);
+          const m = ((cur - 1) % 12) + 1;
+          periodsList.push({ year: y, month: m });
+        }
+      }
+
+      const itemsPayload: HouseMigrationInput[] = multiSelectedHouseNos.map((hNo) => {
+        const houseObj = houses.find((h) => h.houseNo === hNo);
+        const defaultHouseRate = Number(houseObj?.feeRate) || 500;
+        const rate = multiFeeMode === 'custom' ? Number(multiCustomAmount) || defaultHouseRate : defaultHouseRate;
+
+        const unpaidPeriods: DebtPeriodInput[] = multiIsPaidFull
+          ? []
+          : periodsList.map((p) => {
+              const mPad = String(p.month).padStart(2, '0');
+              return {
+                billingYear: p.year,
+                billingMonth: p.month,
+                dueDate: `${p.year}-${mPad}-07`,
+                principalAmount: rate,
+                customFlatPenalty: 0,
+                customPenaltyRate: 0,
+              };
+            });
+
+        return {
+          houseNo: hNo,
+          unpaidPeriods,
+        };
+      });
+
+      const res = await fetch('/api/admin/initial-balance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'confirm',
+          cutoffDate,
+          penaltyCalcMode: 'NO_PENALTY',
+          flatPenaltyPerMonth: 0,
+          items: itemsPayload,
+        }),
+      });
+
+      const json = await res.json();
+      if (json.success) {
+        await Swal.fire({
+          icon: 'success',
+          title: 'บันทึกสำเร็จ!',
+          html: `บันทึกข้อมูลบ้านที่เลือกทั้ง <b>${multiSelectedHouseNos.length} หลัง</b> เรียบร้อยแล้ว`,
+          confirmButtonColor: '#376B64',
+          customClass: { popup: 'rounded-[2rem]' },
+        });
+        setIsMultiModalOpen(false);
+        setMultiSelectedHouseNos([]);
+        onRefreshHouses?.();
+      } else {
+        throw new Error(json.error);
+      }
+    } catch (err: any) {
+      Swal.fire({
+        icon: 'error',
+        title: 'บันทึกล้มเหลว',
+        text: err.message || 'เกิดข้อผิดพลาดในการบันทึก',
+        confirmButtonColor: '#e11d48',
+        customClass: { popup: 'rounded-[2rem]' },
+      });
+    } finally {
+      setSubmittingMulti(false);
     }
   };
 
@@ -687,7 +867,7 @@ export default function InitialBalanceSection({
           </div>
 
           {/* Mode Switcher Tabs */}
-          <div className="flex items-center bg-slate-100 p-1 rounded-xl shrink-0">
+          <div className="flex items-center bg-slate-100 p-1 rounded-xl shrink-0 gap-1.5 flex-wrap">
             <button
               type="button"
               onClick={() => setActiveTab('single')}
@@ -698,6 +878,17 @@ export default function InitialBalanceSection({
               }`}
             >
               <Home size={14} className="text-[#376B64]" /> กำหนดรายหลัง (แนะนำ)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMultiSelectedHouseNos([]);
+                setMultiSearchQuery('');
+                setIsMultiModalOpen(true);
+              }}
+              className="px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 bg-[#376B64] hover:bg-[#2A524C] text-white shadow-sm active:scale-95"
+            >
+              <Users size={14} /> เลือกหลายหลังพร้อมกัน (Popup)
             </button>
             <button
               type="button"
@@ -817,9 +1008,23 @@ export default function InitialBalanceSection({
             {/* Step 1: เลือกบ้าน และ วันที่ตัดยอด */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-5 bg-slate-50 rounded-2xl border border-slate-200/80">
               <div className="md:col-span-2">
-                <label className="block text-sm font-bold text-slate-700 mb-2">
-                  1. เลือกบ้านเลขที่ที่จะตั้งค่า <span className="text-rose-500">*</span>
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-bold text-slate-700">
+                    1. เลือกบ้านเลขที่ที่จะตั้งค่า <span className="text-rose-500">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMultiSelectedHouseNos([]);
+                      setMultiSearchQuery('');
+                      setIsMultiModalOpen(true);
+                    }}
+                    className="px-3 py-1 bg-[#376B64] hover:bg-[#2A524C] text-white font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
+                  >
+                    <Users size={13} />
+                    เลือกหลายหลังพร้อมกัน (Popup)
+                  </button>
+                </div>
                 <div className="flex gap-2">
                   <select
                     value={selectedHouseNo}
@@ -1372,6 +1577,376 @@ export default function InitialBalanceSection({
           </div>
         )}
       </div>
+
+      {/* ============================================================== */}
+      {/* POPUP MODAL: เลือกบ้านหลายหลังพร้อมกัน (Batch Multi-House)       */}
+      {/* ============================================================== */}
+      {isMultiModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+          <div className="bg-white w-full max-w-4xl rounded-[2rem] shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="px-6 py-5 bg-gradient-to-r from-slate-50 to-[#376B64]/10 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="p-2.5 bg-[#376B64] text-white rounded-xl shadow-md">
+                  <Users size={20} />
+                </span>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-slate-800">
+                    กำหนดงวดค้างชำระหลายบ้านพร้อมกัน (Batch Multi-House)
+                  </h3>
+                  <p className="text-xs text-slate-500 font-bold mt-0.5">
+                    เลือกบ้านที่มีเงื่อนไขหรือช่วงเวลาค้างชำระเหมือนกัน แล้วบันทึกครั้งเดียว
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsMultiModalOpen(false)}
+                className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-6">
+              {/* ส่วนที่ 1: เลือกบ้าน */}
+              <div className="p-4 sm:p-5 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-sm text-slate-800">
+                      1. เลือกบ้านที่ต้องการบันทึก
+                    </span>
+                    <span className="px-2.5 py-0.5 bg-[#376B64]/10 text-[#376B64] text-xs font-black rounded-full">
+                      เลือกแล้ว {multiSelectedHouseNos.length} / {houses.length} หลัง
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleSelectAllHousesForMulti}
+                      className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1"
+                    >
+                      <CheckSquare size={13} className="text-[#376B64]" /> เลือกทั้งหมด ({filteredHousesForMulti.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDeselectAllHousesForMulti}
+                      className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-500 border border-slate-200 rounded-lg text-xs font-bold transition-all"
+                    >
+                      ล้างการเลือก
+                    </button>
+                  </div>
+                </div>
+
+                {/* กล่องค้นหาบ้าน */}
+                <div className="relative">
+                  <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={multiSearchQuery}
+                    onChange={(e) => setMultiSearchQuery(e.target.value)}
+                    placeholder="ค้นหาเลขที่บ้าน เช่น 101/ หรือ 99..."
+                    className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:ring-2 focus:ring-[#376B64]/40 outline-none shadow-sm"
+                  />
+                  {multiSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setMultiSearchQuery('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+
+                {/* รายการ Checkbox บ้านแบบ Grid */}
+                <div className="max-h-48 overflow-y-auto border border-slate-200 rounded-xl bg-white p-2.5 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                  {filteredHousesForMulti.map((h) => {
+                    const isChecked = multiSelectedHouseNos.includes(h.houseNo);
+                    return (
+                      <button
+                        key={h.id || h.houseNo}
+                        type="button"
+                        onClick={() => handleToggleHouseForMulti(h.houseNo)}
+                        className={`p-2.5 rounded-xl border text-left transition-all flex items-center gap-2 ${
+                          isChecked
+                            ? 'border-[#376B64] bg-[#376B64]/10 shadow-sm'
+                            : 'border-slate-100 bg-slate-50/60 hover:bg-slate-100 hover:border-slate-200'
+                        }`}
+                      >
+                        <div
+                          className={`w-4 h-4 rounded-md flex items-center justify-center shrink-0 ${
+                            isChecked ? 'bg-[#376B64] text-white' : 'border border-slate-300 bg-white'
+                          }`}
+                        >
+                          {isChecked && <Check size={11} />}
+                        </div>
+                        <div className="min-w-0">
+                          <span className="block font-black text-xs text-slate-800 truncate">
+                            {h.houseNo}
+                          </span>
+                          <span className="block text-[10px] text-slate-400 truncate">
+                            ฿{Number(h.feeRate || 0).toLocaleString()}/ด.
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                  {filteredHousesForMulti.length === 0 && (
+                    <div className="col-span-full py-6 text-center text-xs text-slate-400 font-bold">
+                      ไม่พบข้อมูลบ้านที่ตรงกับคำค้นหา
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* ส่วนที่ 2: ระบุสถานะและงวดค้างชำระ */}
+              <div className="p-4 sm:p-5 bg-white rounded-2xl border border-slate-200 space-y-4">
+                <span className="font-bold text-sm text-slate-800 block">
+                  2. ระบุสถานะและช่วงเวลาที่ค้างชำระ (มีผลกับบ้านที่เลือกทั้งหมด)
+                </span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setMultiIsPaidFull(true)}
+                    className={`p-3.5 rounded-xl border-2 text-left transition-all flex items-start gap-3 ${
+                      multiIsPaidFull
+                        ? 'border-emerald-500 bg-emerald-50 shadow-sm'
+                        : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <div
+                      className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
+                        multiIsPaidFull ? 'bg-emerald-500 text-white' : 'border border-slate-300'
+                      }`}
+                    >
+                      {multiIsPaidFull && <Check size={12} />}
+                    </div>
+                    <div>
+                      <span className="block font-black text-xs text-slate-800">
+                        ชำระครบถ้วน (ไม่มียอดหนี้ ฿0.00)
+                      </span>
+                      <span className="block text-[11px] text-slate-500 mt-0.5">
+                        ตั้งค่ายอดหนี้ยกมาเป็น ฿0.00 สำหรับทุกบ้านที่เลือก
+                      </span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setMultiIsPaidFull(false)}
+                    className={`p-3.5 rounded-xl border-2 text-left transition-all flex items-start gap-3 ${
+                      !multiIsPaidFull
+                        ? 'border-[#376B64] bg-[#376B64]/5 shadow-sm'
+                        : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <div
+                      className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
+                        !multiIsPaidFull ? 'bg-[#376B64] text-white' : 'border border-slate-300'
+                      }`}
+                    >
+                      {!multiIsPaidFull && <Check size={12} />}
+                    </div>
+                    <div>
+                      <span className="block font-black text-xs text-slate-800">
+                        มียอดค้างชำระย้อนหลัง
+                      </span>
+                      <span className="block text-[11px] text-slate-500 mt-0.5">
+                        กำหนดช่วงเดือนที่ค้างชำระให้เหมือนกัน
+                      </span>
+                    </div>
+                  </button>
+                </div>
+
+                {/* ฟอร์มระบุช่วงเวลา (แสดงเมื่อมียอดค้าง) */}
+                {!multiIsPaidFull && (
+                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <span className="text-xs font-black text-slate-700 flex items-center gap-1.5">
+                        <Calendar size={15} className="text-[#376B64]" /> ช่วงเดือนที่ค้างชำระ:
+                      </span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[10px] font-bold text-slate-400">ปุ่มลัด:</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMultiStartYear(2021);
+                            setMultiStartMonth(9);
+                            setMultiEndYear(2026);
+                            setMultiEndMonth(12);
+                          }}
+                          className="px-2 py-0.5 bg-white hover:bg-emerald-100 text-[#376B64] border border-[#376B64]/30 rounded-md text-[11px] font-black"
+                        >
+                          ก.ย. 64 – ธ.ค. 69
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMultiStartYear(2024);
+                            setMultiStartMonth(1);
+                            setMultiEndYear(2024);
+                            setMultiEndMonth(12);
+                          }}
+                          className="px-2 py-0.5 bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 rounded-md text-[11px] font-bold"
+                        >
+                          ปี 67
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMultiStartYear(2025);
+                            setMultiStartMonth(1);
+                            setMultiEndYear(2025);
+                            setMultiEndMonth(12);
+                          }}
+                          className="px-2 py-0.5 bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 rounded-md text-[11px] font-bold"
+                        >
+                          ปี 68
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMultiStartYear(2026);
+                            setMultiStartMonth(1);
+                            setMultiEndYear(2026);
+                            setMultiEndMonth(12);
+                          }}
+                          className="px-2 py-0.5 bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 rounded-md text-[11px] font-bold"
+                        >
+                          ปี 69
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+                      <div className="flex gap-1.5 items-center">
+                        <span className="text-xs font-bold text-slate-500 whitespace-nowrap shrink-0">ตั้งแต่:</span>
+                        <select
+                          value={multiStartMonth}
+                          onChange={(e) => setMultiStartMonth(Number(e.target.value))}
+                          className="flex-1 border border-slate-200 rounded-xl p-2 bg-white text-xs font-bold"
+                        >
+                          {THAI_MONTHS.map((m, idx) => (
+                            <option key={idx + 1} value={idx + 1}>{idx + 1}. {m}</option>
+                          ))}
+                        </select>
+                        <select
+                          value={multiStartYear}
+                          onChange={(e) => setMultiStartYear(Number(e.target.value))}
+                          className="flex-1 border border-slate-200 rounded-xl p-2 bg-white text-xs font-bold"
+                        >
+                          {AVAILABLE_YEARS.map((y) => (
+                            <option key={y} value={y}>{y + 543}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="flex gap-1.5 items-center">
+                        <span className="text-xs font-bold text-slate-500 whitespace-nowrap shrink-0">ถึง:</span>
+                        <select
+                          value={multiEndMonth}
+                          onChange={(e) => setMultiEndMonth(Number(e.target.value))}
+                          className="flex-1 border border-slate-200 rounded-xl p-2 bg-white text-xs font-bold"
+                        >
+                          {THAI_MONTHS.map((m, idx) => (
+                            <option key={idx + 1} value={idx + 1}>{idx + 1}. {m}</option>
+                          ))}
+                        </select>
+                        <select
+                          value={multiEndYear}
+                          onChange={(e) => setMultiEndYear(Number(e.target.value))}
+                          className="flex-1 border border-slate-200 rounded-xl p-2 bg-white text-xs font-bold"
+                        >
+                          {AVAILABLE_YEARS.map((y) => (
+                            <option key={y} value={y}>{y + 543}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* การคิดเงินต้น */}
+                    <div className="pt-2 border-t border-slate-200/80">
+                      <span className="text-xs font-black text-slate-700 block mb-2">
+                        อัตราเงินต้นต่อเดือน:
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <label className="flex items-center gap-2 p-2.5 bg-white border border-slate-200 rounded-xl cursor-pointer">
+                          <input
+                            type="radio"
+                            name="multiFeeMode"
+                            checked={multiFeeMode === 'house_rate'}
+                            onChange={() => setMultiFeeMode('house_rate')}
+                            className="accent-[#376B64]"
+                          />
+                          <span className="text-xs font-bold text-slate-700">
+                            ใช้อัตราค่าส่วนกลางของแต่ละบ้านตามระบบ (แนะนำ)
+                          </span>
+                        </label>
+                        <label className="flex items-center gap-2 p-2.5 bg-white border border-slate-200 rounded-xl cursor-pointer">
+                          <input
+                            type="radio"
+                            name="multiFeeMode"
+                            checked={multiFeeMode === 'custom'}
+                            onChange={() => setMultiFeeMode('custom')}
+                            className="accent-[#376B64]"
+                          />
+                          <span className="text-xs font-bold text-slate-700 whitespace-nowrap">
+                            กำหนดยอดคงที่เท่ากันทุกหลัง:
+                          </span>
+                          {multiFeeMode === 'custom' && (
+                            <input
+                              type="number"
+                              value={multiCustomAmount}
+                              onChange={(e) => setMultiCustomAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                              placeholder="500"
+                              className="w-20 px-2 py-1 border border-slate-300 rounded-lg text-xs font-black text-center"
+                            />
+                          )}
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <span className="text-xs font-bold text-slate-600">
+                พร้อมบันทึก: <b className="text-[#376B64]">{multiSelectedHouseNos.length} หลัง</b>
+                {!multiIsPaidFull && <span> (ค้างชำระ {multiTotalMonths} งวด/หลัง)</span>}
+              </span>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => setIsMultiModalOpen(false)}
+                  disabled={submittingMulti}
+                  className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSubmitMultiHouses}
+                  disabled={submittingMulti || multiSelectedHouseNos.length === 0}
+                  className={`flex-1 sm:flex-initial px-6 py-2.5 rounded-xl font-bold text-xs text-white shadow-md transition-all flex items-center justify-center gap-1.5 active:scale-95 ${
+                    submittingMulti || multiSelectedHouseNos.length === 0
+                      ? 'bg-slate-300 cursor-not-allowed'
+                      : 'bg-[#376B64] hover:bg-[#2A524C]'
+                  }`}
+                >
+                  <Sparkles size={14} />
+                  {submittingMulti ? 'กำลังบันทึก...' : `บันทึกทั้ง ${multiSelectedHouseNos.length} หลังพร้อมกัน`}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
