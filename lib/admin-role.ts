@@ -35,14 +35,33 @@ export interface AdminPermissions {
   canDeleteFinancialTx: boolean;
 }
 
+export function resolveAdminRole(rawRole: string | undefined | null): AdminRoleType {
+  if (rawRole === 'ADMIN' || rawRole === 'SUPER_ADMIN') return 'ADMIN';
+  return 'NITI';
+}
+
+export function getAdminPermissions(role: AdminRoleType): AdminPermissions {
+  const isAdmin = role === 'ADMIN';
+  return {
+    canManageStaff: isAdmin,
+    canManageSettings: isAdmin,
+    canDeleteHouse: isAdmin,
+    canDeleteInvoice: isAdmin,
+    canNotifyDebts: true,
+    canReviewSlips: true,
+    canManageMaintenance: true,
+    canDeleteMaintenance: isAdmin,
+    canManageNews: true,
+    canManageFinancial: true,
+    canDeleteFinancialTx: isAdmin,
+  };
+}
+
 export function useAdminRole() {
   const { data: session, status } = useSession();
   const rawRole = (session?.user as any)?.role as string | undefined;
 
-  const role: AdminRoleType = useMemo(() => {
-    if (rawRole === 'ADMIN' || rawRole === 'SUPER_ADMIN') return 'ADMIN';
-    return 'NITI';
-  }, [rawRole]);
+  const role: AdminRoleType = useMemo(() => resolveAdminRole(rawRole), [rawRole]);
 
   const isAdmin = role === 'ADMIN';
   const isSuperAdmin = isAdmin; // Alias เพื่อ backward compatibility ให้แอดมินทำได้ทุกอย่าง
@@ -58,21 +77,7 @@ export function useAdminRole() {
     }
   }, [role]);
 
-  const permissions: AdminPermissions = useMemo(() => {
-    return {
-      canManageStaff: isAdmin,
-      canManageSettings: isAdmin,
-      canDeleteHouse: isAdmin,
-      canDeleteInvoice: isAdmin,
-      canNotifyDebts: true,
-      canReviewSlips: true,
-      canManageMaintenance: true,
-      canDeleteMaintenance: isAdmin,
-      canManageNews: true,
-      canManageFinancial: true,
-      canDeleteFinancialTx: isAdmin,
-    };
-  }, [isAdmin]);
+  const permissions: AdminPermissions = useMemo(() => getAdminPermissions(role), [role]);
 
   return {
     role,

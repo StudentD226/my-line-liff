@@ -148,7 +148,7 @@ export default function DebtTrackerPage() {
       if (sortBy === "debt-desc") return b.totalOwed - a.totalOwed;
       if (sortBy === "debt-asc") return a.totalOwed - b.totalOwed;
       if (sortBy === "month-desc") return b.overdueCount - a.overdueCount;
-      if (sortBy === "house-asc") return a.houseNumber.localeCompare(b.houseNumber, 'th');
+      if (sortBy === "house-asc") return a.houseNumber.localeCompare(b.houseNumber, undefined, { numeric: true, sensitivity: 'base' });
       return 0;
     });
   }, [filteredDebts, sortBy]);
