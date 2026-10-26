@@ -104,7 +104,7 @@ const CustomTimePicker = React.memo(({ value, onChange, disabled }: { value: str
       </button>
 
       {isOpen && !disabled && (
-        <div className="absolute z-50 mt-2 w-[280px] bg-white border border-slate-200 shadow-2xl rounded-2xl p-4 animate-in fade-in duration-150 right-0">
+        <div className="absolute z-[9999] mt-2 w-[280px] bg-white border border-slate-200 shadow-2xl rounded-2xl p-4 animate-in fade-in duration-150 right-0">
           <div className="flex justify-between items-center mb-3 pb-2 border-b border-slate-100">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">ระบุเวลาจัดส่งเอกสาร</span>
             <button type="button" onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-slate-600"><X size={16} /></button>
@@ -130,7 +130,7 @@ const CustomTimePicker = React.memo(({ value, onChange, disabled }: { value: str
 });
 CustomTimePicker.displayName = "CustomTimePicker";
 
-const CustomDayPicker = React.memo(({ label, value, onChange, placeholder = "ระบุวันที่...", tooltipText, icon: Icon = CalendarDays, disabled }: any) => {
+const CustomDayPicker = React.memo(({ label, value, onChange, placeholder = "ระบุวันที่...", tooltipText, tooltipAlign = "center", icon: Icon = CalendarDays, disabled, align = "left" }: any) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -145,13 +145,25 @@ const CustomDayPicker = React.memo(({ label, value, onChange, placeholder = "ร
   return (
     <div className="flex flex-col h-full relative" ref={dropdownRef}>
       <div className="flex items-center gap-1.5 mb-2">
-        <label className="block text-sm font-semibold text-slate-700">{label}</label>
+        <label className="block text-sm font-bold text-slate-700">{label}</label>
         {tooltipText && (
-          <div className="group relative flex items-center justify-center cursor-help shrink-0">
+          <div className="group relative inline-flex items-center justify-center cursor-help shrink-0">
             <Info size={16} className="text-slate-400 hover:text-[#376B64] transition-colors" />
-            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-[250px] p-2.5 bg-slate-800 text-white text-xs font-medium rounded-lg shadow-xl z-50 text-center leading-relaxed">
+            <div className={`pointer-events-none absolute bottom-full mb-2 hidden group-hover:block w-[260px] p-2.5 bg-slate-800 text-white text-xs font-medium rounded-xl shadow-2xl z-[9999] text-center leading-relaxed ${
+              tooltipAlign === 'left' 
+                ? 'left-0' 
+                : tooltipAlign === 'right' 
+                  ? 'right-0' 
+                  : 'left-1/2 -translate-x-1/2'
+            }`}>
               {tooltipText}
-              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+              <div className={`absolute top-full border-4 border-transparent border-t-slate-800 ${
+                tooltipAlign === 'left' 
+                  ? 'left-4' 
+                  : tooltipAlign === 'right' 
+                    ? 'right-4' 
+                    : 'left-1/2 -translate-x-1/2'
+              }`}></div>
             </div>
           </div>
         )}
@@ -170,10 +182,12 @@ const CustomDayPicker = React.memo(({ label, value, onChange, placeholder = "ร
         </button>
         
         {isOpen && !disabled && (
-          <div className="absolute top-full left-0 z-50 mt-2 w-[280px] p-4 bg-white border border-slate-100 shadow-2xl rounded-2xl animate-in fade-in duration-150">
-            <div className="flex justify-between items-center mb-2 pb-1 border-b">
-              <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">เลือกวันที่ของเดือน</div>
-              <button type="button" onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-slate-600"><X size={14}/></button>
+          <div className={`absolute top-full z-[9999] mt-2 w-[280px] p-4 bg-white border border-slate-200 shadow-2xl rounded-2xl animate-in fade-in duration-150 ${
+            align === 'right' ? 'right-0' : 'left-0'
+          }`}>
+            <div className="flex justify-between items-center mb-2 pb-1 border-b border-slate-100">
+              <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">เลือกวันที่ของเดือน</div>
+              <button type="button" onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-slate-600 p-1"><X size={15}/></button>
             </div>
             <div className="grid grid-cols-7 gap-1">
               {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
@@ -181,7 +195,7 @@ const CustomDayPicker = React.memo(({ label, value, onChange, placeholder = "ร
                   key={day}
                   type="button"
                   onClick={() => { onChange(day); setIsOpen(false); }}
-                  className={`p-2 text-sm font-semibold rounded-lg transition-all ${value === day ? 'bg-[#376B64] text-white shadow-md transform scale-105' : 'text-slate-600 hover:bg-[#376B64]/10 hover:text-[#376B64]'}`}
+                  className={`p-2 text-sm font-semibold rounded-lg transition-all ${value === day ? 'bg-[#376B64] text-white shadow-md transform scale-105 font-bold' : 'text-slate-600 hover:bg-[#376B64]/10 hover:text-[#376B64]'}`}
                 >
                   {day}
                 </button>
@@ -436,7 +450,7 @@ export default function AdminSettingsPage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 md:p-8 bg-slate-50 min-h-screen font-sans text-slate-800 relative w-full overflow-x-hidden">
+    <div className="p-4 sm:p-6 md:p-8 bg-slate-50 min-h-screen font-sans text-slate-800 relative w-full">
       <div className="max-w-6xl mx-auto space-y-6 w-full">
         
         <div className="mb-2">
@@ -450,10 +464,10 @@ export default function AdminSettingsPage() {
           <p className="text-xs sm:text-sm text-slate-500 mt-2">บริหารจัดการข้อมูลประเภทโครงการ เกณฑ์การคิดคำนวณรากฐาน และตรวจสอบอัตราแยกรายยูนิตพักอาศัย</p>
         </div>
         
-        <section className="bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden relative">
+        <section className="bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-sm border border-slate-100 relative z-20">
           
           {!isSuperAdmin && (
-            <div className="absolute inset-0 z-20 bg-slate-100/40 backdrop-blur-[1px] flex flex-col items-center justify-center">
+            <div className="absolute inset-0 z-20 bg-slate-100/40 backdrop-blur-[1px] flex flex-col items-center justify-center rounded-[1.5rem] sm:rounded-[2rem]">
                <div className="bg-white p-6 rounded-2xl shadow-xl border border-slate-200 flex flex-col items-center text-center max-w-sm">
                  <div className="w-14 h-14 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mb-4"><ShieldAlert size={28} /></div>
                  <h3 className="text-base font-black text-slate-800 mb-1">สิทธิ์การเข้าถึงข้อมูลจำกัด</h3>
@@ -529,7 +543,7 @@ export default function AdminSettingsPage() {
                     </button>
 
                     {isBankDropdownOpen && isSuperAdmin && (
-                      <div className="absolute top-full left-0 mt-2 w-full bg-white border border-slate-100 rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in duration-150 origin-top">
+                      <div className="absolute top-full left-0 mt-2 w-full bg-white border border-slate-100 rounded-xl shadow-xl z-[9999] overflow-hidden animate-in fade-in duration-150 origin-top">
                         <div className="max-h-60 overflow-y-auto custom-scrollbar">
                           {BANK_OPTIONS.map((bank, idx) => (
                             <button
@@ -571,18 +585,43 @@ export default function AdminSettingsPage() {
                 </h3>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-                  <CustomDayPicker label="วันประมวลผลออกเอกสารประจำเดือน" value={invoiceGenerateDay} onChange={setInvoiceGenerateDay} tooltipText="วันที่ระบบส่วนกลางจะสร้างเอกสารใบแจ้งหนี้และส่งข้อความแจ้งเตือนหาผู้พักอาศัยทุกคนเสร็จสิ้น" disabled={!isSuperAdmin} />
-                  <CustomDayPicker label="วันจัดส่งข้อความแจ้งเตือนรอบสอง" value={secondReminderDay} onChange={setSecondReminderDay} tooltipText="วันที่ระบบจะส่งข้อความแจ้งเตือนย้ำก่อนวันครบกำหนดการชำระเงินของรอบเดือน" icon={BellRing} disabled={!isSuperAdmin} />
-                  <CustomDayPicker label="วันสิ้นสุดกำหนดเวลาชำระเงิน" value={dueDateDay} onChange={setDueDateDay} tooltipText="วันสุดท้ายสำหรับการดำเนินการชำระหนี้สินตามรอบบิลโดยไม่ถูกคิดคำนวณอัตราปรับล่าช้า" disabled={!isSuperAdmin} />
+                  <CustomDayPicker 
+                    label="วันประมวลผลออกเอกสารประจำเดือน" 
+                    value={invoiceGenerateDay} 
+                    onChange={setInvoiceGenerateDay} 
+                    tooltipText="วันที่ระบบส่วนกลางจะสร้างเอกสารใบแจ้งหนี้และส่งข้อความแจ้งเตือนหาผู้พักอาศัยทุกคนเสร็จสิ้น" 
+                    tooltipAlign="left"
+                    align="left"
+                    disabled={!isSuperAdmin} 
+                  />
+                  <CustomDayPicker 
+                    label="วันจัดส่งข้อความแจ้งเตือนรอบสอง" 
+                    value={secondReminderDay} 
+                    onChange={setSecondReminderDay} 
+                    tooltipText="วันที่ระบบจะส่งข้อความแจ้งเตือนย้ำก่อนวันครบกำหนดการชำระเงินของรอบเดือน" 
+                    icon={BellRing} 
+                    tooltipAlign="center"
+                    align="left"
+                    disabled={!isSuperAdmin} 
+                  />
+                  <CustomDayPicker 
+                    label="วันสิ้นสุดกำหนดเวลาชำระเงิน" 
+                    value={dueDateDay} 
+                    onChange={setDueDateDay} 
+                    tooltipText="วันสุดท้ายสำหรับการดำเนินการชำระหนี้สินตามรอบบิลโดยไม่ถูกคิดคำนวณอัตราปรับล่าช้า" 
+                    tooltipAlign="right"
+                    align="right"
+                    disabled={!isSuperAdmin} 
+                  />
 
                   <div className="flex flex-col h-full">
                     <div className="flex items-center gap-1.5 mb-2">
                       <label className="block text-sm font-bold text-slate-700">เวลาจัดส่งข้อความอ้างอิง</label>
-                      <div className="group relative flex items-center justify-center cursor-help shrink-0">
+                      <div className="group relative inline-flex items-center justify-center cursor-help shrink-0">
                         <Info size={16} className="text-slate-400 hover:text-[#376B64] transition-colors" />
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-[220px] p-2.5 bg-slate-800 text-white text-xs font-medium rounded-lg shadow-xl z-50 text-center leading-relaxed">
+                        <div className="pointer-events-none absolute bottom-full right-0 sm:left-1/2 sm:-translate-x-1/2 mb-2 hidden group-hover:block w-[240px] p-2.5 bg-slate-800 text-white text-xs font-medium rounded-xl shadow-2xl z-[9999] text-center leading-relaxed">
                           เวลาประมวลผลที่ระบบจะส่งสัญญาณข้อมูลแจ้งหนี้เข้าสู่แอปพลิเคชัน LINE
-                          <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+                          <div className="absolute top-full right-4 sm:left-1/2 sm:-translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
                         </div>
                       </div>
                     </div>
@@ -606,16 +645,16 @@ export default function AdminSettingsPage() {
 
         {/* ส่วนที่ 3: บริหารจัดการรายหน่วยพักอาศัย */}
         <section className="border-t-[8px] border-slate-50 w-full">
-          <div className="bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden">
+          <div className="bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-sm border border-slate-100 relative z-10">
             <div className="p-5 sm:p-6 md:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100">
               <h2 className="text-lg sm:text-xl font-black text-slate-800 flex items-center gap-2">
                 <span className="p-2 bg-[#376B64]/10 text-[#376B64] rounded-lg shrink-0"><CreditCard size={20} /></span> <span className="truncate">การจัดการเกณฑ์และราคาแยกรายยูนิตพักอาศัย</span>
                 
-                <div className="group relative flex items-center justify-center cursor-help ml-1 shrink-0">
+                <div className="group relative inline-flex items-center justify-center cursor-help ml-1 shrink-0">
                   <Info size={18} className="text-slate-400 hover:text-[#376B64] transition-colors" />
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-[260px] sm:w-72 p-3 bg-slate-800 text-white text-xs font-medium rounded-lg shadow-xl z-50 text-center leading-relaxed">
+                  <div className="pointer-events-none absolute top-full left-0 sm:left-1/2 sm:-translate-x-1/2 mt-2 hidden group-hover:block w-[260px] sm:w-72 p-3 bg-slate-800 text-white text-xs font-medium rounded-xl shadow-2xl z-[9999] text-center leading-relaxed">
                     คุณสามารถดำเนินการเลือกข้อมูลพร้อมกันหลายรายการเพื่อตั้งค่าเกณฑ์ หรือเลือกจัดการรายหน่วยพักอาศัยแบบแยกอิสระได้ตามสิทธิ์
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+                    <div className="absolute bottom-full left-4 sm:left-1/2 sm:-translate-x-1/2 border-4 border-transparent border-b-slate-800"></div>
                   </div>
                 </div>
               </h2>

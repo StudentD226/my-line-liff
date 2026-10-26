@@ -334,7 +334,7 @@ export default function DebtTrackerPage() {
                           <AlertCircle size={14} strokeWidth={2.5} /> ค้างชำระ {item.overdueCount} รอบบิล
                         </span>
                         
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-max min-w-[140px] p-3 bg-slate-800 text-white text-xs rounded-xl shadow-xl z-50 text-center leading-relaxed font-medium">
+                        <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-max min-w-[140px] p-3 bg-slate-800 text-white text-xs rounded-xl shadow-2xl z-[9999] text-center leading-relaxed font-medium">
                           {item.overdueMonths && item.overdueMonths.length > 0 ? (
                             item.overdueMonths.map((m: string, i: number) => (
                               <div key={i} className="py-1 border-b border-slate-700 last:border-0">{m}</div>

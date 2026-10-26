@@ -31,7 +31,7 @@ const fullThaiMonths = ['', 'มกราคม', 'กุมภาพันธ�
 const InfoTooltip = React.memo(({ text }: { text: string }) => (
   <div className="relative flex items-center group cursor-help ml-2 shrink-0">
     <Info size={16} className="text-gray-400 hover:text-[#376B64] transition-colors shrink-0" />
-    <div className="absolute bottom-full right-0 sm:left-1/2 sm:-translate-x-1/2 mb-2 hidden group-hover:block w-[220px] sm:w-64 p-2.5 bg-gray-800 text-white text-xs rounded-xl shadow-xl z-50 text-center leading-relaxed">
+    <div className="pointer-events-none absolute bottom-full right-0 sm:left-1/2 sm:-translate-x-1/2 mb-2 hidden group-hover:block w-[220px] sm:w-64 p-2.5 bg-gray-800 text-white text-xs rounded-xl shadow-2xl z-[9999] text-center leading-relaxed">
       {text}
       <div className="absolute top-full right-2 sm:left-1/2 sm:-translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-800"></div>
     </div>
