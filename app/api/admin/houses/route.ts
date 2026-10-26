@@ -118,9 +118,16 @@ export async function PATCH(request: Request) {
 
     // 2. นำสมาชิกออกจากบ้าน
     if (action === 'remove_resident' && userId) {
-      await prisma.user.update({
-        where: { id: userId },
-        data: { residentHouseId: null }
+      await prisma.$transaction(async (tx) => {
+        await tx.user.update({
+          where: { id: userId },
+          data: { residentHouseId: null }
+        });
+        // ปลด ownerId ถ้าผู้ใช้นี้เป็นเจ้าของบ้าน เพื่อไม่ให้ค้างในระบบ
+        await tx.house.updateMany({
+          where: { ownerId: userId },
+          data: { ownerId: null }
+        });
       });
       return NextResponse.json({ success: true, message: 'นำผู้พักอาศัยออกจากบ้านเรียบร้อยแล้ว' });
     }

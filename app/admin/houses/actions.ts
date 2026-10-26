@@ -21,13 +21,17 @@ function generatePasscode(houseNo: string) {
 
 // 1. เพิ่มบ้านแบบปกติ (ทีละหลัง)
 export async function addHouse(formData: FormData) {
-  const houseNo = formData.get("houseNo")?.toString();
+  const houseNo = formData.get("houseNo")?.toString()?.trim();
   const houseSize = parseFloat(formData.get("houseSize")?.toString() || "0");
 
   const feeType = (formData.get("feeType")?.toString() as 'CALCULATED' | 'FIXED') || 'CALCULATED';
   const feeRate = parseFloat(formData.get("feeRate")?.toString() || "0");
 
   if (!houseNo) return;
+
+  // ตรวจสอบว่ามีบ้านเลขที่นี้อยู่แล้วหรือไม่ เพื่อป้องกัน Duplicate Key P2002 Error
+  const existing = await prisma.house.findUnique({ where: { houseNo } });
+  if (existing) return;
 
   const passcode = generatePasscode(houseNo); // สร้างรหัสลับ
 
@@ -65,25 +69,38 @@ export async function updateHouse(formData: FormData) {
   revalidatePath("/admin/houses");
 }
 
-// 3. ลบบ้าน
+// 3. ลบบ้าน (แบบปลอดภัย ปลดความสัมพันธ์ทั้งหมดก่อน)
 export async function deleteHouse(formData: FormData) {
   const id = formData.get("id")?.toString();
   if (!id) return;
 
-  await prisma.house.delete({ where: { id } });
+  await prisma.$transaction(async (tx) => {
+    await tx.invoice.deleteMany({ where: { residentHouseId: id } });
+    await tx.report.deleteMany({ where: { residentHouseId: id } });
+    await tx.house.updateMany({ where: { id }, data: { ownerId: null } });
+    await tx.user.updateMany({ where: { residentHouseId: id }, data: { residentHouseId: null } });
+    await tx.house.delete({ where: { id } });
+  });
+
   revalidatePath("/admin/houses");
 }
 
-// 4. ลบสมาชิกออกจากบ้าน (เตะออก)
+// 4. ลบสมาชิกออกจากบ้าน (เตะออกและปลด ownerId)
 export async function removeResident(formData: FormData) {
   const userId = formData.get("userId")?.toString();
   if (!userId) return;
 
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      residentHouse: { disconnect: true }
-    }
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: userId },
+      data: {
+        residentHouse: { disconnect: true }
+      }
+    });
+    await tx.house.updateMany({
+      where: { ownerId: userId },
+      data: { ownerId: null }
+    });
   });
 
   revalidatePath("/admin/houses");
