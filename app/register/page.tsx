@@ -1,9 +1,9 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import liff from '@line/liff';
 import Swal from 'sweetalert2';
-import { User, Phone, Home, Lock, ShieldCheck, CheckCircle2, AlertCircle, Key, ChevronDown } from 'lucide-react';
+import { User, Phone, Home, Lock, ShieldCheck, CheckCircle2, AlertCircle, Key, ChevronDown, Search, X, Check } from 'lucide-react';
 
 interface HouseOption {
   id: string;
@@ -21,6 +21,8 @@ export default function RegisterPage() {
   // ข้อมูลฟอร์ม
   // ลำดับ: 1. บ้านเลขที่ 2. passcode 3. ชื่อ-สกุล 4. เบอร์โทร
   const [houseNo, setHouseNo] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [passcode, setPasscode] = useState(''); // State สำหรับรหัสลับประจำบ้าน
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -32,6 +34,27 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   const [hasExistingHouse, setHasExistingHouse] = useState(false); 
+
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // ปิด Dropdown เมื่อคลิกนอกกล่อง
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent | TouchEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+        if (houseNo) {
+          setSearchQuery(houseNo);
+        }
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [houseNo]);
 
   useEffect(() => {
     const initializeLiff = async () => {
@@ -70,6 +93,7 @@ export default function RegisterPage() {
                 const existingHouseNo = data.user.residentHouse?.houseNo || data.user.houseNo;
                 if (existingHouseNo) {
                   setHouseNo(existingHouseNo);
+                  setSearchQuery(existingHouseNo);
                   setHasExistingHouse(true);
                 }
               }
@@ -92,18 +116,64 @@ export default function RegisterPage() {
     initializeLiff();
   }, []);
 
+  // ตัวกรองบ้านเลขที่ตามคำค้นหา
+  const filteredHouses = housesList.filter((h) =>
+    h.houseNo.toLowerCase().includes(searchQuery.trim().toLowerCase())
+  );
+
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    setIsDropdownOpen(true);
+    
+    // ตรวจสอบว่าตรงกับบ้านเลขที่ใดแบบตรงตัว (Exact match) หรือไม่
+    const exactMatch = housesList.find(
+      (h) => h.houseNo.trim().toLowerCase() === value.trim().toLowerCase()
+    );
+    if (exactMatch) {
+      setHouseNo(exactMatch.houseNo);
+    } else {
+      setHouseNo('');
+    }
+  };
+
+  const handleSelectHouse = (selectedNo: string) => {
+    setHouseNo(selectedNo);
+    setSearchQuery(selectedNo);
+    setIsDropdownOpen(false);
+  };
+
+  const handleClearHouse = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setHouseNo('');
+    setSearchQuery('');
+    setIsDropdownOpen(true);
+    searchInputRef.current?.focus();
+  };
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     
     try {
+      let targetHouseNo = houseNo;
+
       // 1. ตรวจสอบรหัสลับก่อน (ถ้าเป็นลูกบ้านใหม่ที่ยังไม่มีบ้าน)
       if (!hasExistingHouse) {
-        if (!houseNo) {
+        if (!targetHouseNo && searchQuery) {
+          const matched = housesList.find(
+            (h) => h.houseNo.trim().toLowerCase() === searchQuery.trim().toLowerCase()
+          );
+          if (matched) {
+            targetHouseNo = matched.houseNo;
+            setHouseNo(matched.houseNo);
+          }
+        }
+
+        if (!targetHouseNo) {
           Swal.fire({
             icon: 'warning',
             title: 'กรุณาเลือกบ้านเลขที่',
-            text: 'โปรดเลือกบ้านเลขที่ของคุณจากรายการ',
+            text: 'โปรดเลือกหรือพิมพ์บ้านเลขที่ที่มีอยู่ในระบบ',
             confirmButtonColor: '#376B64',
             customClass: { popup: 'rounded-[2rem]' }
           });
@@ -127,7 +197,7 @@ export default function RegisterPage() {
         const verifyRes = await fetch('/api/auth/verify-passcode', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ houseNo, passcode: passcode.trim() }),
+          body: JSON.stringify({ houseNo: targetHouseNo, passcode: passcode.trim() }),
         });
         const verifyData = await verifyRes.json();
 
@@ -148,7 +218,7 @@ export default function RegisterPage() {
       const res = await fetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lineId, name: name.trim(), houseNo, phone: phone.trim() }),
+        body: JSON.stringify({ lineId, name: name.trim(), houseNo: targetHouseNo, phone: phone.trim() }),
       });
       const data = await res.json();
       
@@ -226,8 +296,8 @@ export default function RegisterPage() {
         </div>
 
         {/* การ์ดแบบฟอร์ม */}
-        <div className="bg-white p-7 md:p-9 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-[#5b9e94] to-[#376B64]"></div>
+        <div className="bg-white p-7 md:p-9 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 relative">
+          <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-[#5b9e94] to-[#376B64] rounded-t-[2.5rem]"></div>
           
           <div className="mb-8 mt-2">
             <h1 className="text-2xl font-black text-slate-900 mb-2">ข้อมูลผู้พักอาศัย</h1>
@@ -236,58 +306,149 @@ export default function RegisterPage() {
 
           <form onSubmit={handleRegister} className="space-y-5">
             
-            {/* 1. เลขที่บ้าน / เลขห้อง (ดึงจากฐานข้อมูล มี Dropdown ให้เลือก) */}
-            <div className="space-y-1.5">
+            {/* 1. เลขที่บ้าน / เลขห้อง (ค้นหา / พิมพ์ใน dropdown ได้) */}
+            <div className="space-y-1.5" ref={dropdownRef}>
               <div className="flex justify-between items-center">
                 <label className="block text-[13px] font-bold text-slate-700 uppercase tracking-wide">
                   เลขที่บ้าน / เลขห้อง *
                 </label>
-                {hasExistingHouse && (
+                {hasExistingHouse ? (
                   <span className="text-[11px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full flex items-center gap-1 border border-rose-100">
                     <Lock size={11} /> ล็อคข้อมูลแล้ว
+                  </span>
+                ) : houseNo ? (
+                  <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-1 border border-emerald-100">
+                    <Check size={11} className="text-emerald-600" /> เลือกแล้ว
+                  </span>
+                ) : (
+                  <span className="text-[11px] font-medium text-slate-400">
+                    {isLoadingHouses ? 'กำลังโหลด...' : `มีทั้งหมด ${housesList.length} หลัง`}
                   </span>
                 )}
               </div>
 
-              <div className="relative flex items-center">
-                <Home size={18} className="absolute left-4 text-slate-400 z-10 pointer-events-none" />
-                
-                {hasExistingHouse ? (
-                  // ถ้ามีบ้านแล้ว: แสดงแบบล็อค ไม่ให้แก้ไข
-                  <div className="w-full relative flex items-center">
-                    <input 
-                      type="text" 
-                      value={houseNo} 
-                      readOnly 
-                      disabled
-                      className="w-full pl-11 pr-10 py-3.5 bg-slate-100 border border-slate-200 rounded-2xl text-sm font-bold text-slate-600 cursor-not-allowed select-none"
-                    />
-                    <Lock size={16} className="absolute right-4 text-rose-400" />
-                  </div>
-                ) : (
-                  // ถ้ายังไม่มีบ้าน: แสดง Dropdown ให้เลือกจากฐานข้อมูล
-                  <div className="w-full relative flex items-center">
-                    <select
-                      required
-                      value={houseNo}
-                      onChange={(e) => setHouseNo(e.target.value)}
-                      disabled={isLoadingHouses || housesList.length === 0}
-                      className="w-full pl-11 pr-10 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:outline-none focus:border-[#376B64] focus:ring-4 focus:ring-[#376B64]/10 text-sm font-bold text-slate-800 transition-all appearance-none cursor-pointer disabled:bg-slate-100 disabled:cursor-not-allowed"
-                    >
-                      <option value="" disabled>
-                        {isLoadingHouses 
-                          ? 'กำลังโหลดข้อมูลบ้าน...' 
-                          : housesList.length === 0 
-                            ? 'ยังไม่มีข้อมูลบ้านในระบบ (กรุณาติดต่อนิติ)' 
-                            : '-- เลือกบ้านเลขที่ของคุณ --'}
-                      </option>
-                      {housesList.map((h) => (
-                        <option key={h.id} value={h.houseNo} className="text-slate-800 font-semibold py-1">
-                          บ้านเลขที่ {h.houseNo}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown size={18} className="absolute right-4 text-slate-400 pointer-events-none" />
+              <div className="relative">
+                <div className="relative flex items-center">
+                  <Home size={18} className="absolute left-4 text-slate-400 z-10 pointer-events-none" />
+                  
+                  {hasExistingHouse ? (
+                    // ถ้ามีบ้านแล้ว: แสดงแบบล็อค ไม่ให้แก้ไข
+                    <div className="w-full relative flex items-center">
+                      <input 
+                        type="text" 
+                        value={houseNo} 
+                        readOnly 
+                        disabled
+                        className="w-full pl-11 pr-10 py-3.5 bg-slate-100 border border-slate-200 rounded-2xl text-sm font-bold text-slate-600 cursor-not-allowed select-none"
+                      />
+                      <Lock size={16} className="absolute right-4 text-rose-400" />
+                    </div>
+                  ) : (
+                    // ถ้ายังไม่มีบ้าน: ช่องค้นหา / พิมพ์เลขที่บ้าน + Dropdown
+                    <div className="w-full relative flex items-center">
+                      <input
+                        ref={searchInputRef}
+                        type="text"
+                        disabled={isLoadingHouses || housesList.length === 0}
+                        value={searchQuery}
+                        onChange={(e) => handleSearchChange(e.target.value)}
+                        onFocus={() => setIsDropdownOpen(true)}
+                        placeholder={isLoadingHouses ? 'กำลังโหลดข้อมูลบ้าน...' : 'พิมพ์ค้นหาหรือเลือกเลขที่บ้าน...'}
+                        className="w-full pl-11 pr-16 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:outline-none focus:border-[#376B64] focus:ring-4 focus:ring-[#376B64]/10 text-sm font-bold text-slate-800 transition-all placeholder:text-slate-400 placeholder:font-normal disabled:bg-slate-100 disabled:cursor-not-allowed"
+                      />
+
+                      <div className="absolute right-3 flex items-center gap-1">
+                        {searchQuery && !isLoadingHouses && (
+                          <button
+                            type="button"
+                            onClick={handleClearHouse}
+                            className="p-1 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200/50 transition-colors"
+                            title="ล้างค่า"
+                          >
+                            <X size={15} />
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                          className="p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
+                          tabIndex={-1}
+                        >
+                          <ChevronDown 
+                            size={18} 
+                            className={`transition-transform duration-200 ${isDropdownOpen ? 'rotate-180 text-[#376B64]' : ''}`} 
+                          />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Dropdown Menu รายการบ้านเลขที่ (ค้นหาได้) */}
+                {!hasExistingHouse && isDropdownOpen && (
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden z-30 animate-in fade-in zoom-in-95 duration-150">
+                    {/* Header ใน Dropdown */}
+                    <div className="p-2.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between text-xs text-slate-500 font-semibold px-3.5">
+                      <span className="flex items-center gap-1.5">
+                        <Search size={13} className="text-[#376B64]" />
+                        {searchQuery ? `ค้นหา: "${searchQuery}"` : 'เลือกบ้านเลขที่ของคุณ'}
+                      </span>
+                      <span className="text-[11px] font-normal text-slate-400">
+                        {filteredHouses.length} รายการ
+                      </span>
+                    </div>
+
+                    {/* รายการบ้าน */}
+                    <div className="max-h-56 overflow-y-auto divide-y divide-slate-50 overscroll-contain">
+                      {isLoadingHouses ? (
+                        <div className="p-5 text-center text-xs text-slate-400 font-medium flex items-center justify-center gap-2">
+                          <div className="w-4 h-4 border-2 border-[#376B64]/30 border-t-[#376B64] rounded-full animate-spin"></div>
+                          กำลังโหลดรายการบ้าน...
+                        </div>
+                      ) : filteredHouses.length > 0 ? (
+                        filteredHouses.map((h) => {
+                          const isSelected = houseNo === h.houseNo;
+                          return (
+                            <button
+                              key={h.id}
+                              type="button"
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                handleSelectHouse(h.houseNo);
+                              }}
+                              onClick={() => handleSelectHouse(h.houseNo)}
+                              className={`w-full text-left px-4 py-3 flex items-center justify-between text-sm transition-all ${
+                                isSelected
+                                  ? 'bg-[#376B64]/10 text-[#376B64] font-bold'
+                                  : 'text-slate-700 hover:bg-slate-50 font-semibold active:bg-slate-100'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold transition-colors ${
+                                  isSelected ? 'bg-[#376B64] text-white shadow-sm' : 'bg-slate-100 text-slate-500'
+                                }`}>
+                                  <Home size={15} />
+                                </div>
+                                <span className="text-slate-900 font-bold">บ้านเลขที่ {h.houseNo}</span>
+                              </div>
+                              {isSelected && (
+                                <div className="flex items-center gap-1 text-[#376B64] text-xs font-bold bg-[#376B64]/15 px-2 py-0.5 rounded-full">
+                                  <Check size={13} />
+                                  <span>เลือกแล้ว</span>
+                                </div>
+                              )}
+                            </button>
+                          );
+                        })
+                      ) : (
+                        <div className="p-6 text-center">
+                          <p className="text-xs font-bold text-slate-600 mb-1">ไม่พบบ้านเลขที่นี้ในระบบ</p>
+                          <p className="text-[11px] text-slate-400">
+                            กรุณาตรวจสอบเลขที่บ้าน หรือติดต่อนิติบุคคลเพื่อเพิ่มข้อมูล
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -298,7 +459,7 @@ export default function RegisterPage() {
                 </p>
               ) : (
                 <p className="text-[11px] text-slate-400 font-medium mt-1.5">
-                  เลือกบ้านเลขที่ที่นิติบุคคลได้สร้างไว้ในระบบ (แก้ไขภายหลังไม่ได้)
+                  สามารถพิมพ์ค้นหาหรือเลือกจากรายการได้ (แก้ไขภายหลังไม่ได้)
                 </p>
               )}
             </div>
