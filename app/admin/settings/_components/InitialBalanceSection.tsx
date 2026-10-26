@@ -1322,12 +1322,12 @@ export default function InitialBalanceSection({
         {/* ============================================================== */}
         {activeTab === 'batch' && (
           <div className="space-y-4">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
               <label className="block text-sm font-bold text-slate-700">
-                วางข้อมูลประวัติค้างชำระ (CSV)
+                วางข้อความรายการหนี้ (คัดลอกจาก Excel หรือพิมพ์แบบช่วงเวลาได้)
               </label>
-              <span className="text-[11px] font-bold text-slate-400">
-                รูปแบบ: บ้านเลขที่, ปี, เดือน, กำหนดชำระ(YYYY-MM-DD), เงินต้น
+              <span className="text-[11px] font-bold text-[#376B64]">
+                รองรับ พ.ศ., Tab จาก Excel และช่วงเวลา เช่น 9/2564, 12/2569
               </span>
             </div>
 
@@ -1335,7 +1335,7 @@ export default function InitialBalanceSection({
               rows={8}
               value={rawText}
               onChange={(e) => setRawText(e.target.value)}
-              placeholder={`ตัวอย่าง:\n101/1\n101/2, 2024, 1, 2024-01-07, 500\n101/2, 2026, 9, 2026-09-07, 500`}
+              placeholder={`ตัวอย่างการพิมพ์ (คัดลอกจาก Excel มาวางได้เลย):\n101/1                         (บ้านนี้จ่ายครบแล้ว)\n101/2, 9/2564, 12/2569, 500   (ค้าง ก.ย. 64 ถึง ธ.ค. 69 เดือนละ 500)\n101/3, 1/2567, 12/2567, 450   (ค้างปี 67 ทั้งปี เดือนละ 450)\n101/4, 2568, 10, 500          (ค้าง ต.ค. 2568 เดือนเดียว)`}
               className="w-full border border-slate-200 rounded-2xl p-4 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-[#376B64]/50 font-mono text-xs text-slate-800"
             />
 

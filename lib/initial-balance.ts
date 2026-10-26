@@ -207,12 +207,34 @@ export function processInitialBalances(
   };
 }
 
+function normalizeMigrationYear(rawYear: number): number {
+  if (rawYear > 2400) return rawYear - 543; // แปลง พ.ศ. เป็น ค.ศ. (เช่น 2564 -> 2021)
+  if (rawYear >= 50 && rawYear <= 99) return rawYear + 2500 - 543; // เช่น 64 -> 2021
+  return rawYear;
+}
+
+function parseMonthYear(str: string): { year: number; month: number } | null {
+  const match = str.trim().match(/^(\d{1,2})[\/\-](\d{2,4})$/);
+  if (match) {
+    const m = parseInt(match[1], 10);
+    const rawY = parseInt(match[2], 10);
+    const y = normalizeMigrationYear(rawY);
+    if (m >= 1 && m <= 12 && y >= 2000 && y <= 2100) {
+      return { year: y, month: m };
+    }
+  }
+  return null;
+}
+
 /**
  * ตัวแปลงข้อความ CSV หรือ Text ให้กลายเป็นโครงสร้าง HouseMigrationInput[]
- * รองรับบรรทัดรูปแบบ:
- * บ้านเลขที่, ปี(ค.ศ.), เดือน, วันครบกำหนด(YYYY-MM-DD), เงินต้น
- * หรือสำหรับบ้านที่จ่ายครบแล้ว:
- * บ้านเลขที่
+ * รองรับทั้ง Comma (,) และ Tab (\t จาก Excel)
+ * รูปแบบที่รองรับ:
+ * 1) ช่วงเวลา: บ้านเลขที่, เดือนเริ่ม/ปีเริ่ม, เดือนสิ้นสุด/ปีสิ้นสุด, เงินต้น (เช่น 99/1, 9/2564, 12/2569, 500)
+ * 2) รายเดือน (4 คอลัมน์): บ้านเลขที่, ปี, เดือน, เงินต้น (เช่น 99/1, 2567, 10, 500)
+ * 3) รายปี (3 คอลัมน์): บ้านเลขที่, ปี, เงินต้นต่อเดือน (เช่น 99/1, 2567, 500 -> ค้างทั้ง 12 เดือน)
+ * 4) มาตรฐาน (5 คอลัมน์): บ้านเลขที่, ปี, เดือน, กำหนดชำระ(YYYY-MM-DD), เงินต้น
+ * 5) จ่ายครบแล้ว (1 คอลัมน์): บ้านเลขที่
  */
 export function parseCsvOrTextMigration(rawText: string): HouseMigrationInput[] {
   const lines = rawText
@@ -223,7 +245,9 @@ export function parseCsvOrTextMigration(rawText: string): HouseMigrationInput[] 
   const houseMap = new Map<string, DebtPeriodInput[]>();
 
   for (const line of lines) {
-    const parts = line.split(',').map((p) => p.trim());
+    // รองรับทั้ง Comma (,) และ Tab (\t จากการ Copy ใน Excel/Google Sheets)
+    const delimiter = line.includes('\t') ? '\t' : ',';
+    const parts = line.split(delimiter).map((p) => p.trim());
     const houseNo = parts[0];
     if (!houseNo) continue;
 
@@ -231,16 +255,87 @@ export function parseCsvOrTextMigration(rawText: string): HouseMigrationInput[] 
       houseMap.set(houseNo, []);
     }
 
-    // ถ้ามีข้อมูลครบ 5 คอลัมน์ (houseNo, year, month, dueDate, amount)
-    if (parts.length >= 5) {
-      const year = parseInt(parts[1], 10);
+    // กรณี 1 คอลัมน์: บ้านเลขที่เฉยๆ -> จ่ายครบแล้ว
+    if (parts.length === 1) {
+      continue;
+    }
+
+    // กรณี 4 คอลัมน์: ตรวจสอบว่าเป็นแบบช่วงเวลา (Range) หรือแบบรายงวด (Year, Month, Amount)
+    if (parts.length === 4) {
+      const startRange = parseMonthYear(parts[1]);
+      const endRange = parseMonthYear(parts[2]);
+      const amount = parseFloat(parts[3]);
+
+      if (startRange && endRange && !isNaN(amount) && amount > 0) {
+        // แตกงวดอัตโนมัติตามช่วงเวลา
+        const startTotal = startRange.year * 12 + startRange.month;
+        const endTotal = endRange.year * 12 + endRange.month;
+        if (startTotal <= endTotal) {
+          for (let cur = startTotal; cur <= endTotal; cur++) {
+            const y = Math.floor((cur - 1) / 12);
+            const m = ((cur - 1) % 12) + 1;
+            const mPad = String(m).padStart(2, '0');
+            houseMap.get(houseNo)!.push({
+              billingYear: y,
+              billingMonth: m,
+              dueDate: `${y}-${mPad}-07`,
+              principalAmount: amount,
+            });
+          }
+          continue;
+        }
+      }
+
+      // หรือเป็นแบบ: บ้านเลขที่, ปี, เดือน, เงินต้น
+      const rawYear = parseInt(parts[1], 10);
       const month = parseInt(parts[2], 10);
-      const dueDate = parts[3];
+      if (!isNaN(rawYear) && !isNaN(month) && !isNaN(amount) && amount > 0) {
+        const y = normalizeMigrationYear(rawYear);
+        const mPad = String(month).padStart(2, '0');
+        houseMap.get(houseNo)!.push({
+          billingYear: y,
+          billingMonth: month,
+          dueDate: `${y}-${mPad}-07`,
+          principalAmount: amount,
+        });
+        continue;
+      }
+    }
+
+    // กรณี 3 คอลัมน์: บ้านเลขที่, ปี, เงินต้นต่อเดือน -> เหมาค้างทั้ง 12 เดือนของปีนั้น
+    if (parts.length === 3) {
+      const rawYear = parseInt(parts[1], 10);
+      const amount = parseFloat(parts[2]);
+      if (!isNaN(rawYear) && !isNaN(amount) && amount > 0) {
+        const y = normalizeMigrationYear(rawYear);
+        for (let m = 1; m <= 12; m++) {
+          const mPad = String(m).padStart(2, '0');
+          houseMap.get(houseNo)!.push({
+            billingYear: y,
+            billingMonth: m,
+            dueDate: `${y}-${mPad}-07`,
+            principalAmount: amount,
+          });
+        }
+        continue;
+      }
+    }
+
+    // กรณี 5 คอลัมน์ขึ้นไป (มาตรฐาน): houseNo, year, month, dueDate, amount
+    if (parts.length >= 5) {
+      const rawYear = parseInt(parts[1], 10);
+      const month = parseInt(parts[2], 10);
+      let dueDate = parts[3];
       const amount = parseFloat(parts[4]);
 
-      if (!isNaN(year) && !isNaN(month) && !isNaN(amount) && amount > 0) {
+      if (!isNaN(rawYear) && !isNaN(month) && !isNaN(amount) && amount > 0) {
+        const y = normalizeMigrationYear(rawYear);
+        const mPad = String(month).padStart(2, '0');
+        if (!dueDate || !dueDate.includes('-')) {
+          dueDate = `${y}-${mPad}-07`;
+        }
         houseMap.get(houseNo)!.push({
-          billingYear: year,
+          billingYear: y,
           billingMonth: month,
           dueDate,
           principalAmount: amount,

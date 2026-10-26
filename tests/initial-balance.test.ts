@@ -228,19 +228,41 @@ describe('Initial Balance & Debt Calculation Logic', () => {
       assert.equal(house3.unpaidPeriods?.length, 0);
     });
 
-    it('should ignore empty lines and invalid lines', () => {
+    it('should parse range syntax (e.g. 9/2564 to 12/2569) into multiple monthly periods', () => {
       const text = `
-        
-        # Another comment
-        invalid, row, not, enough, cols
-        
-        20/5, 2024, 3, 2024-03-07, 500
+        # House with range from Sep 2564 (2021) to Dec 2569 (2026) = 64 months
+        101/2, 9/2564, 12/2569, 500
       `;
 
       const parsed = parseCsvOrTextMigration(text);
-      assert.equal(parsed.length, 2); // 'invalid' (no unpaid periods) and '20/5'
-      const house = parsed.find((h) => h.houseNo === '20/5');
-      assert.equal(house?.unpaidPeriods?.length, 1);
+      assert.equal(parsed.length, 1);
+      const periods = parsed[0].unpaidPeriods || [];
+      assert.equal(periods.length, 64);
+      assert.equal(periods[0].billingYear, 2021);
+      assert.equal(periods[0].billingMonth, 9);
+      assert.equal(periods[0].principalAmount, 500);
+      assert.equal(periods[63].billingYear, 2026);
+      assert.equal(periods[63].billingMonth, 12);
+    });
+
+    it('should parse tab-separated values copied from Excel and Thai Buddhist years', () => {
+      const text = "101/3\t2567\t10\t500";
+      const parsed = parseCsvOrTextMigration(text);
+      assert.equal(parsed.length, 1);
+      const period = parsed[0].unpaidPeriods?.[0];
+      assert.equal(period?.billingYear, 2024); // 2567 BE = 2024 AD
+      assert.equal(period?.billingMonth, 10);
+      assert.equal(period?.principalAmount, 500);
+    });
+
+    it('should parse 3-column format into all 12 months for that year', () => {
+      const text = "101/4, 2568, 600";
+      const parsed = parseCsvOrTextMigration(text);
+      assert.equal(parsed.length, 1);
+      const periods = parsed[0].unpaidPeriods || [];
+      assert.equal(periods.length, 12);
+      assert.equal(periods[0].billingYear, 2025);
+      assert.equal(periods[0].principalAmount, 600);
     });
   });
 });
