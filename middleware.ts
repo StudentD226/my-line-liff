@@ -11,18 +11,18 @@ export default withAuth(
       return NextResponse.redirect(new URL("/admin", req.url));
     }
 
-    // 2. ถ้าพยายามเข้าหน้า จัดการทีมงาน แต่ไม่ใช่ ADMIN หรือ SUPER_ADMIN ให้เตะกลับไปหน้าแรก
-    if (path.startsWith("/admin/staff") && token?.role !== "SUPER_ADMIN" && token?.role !== "ADMIN") {
+    // 2. ถ้าพยายามเข้าหน้า จัดการทีมงาน แต่ไม่ใช่ ADMIN ให้เตะกลับไปหน้าแรก
+    if (path.startsWith("/admin/staff") && token?.role !== "ADMIN" && token?.role !== "SUPER_ADMIN") {
       return NextResponse.redirect(new URL("/admin", req.url));
     }
 
-    // 3. ป้องกัน API ข้อมูลสำคัญ (RBAC Backend Security)
+    // 3. ป้องกัน API ข้อมูลสำคัญ (RBAC Backend Security: เฉพาะ ADMIN เท่านั้น)
     const adminApiPaths = [
       "/api/admin/staff",
       "/api/admin/settings",
       "/api/admin/delete-invoices"
     ];
-    if (adminApiPaths.some(p => path.startsWith(p)) && token?.role !== "SUPER_ADMIN" && token?.role !== "ADMIN") {
+    if (adminApiPaths.some(p => path.startsWith(p)) && token?.role !== "ADMIN" && token?.role !== "SUPER_ADMIN") {
       return NextResponse.json({ success: false, error: "ไม่มีสิทธิ์เข้าถึง (Unauthorized)" }, { status: 403 });
     }
   },

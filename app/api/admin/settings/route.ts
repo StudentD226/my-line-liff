@@ -25,8 +25,8 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || ((session.user as any).role !== 'SUPER_ADMIN' && (session.user as any).role !== 'ADMIN')) {
-      return NextResponse.json({ success: false, error: 'ไม่มีสิทธิ์เข้าถึง' }, { status: 403 });
+    if (!session || ((session.user as any).role !== 'ADMIN' && (session.user as any).role !== 'SUPER_ADMIN')) {
+      return NextResponse.json({ success: false, error: 'ไม่มีสิทธิ์เข้าถึง (เฉพาะแอดมิน)' }, { status: 403 });
     }
 
     const body = await request.json();

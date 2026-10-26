@@ -28,7 +28,8 @@ function generatePasscodeInline(houseNo: string) {
 export default async function AdminHousePage(props: { searchParams: Promise<{ edit?: string, add?: string, q?: string, alert?: string }> }) {
   const session = await getServerSession(authOptions);
   const userRole = (session?.user as any)?.role;
-  const isSuperAdmin = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
+  const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
+  const isSuperAdmin = isAdmin;
 
   const searchParams = await props.searchParams;
   const editId = searchParams?.edit;

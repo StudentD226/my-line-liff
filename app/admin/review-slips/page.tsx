@@ -61,7 +61,8 @@ CustomDropdown.displayName = "CustomDropdown";
 // --- Main Page ---
 export default function AdminInvoiceReview() {
   const { data: session } = useSession();
-  const isSuperAdmin = useMemo(() => (session?.user as any)?.role === 'SUPER_ADMIN', [session]);
+  const isAdmin = useMemo(() => (session?.user as any)?.role === 'ADMIN' || (session?.user as any)?.role === 'SUPER_ADMIN', [session]);
+  const isSuperAdmin = isAdmin;
 
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

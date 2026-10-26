@@ -17,10 +17,11 @@ import {
 
 // สูตรการแสดงผลชื่อสิทธิ์การเข้าถึง (แยกออกมาเพื่อไม่ต้องสร้างใหม่ทุกครั้งที่ Render)
 const ROLE_LABELS: Record<string, string> = {
-  SUPER_ADMIN: 'ผู้ดูแลระบบสูงสุด',
-  ADMIN: 'แอดมิน',
+  ADMIN: 'ผู้ดูแลระบบ (Admin)',
+  SUPER_ADMIN: 'ผู้ดูแลระบบ (Admin)',
+  NITI: 'เจ้าหน้าที่นิติบุคคล (Niti)',
 };
-const DEFAULT_ROLE_LABEL = 'นิติบุคคล';
+const DEFAULT_ROLE_LABEL = 'เจ้าหน้าที่นิติบุคคล (Niti)';
 
 import { defaultSwalConfig } from '@/lib/swal-helper';
 

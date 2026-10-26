@@ -11,8 +11,8 @@ const prisma = new PrismaClient();
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || ((session.user as any).role !== 'SUPER_ADMIN' && (session.user as any).role !== 'ADMIN')) {
-      return NextResponse.json({ success: false, error: 'ไม่มีสิทธิ์เข้าถึง' }, { status: 403 });
+    if (!session || ((session.user as any).role !== 'ADMIN' && (session.user as any).role !== 'SUPER_ADMIN')) {
+      return NextResponse.json({ success: false, error: 'ไม่มีสิทธิ์เข้าถึง (เฉพาะแอดมิน)' }, { status: 403 });
     }
     const staffList = await prisma.adminUser.findMany({
       select: {
@@ -38,8 +38,8 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || ((session.user as any).role !== 'SUPER_ADMIN' && (session.user as any).role !== 'ADMIN')) {
-      return NextResponse.json({ success: false, error: 'ไม่มีสิทธิ์เข้าถึง' }, { status: 403 });
+    if (!session || ((session.user as any).role !== 'ADMIN' && (session.user as any).role !== 'SUPER_ADMIN')) {
+      return NextResponse.json({ success: false, error: 'ไม่มีสิทธิ์เข้าถึง (เฉพาะแอดมิน)' }, { status: 403 });
     }
 
     const body = await request.json();
@@ -51,8 +51,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'อีเมลนี้มีในระบบแล้ว' }, { status: 400 });
     }
 
+    // กำหนดสิทธิ์ให้เหลือแค่ ADMIN หรือ NITI
+    const assignedRole = role === 'ADMIN' ? 'ADMIN' : 'NITI';
+
     // ระบบสร้างรหัสพนักงานอัตโนมัติ (staffCode)
-    const prefix = (role === 'SUPER_ADMIN' || role === 'ADMIN') ? 'SP' : 'NITI';
+    const prefix = assignedRole === 'ADMIN' ? 'SP' : 'NITI';
     const currentCount = await prisma.adminUser.count({
       where: { staffCode: { startsWith: prefix } }
     });

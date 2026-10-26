@@ -18,7 +18,7 @@ const STATUS_CONFIG: Record<string, any> = {
 
 export default function MaintenancePage() {
   // โครงสร้าง RBAC (จำลองการดึง Role ของผู้ใช้ปัจจุบัน)
-  const [userRole] = useState<'RESIDENT' | 'NITI' | 'SUPER_ADMIN'>('RESIDENT');
+  const [userRole] = useState<'RESIDENT' | 'NITI' | 'ADMIN'>('RESIDENT');
   
   const [activeView, setActiveView] = useState<'REPAIR' | 'INFORM' | 'HISTORY'>('REPAIR');
 
@@ -482,12 +482,12 @@ export default function MaintenancePage() {
                     <span>{ticket.reportedDate}</span>
                   </div>
 
-                  {/* แสดงถังขยะเฉพาะ Super Admin ด้วยระบบ RBAC */}
-                  {userRole === 'SUPER_ADMIN' && (
+                  {/* แสดงถังขยะเฉพาะ Admin ด้วยระบบ RBAC */}
+                  {userRole === 'ADMIN' && (
                     <button 
-                      onClick={(e) => { e.stopPropagation(); console.log("Super Admin Action: ลบคำร้อง"); }}
+                      onClick={(e) => { e.stopPropagation(); console.log("Admin Action: ลบคำร้อง"); }}
                       className="absolute bottom-3 right-3 p-1.5 bg-rose-50 text-rose-600 rounded-full hover:bg-rose-100 transition-colors"
-                      title="ลบคำร้อง (เฉพาะผู้ดูแลระบบสูงสุด)"
+                      title="ลบคำร้อง (เฉพาะผู้ดูแลระบบ)"
                     >
                       <Trash2 size={14} />
                     </button>

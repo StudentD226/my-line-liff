@@ -199,7 +199,8 @@ CustomDayPicker.displayName = "CustomDayPicker";
 // --- Main Application Component ---
 export default function AdminSettingsPage() {
   const { data: session } = useSession();
-  const isSuperAdmin = useMemo(() => (session?.user as any)?.role === 'SUPER_ADMIN', [session]);
+  const isAdmin = useMemo(() => (session?.user as any)?.role === 'ADMIN' || (session?.user as any)?.role === 'SUPER_ADMIN', [session]);
+  const isSuperAdmin = isAdmin;
 
   const [projectType, setProjectType] = useState('HOUSING_ESTATE');
   const [flatRateAmount, setFlatRateAmount] = useState<number | ''>('');

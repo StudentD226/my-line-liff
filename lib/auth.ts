@@ -52,7 +52,8 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         token.name = user.name;
-        token.role = (user as any).role;
+        // แปลง SUPER_ADMIN เดิมให้เป็น ADMIN ทันที
+        token.role = (user as any).role === 'SUPER_ADMIN' ? 'ADMIN' : (user as any).role;
       }
       
       // 🌟 จุดสำคัญ: ดักจับตอนที่หน้าเว็บส่งคำสั่ง update() มา
@@ -68,7 +69,7 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         (session.user as any).id = token.id;
         (session.user as any).name = token.name; // ชื่อใหม่จะถูกอัปเดตตรงนี้
-        (session.user as any).role = token.role;
+        (session.user as any).role = token.role === 'SUPER_ADMIN' ? 'ADMIN' : token.role;
       }
       return session;
     }

@@ -510,7 +510,7 @@ export default function InitialBalanceSection({
             </div>
             <h3 className="text-base font-black text-slate-800 mb-1">สิทธิ์การเข้าถึงข้อมูลจำกัด</h3>
             <p className="text-xs text-slate-500 font-bold leading-relaxed">
-              เฉพาะผู้ดูแลระบบสูงสุด (Super Admin) เท่านั้นที่มีสิทธิ์ตั้งค่ายอดยกมาตั้งต้น
+              เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่มีสิทธิ์ตั้งค่ายอดยกมาตั้งต้น
             </p>
           </div>
         </div>

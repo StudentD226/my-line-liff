@@ -17,8 +17,8 @@ const generateDefaultPassword = (role: string) => {
 };
 
 export default function StaffManagementPage() {
-  const { isSuperAdmin, isLoading: authLoading } = useAdminRole();
-  const canManage = isSuperAdmin;
+  const { isAdmin, isLoading: authLoading } = useAdminRole();
+  const canManage = isAdmin;
 
   const [activeTab, setActiveTab] = useState<'CREATE' | 'LIST'>('LIST');
   const [staffList, setStaffList] = useState<any[]>([]);
@@ -246,7 +246,7 @@ export default function StaffManagementPage() {
                     value={formData.role} 
                     onChange={e => setFormData({...formData, role: e.target.value})}
                   >
-                    <option value="ADMIN">ผู้ดูแลระบบ (SUPER ADMIN)</option>
+                    <option value="ADMIN">ผู้ดูแลระบบ (ADMIN)</option>
                     <option value="NITI">นิติบุคคล (NITI)</option>
                   </select>
                   <ChevronDown className="absolute right-3 top-3 text-gray-400 pointer-events-none" size={18} />
@@ -356,9 +356,9 @@ export default function StaffManagementPage() {
                       </td>
                       <td className="p-4 sm:p-5 text-center">
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold ${
-                          staff.role === 'ADMIN' ? 'bg-[#376B64]/10 text-[#376B64]' : 'bg-blue-50 text-blue-600'
+                          staff.role === 'ADMIN' || staff.role === 'SUPER_ADMIN' ? 'bg-[#376B64]/10 text-[#376B64]' : 'bg-blue-50 text-blue-600'
                         }`}>
-                          <Shield size={12} className="mr-1" /> {staff.role === 'ADMIN' ? 'SUPER ADMIN' : 'NITI'}
+                          <Shield size={12} className="mr-1" /> {staff.role === 'ADMIN' || staff.role === 'SUPER_ADMIN' ? 'ADMIN' : 'NITI'}
                         </span>
                       </td>
                       {canManage && (

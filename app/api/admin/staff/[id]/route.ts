@@ -8,7 +8,7 @@ const prisma = new PrismaClient();
 
 /**
  * DELETE: ลบบัญชีผู้ใช้งานระบบ
- * สิทธิ์: เฉพาะ SUPER_ADMIN เท่านั้น และไม่อนุญาตให้ลบบัญชีตนเอง
+ * สิทธิ์: เฉพาะ ADMIN เท่านั้น และไม่อนุญาตให้ลบบัญชีตนเอง
  */
 export async function DELETE(
   request: Request,
@@ -19,9 +19,9 @@ export async function DELETE(
     const currentUserRole = (session?.user as any)?.role;
     const currentUserId = (session?.user as any)?.id;
 
-    if (!session || currentUserRole !== 'SUPER_ADMIN') {
+    if (!session || (currentUserRole !== 'ADMIN' && currentUserRole !== 'SUPER_ADMIN')) {
       return NextResponse.json(
-        { success: false, error: 'ท่านไม่มีสิทธิ์ในการลบบัญชีผู้ใช้งาน (เฉพาะผู้ดูแลระบบสูงสุด)' },
+        { success: false, error: 'ท่านไม่มีสิทธิ์ในการลบบัญชีผู้ใช้งาน (เฉพาะผู้ดูแลระบบ)' },
         { status: 403 }
       );
     }

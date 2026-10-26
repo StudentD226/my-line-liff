@@ -266,9 +266,9 @@ export default function AdminRepairsManagement() {
             </h1>
             <p className="text-sm text-slate-500 mt-1">ติดตามสถานะและจัดการคำร้องจากผู้พักอาศัย</p>
           </div>
-          {userRole === 'SUPER_ADMIN' && (
-             <div className="bg-rose-50 border border-rose-200 text-rose-700 px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-sm">
-               <Shield size={14} /> ผู้ดูแลระบบสูงสุด
+          {(userRole === 'ADMIN' || (userRole as string) === 'SUPER_ADMIN') && (
+             <div className="bg-[#376B64]/10 border border-[#376B64]/20 text-[#376B64] px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-sm">
+               <Shield size={14} /> ผู้ดูแลระบบ (Admin)
              </div>
           )}
         </div>

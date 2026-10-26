@@ -9,7 +9,7 @@ const prisma = new PrismaClient();
 
 /**
  * PUT: รีเซ็ตรหัสผ่านพนักงาน
- * สิทธิ์: เฉพาะ SUPER_ADMIN เท่านั้น
+ * สิทธิ์: เฉพาะ ADMIN เท่านั้น
  */
 export async function PUT(
   request: Request,
@@ -19,9 +19,9 @@ export async function PUT(
     const session = await getServerSession(authOptions);
     const currentUserRole = (session?.user as any)?.role;
 
-    if (!session || currentUserRole !== 'SUPER_ADMIN') {
+    if (!session || (currentUserRole !== 'ADMIN' && currentUserRole !== 'SUPER_ADMIN')) {
       return NextResponse.json(
-        { success: false, error: 'ท่านไม่มีสิทธิ์ในการรีเซ็ตรหัสผ่าน (เฉพาะผู้ดูแลระบบสูงสุด)' },
+        { success: false, error: 'ท่านไม่มีสิทธิ์ในการรีเซ็ตรหัสผ่าน (เฉพาะผู้ดูแลระบบ)' },
         { status: 403 }
       );
     }
