@@ -136,9 +136,26 @@ export async function POST(req: Request) {
             },
           });
 
+          const cleanHouse = houseData.houseNo.replace(/[^a-zA-Z0-9]/g, '_');
+          const currentNewInvoiceNos = houseData.periods.map(
+            (p) => `INIT-${cleanHouse}-${p.billingYear}-${String(p.billingMonth).padStart(2, '0')}`
+          );
+
+          // ลบบิลยอดยกมา (INIT-) เดิมของบ้านนี้ที่ค้างชำระอยู่ แต่ไม่ได้อยู่ในรายการใหม่
+          // (เช่น กรณีตั้งค่าว่าจ่ายครบแล้ว หรือลดจำนวนงวดค้างชำระ)
+          await tx.invoice.deleteMany({
+            where: {
+              residentHouseId: house.id,
+              invoiceNo: {
+                startsWith: `INIT-${cleanHouse}-`,
+                notIn: currentNewInvoiceNos,
+              },
+              status: { in: ['OVERDUE', 'PENDING'] },
+            },
+          });
+
           // บันทึกบิลย้อนหลังเฉพาะงวดที่ค้าง
           for (const period of houseData.periods) {
-            const cleanHouse = houseData.houseNo.replace(/[^a-zA-Z0-9]/g, '_');
             const monthPad = String(period.billingMonth).padStart(2, '0');
             const invoiceNo = `INIT-${cleanHouse}-${period.billingYear}-${monthPad}`;
 
