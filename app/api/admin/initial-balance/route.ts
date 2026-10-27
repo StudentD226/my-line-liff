@@ -109,14 +109,19 @@ export async function GET() {
 export async function DELETE() {
   try {
     const deletedInvoices = await prisma.invoice.deleteMany({
-      where: { invoiceNo: { startsWith: 'INIT-' } },
+      where: {
+        OR: [
+          { invoiceNo: { startsWith: 'INIT-' } },
+          { invoiceNo: { startsWith: 'ADV-' }, slipUrl: null },
+        ],
+      },
     });
 
     const deletedHistory = await prisma.initialBalanceHistory.deleteMany({});
 
     return NextResponse.json({
       success: true,
-      message: `รีเซ็ตข้อมูลยอดยกมาทั้งหมดสำเร็จ (ลบบิลยอดยกมา ${deletedInvoices.count} รายการ, ล้างประวัติ ${deletedHistory.count} รายการ)`,
+      message: `รีเซ็ตข้อมูลยอดยกมาทั้งหมดสำเร็จ (ลบบิลยอดยกมา/ล่วงหน้า ${deletedInvoices.count} รายการ, ล้างประวัติ ${deletedHistory.count} รายการ)`,
       deletedInvoicesCount: deletedInvoices.count,
       deletedHistoryCount: deletedHistory.count,
     });
@@ -151,12 +156,17 @@ export async function POST(req: Request) {
     // รองรับการรีเซ็ตข้อมูลผ่าน POST ด้วย
     if (action === 'reset_all') {
       const deletedInvoices = await prisma.invoice.deleteMany({
-        where: { invoiceNo: { startsWith: 'INIT-' } },
+        where: {
+          OR: [
+            { invoiceNo: { startsWith: 'INIT-' } },
+            { invoiceNo: { startsWith: 'ADV-' }, slipUrl: null },
+          ],
+        },
       });
       const deletedHistory = await prisma.initialBalanceHistory.deleteMany({});
       return NextResponse.json({
         success: true,
-        message: `รีเซ็ตข้อมูลยอดยกมาทั้งหมดสำเร็จ (ลบบิลยอดยกมา ${deletedInvoices.count} รายการ, ล้างประวัติ ${deletedHistory.count} รายการ)`,
+        message: `รีเซ็ตข้อมูลยอดยกมาทั้งหมดสำเร็จ (ลบบิลยอดยกมา/ล่วงหน้า ${deletedInvoices.count} รายการ, ล้างประวัติ ${deletedHistory.count} รายการ)`,
         deletedInvoicesCount: deletedInvoices.count,
         deletedHistoryCount: deletedHistory.count,
       });
@@ -238,14 +248,20 @@ export async function POST(req: Request) {
 
         const touchedHouseIds = Array.from(houseMap.values());
 
-        // 🌟 ลบบิลยอดยกมา (INIT-) เดิมที่ยังค้างชำระ (OVERDUE/PENDING) ของบ้านเหล่านี้ทั้งหมดในครั้งเดียว
-        // หมายเหตุ: บิลที่สถานะ PAID (ชำระแล้ว) หรือ CHECKING (กำลังตรวจสลิป) จะไม่ถูกลบเด็ดขาด
+        // 🌟 ลบบิลยอดยกมา (INIT-) เดิมที่ยังค้างชำระ (OVERDUE/PENDING) และบิลยกมาล่วงหน้าเดิม (ADV- ที่ไม่มี slip)
         if (touchedHouseIds.length > 0) {
           await tx.invoice.deleteMany({
             where: {
               residentHouseId: { in: touchedHouseIds },
               invoiceNo: { startsWith: 'INIT-' },
               status: { in: ['OVERDUE', 'PENDING'] },
+            },
+          });
+          await tx.invoice.deleteMany({
+            where: {
+              residentHouseId: { in: touchedHouseIds },
+              invoiceNo: { startsWith: 'ADV-' },
+              slipUrl: null,
             },
           });
         }
@@ -260,7 +276,9 @@ export async function POST(req: Request) {
           totalAmount: number;
           paidAmount: number;
           dueDate: Date;
-          status: 'OVERDUE';
+          status: 'OVERDUE' | 'PAID';
+          paidAt?: Date | null;
+          isNotified?: boolean;
           residentHouseId: string;
         }> = [];
 
@@ -271,6 +289,7 @@ export async function POST(req: Request) {
 
           const cleanHouse = houseData.houseNo.trim().replace(/[^a-zA-Z0-9]/g, '_');
 
+          // 1. งวดค้างชำระย้อนหลัง (สถานะ OVERDUE)
           for (const period of houseData.periods) {
             const monthPad = String(period.billingMonth).padStart(2, '0');
             const invoiceNo = `INIT-${cleanHouse}-${period.billingYear}-${monthPad}`;
@@ -288,6 +307,30 @@ export async function POST(req: Request) {
               residentHouseId: houseId,
             });
           }
+
+          // 2. 🌟 งวดชำระล่วงหน้า / จ่ายเกินรอบบิล (สถานะ PAID)
+          if (houseData.advancePeriods && houseData.advancePeriods.length > 0) {
+            for (const adv of houseData.advancePeriods) {
+              const mPad = String(adv.billingMonth).padStart(2, '0');
+              const invoiceNo = `ADV-${cleanHouse}-${mPad}${adv.billingYear}`;
+              const dueDate = new Date(adv.billingYear, adv.billingMonth - 1, 7, 23, 59, 59);
+
+              invoicesToInsert.push({
+                invoiceNo,
+                billingYear: adv.billingYear,
+                billingMonth: adv.billingMonth,
+                baseAmount: adv.amount,
+                penaltyAmount: 0,
+                totalAmount: adv.amount,
+                paidAmount: adv.amount,
+                dueDate,
+                status: 'PAID',
+                paidAt: new Date(),
+                isNotified: true,
+                residentHouseId: houseId,
+              });
+            }
+          }
         }
 
         // 🌟 บันทึกด้วย createMany แบบ Chunk (รวดเร็วกว่า upsert ทีละแถวถึง 100 เท่า และไม่ทำให้ Transaction Timeout)
@@ -304,8 +347,9 @@ export async function POST(req: Request) {
         }
 
         // 🌟 บันทึกประวัติการตั้งค่ายอดยกมาลงตาราง InitialBalanceHistory
+        const hasAdvance = calculation.details.some((d) => d.advancePeriods && d.advancePeriods.length > 0);
         const actionType = parsedItems.length === 1
-          ? 'SINGLE'
+          ? (hasAdvance ? 'ADVANCE' : 'SINGLE')
           : (rawCsvText ? 'BATCH_CSV' : 'BATCH_MULTI');
         const houseList = calculation.details.map((d) => d.houseNo).slice(0, 30).join(', ');
         const houseSummary = calculation.details.length > 30
@@ -331,6 +375,13 @@ export async function POST(req: Request) {
               if (prevM < 1) { prevM = 12; prevY--; }
               detailedNote += ` [ค้างงวด ${fullThaiMonths[minP.billingMonth]} ${minP.billingYear + 543} ถึง ${fullThaiMonths[maxP.billingMonth]} ${maxP.billingYear + 543} · ชำระล่าสุดถึงงวด ${fullThaiMonths[prevM]} ${prevY + 543}]`;
             }
+          }
+        } else if ((calculation.advanceProperties || 0) > 0) {
+          detailedNote = `บันทึกชำระล่วงหน้า ${calculation.advanceProperties} หลัง (รวม ${calculation.totalAdvanceMonths || 0} งวด เป็นเงิน ฿${(calculation.totalAdvanceAmount || 0).toLocaleString('th-TH', { minimumFractionDigits: 2 })})`;
+          const firstItem = parsedItems[0];
+          if (firstItem && firstItem.advancePeriods && firstItem.advancePeriods.length > 0) {
+            const lastAdv = firstItem.advancePeriods[firstItem.advancePeriods.length - 1];
+            detailedNote += ` [ชำระล่วงหน้าถึงงวด ${fullThaiMonths[lastAdv.billingMonth]} ${lastAdv.billingYear + 543}]`;
           }
         } else {
           const cutoffObj = new Date(cutoffDate);

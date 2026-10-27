@@ -107,6 +107,9 @@ export default function InitialBalanceSection({
   const [multiSelectedHouseNos, setMultiSelectedHouseNos] = useState<string[]>([]);
   const [multiSearchQuery, setMultiSearchQuery] = useState<string>('');
   const [multiIsPaidFull, setMultiIsPaidFull] = useState<boolean>(false);
+  const [multiIsAdvance, setMultiIsAdvance] = useState<boolean>(false);
+  const [multiAdvanceUntilYear, setMultiAdvanceUntilYear] = useState<number>(2026);
+  const [multiAdvanceUntilMonth, setMultiAdvanceUntilMonth] = useState<number>(12);
   const [multiStartYear, setMultiStartYear] = useState<number>(2021);
   const [multiStartMonth, setMultiStartMonth] = useState<number>(9);
   const [multiEndYear, setMultiEndYear] = useState<number>(2026);
@@ -175,12 +178,37 @@ export default function InitialBalanceSection({
     return houses.filter((h) => h.houseNo.toLowerCase().includes(q));
   }, [houses, multiSearchQuery]);
 
+  // คำนวณเดือนและปีของวันตัดยอด (Cut-off Month/Year)
+  const [cutoffYear, cutoffMonth] = useMemo(() => {
+    if (cutoffDate) {
+      const parts = cutoffDate.split('-');
+      if (parts.length >= 2) {
+        return [parseInt(parts[0], 10), parseInt(parts[1], 10)];
+      }
+    }
+    const d = new Date();
+    return [d.getFullYear(), d.getMonth() + 1];
+  }, [cutoffDate]);
+
   // จำนวนเดือนทั้งหมดใน Modal
   const multiTotalMonths = useMemo(() => {
     const start = multiStartYear * 12 + multiStartMonth;
     const end = multiEndYear * 12 + multiEndMonth;
     return Math.max(0, end - start + 1);
   }, [multiStartYear, multiStartMonth, multiEndYear, multiEndMonth]);
+
+  // จำนวนเดือนล่วงหน้าใน Modal (เริ่มจากเดือนถัดไปของวันตัดยอด)
+  const multiAdvanceMonthsCount = useMemo(() => {
+    let startY = cutoffYear;
+    let startM = cutoffMonth + 1;
+    if (startM > 12) {
+      startY += 1;
+      startM = 1;
+    }
+    const startTotal = startY * 12 + startM;
+    const endTotal = multiAdvanceUntilYear * 12 + multiAdvanceUntilMonth;
+    return Math.max(0, endTotal - startTotal + 1);
+  }, [cutoffYear, cutoffMonth, multiAdvanceUntilYear, multiAdvanceUntilMonth]);
 
   const handleSelectAllHousesForMulti = () => {
     const currentFilteredNos = filteredHousesForMulti.map((h) => h.houseNo);
@@ -203,6 +231,10 @@ export default function InitialBalanceSection({
   // ----------------------------------------------------
   const [selectedHouseNo, setSelectedHouseNo] = useState<string>('');
   const [isPaidFull, setIsPaidFull] = useState<boolean>(false);
+  const [isAdvancePaid, setIsAdvancePaid] = useState<boolean>(false);
+  const [advanceUntilYear, setAdvanceUntilYear] = useState<number>(2026);
+  const [advanceUntilMonth, setAdvanceUntilMonth] = useState<number>(12);
+  const [advanceMonthlyRate, setAdvanceMonthlyRate] = useState<number | ''>('');
   const [periods, setPeriods] = useState<PeriodRow[]>([]);
   const [savingSingle, setSavingSingle] = useState(false);
 
@@ -210,6 +242,79 @@ export default function InitialBalanceSection({
   const currentHouse = useMemo(() => {
     return houses.find((h) => h.houseNo === selectedHouseNo);
   }, [houses, selectedHouseNo]);
+
+  // ซิงค์อัตราล่วงหน้าเริ่มต้นกับอัตราค่าส่วนกลางของบ้าน
+  useEffect(() => {
+    if (currentHouse && advanceMonthlyRate === '') {
+      setAdvanceMonthlyRate(Number(currentHouse.feeRate) || 500);
+    }
+  }, [currentHouse, advanceMonthlyRate]);
+
+  // ซิงค์ค่างวดล่วงหน้าเริ่มต้นให้อยู่หลังวันตัดยอด
+  useEffect(() => {
+    let nextY = cutoffYear;
+    let nextM = cutoffMonth + 2;
+    while (nextM > 12) {
+      nextY += 1;
+      nextM -= 12;
+    }
+    setAdvanceUntilYear(nextY);
+    setAdvanceUntilMonth(nextM);
+  }, [cutoffYear, cutoffMonth]);
+
+  // คำนวณรายการงวดล่วงหน้า (Advance Periods List)
+  const advancePeriodsList = useMemo(() => {
+    if (!isAdvancePaid) return [];
+    let startY = cutoffYear;
+    let startM = cutoffMonth + 1;
+    if (startM > 12) {
+      startY += 1;
+      startM = 1;
+    }
+
+    const startTotal = startY * 12 + startM;
+    const endTotal = advanceUntilYear * 12 + advanceUntilMonth;
+
+    if (startTotal > endTotal) return [];
+
+    const rate = advanceMonthlyRate !== '' ? Number(advanceMonthlyRate) : (Number(currentHouse?.feeRate) || 500);
+    const cleanHouse = selectedHouseNo ? selectedHouseNo.replace(/[^a-zA-Z0-9]/g, '-') : '';
+    const list: Array<{
+      billingYear: number;
+      billingMonth: number;
+      amount: number;
+      dueDate: string;
+      invoiceNo: string;
+    }> = [];
+
+    for (let cur = startTotal; cur <= endTotal; cur++) {
+      const y = Math.floor((cur - 1) / 12);
+      const m = ((cur - 1) % 12) + 1;
+      const padMonth = String(m).padStart(2, '0');
+      list.push({
+        billingYear: y,
+        billingMonth: m,
+        amount: rate,
+        dueDate: `${y}-${padMonth}-07`,
+        invoiceNo: `ADV-${cleanHouse}-${padMonth}${y}`,
+      });
+    }
+
+    return list;
+  }, [isAdvancePaid, cutoffYear, cutoffMonth, advanceUntilYear, advanceUntilMonth, advanceMonthlyRate, currentHouse, selectedHouseNo]);
+
+  const totalAdvanceAmount = useMemo(() => {
+    return advancePeriodsList.reduce((sum, p) => sum + p.amount, 0);
+  }, [advancePeriodsList]);
+
+  // ปุ่มลัดเพิ่มจำนวนเดือนล่วงหน้า
+  const handleSetAdvanceMonthsAhead = (count: number) => {
+    const targetTotal = cutoffYear * 12 + cutoffMonth + count;
+    const y = Math.floor((targetTotal - 1) / 12);
+    const m = ((targetTotal - 1) % 12) + 1;
+    setAdvanceUntilYear(y);
+    setAdvanceUntilMonth(m);
+  };
 
   // คำนวณจำนวนเดือนทั้งหมดในช่วงที่เลือก
   const totalMonthsInRange = useMemo(() => {
@@ -222,8 +327,8 @@ export default function InitialBalanceSection({
   useEffect(() => {
     if (selectedHouseNo && currentHouse) {
       const defaultRate = Number(currentHouse.feeRate) || 500;
-      // ถ้างวดว่าง ให้สร้างงวดเริ่มต้น 1 งวด
-      if (periods.length === 0 && !isPaidFull) {
+      // ถ้างวดว่าง ให้สร้างงวดเริ่มต้น 1 งวด (เฉพาะเมื่อไม่ได้เลือกจ่ายครบ และไม่ได้เลือกจ่ายล่วงหน้า)
+      if (periods.length === 0 && !isPaidFull && !isAdvancePaid) {
         const lastMonth = new Date().getMonth(); // 0-indexed = เดือนที่แล้ว
         const targetYear = lastMonth === 0 ? currentYear - 1 : currentYear;
         const targetMonth = lastMonth === 0 ? 12 : lastMonth;
@@ -244,7 +349,7 @@ export default function InitialBalanceSection({
         ]);
       }
     }
-  }, [selectedHouseNo, currentHouse, isPaidFull, currentYear, periods.length]);
+  }, [selectedHouseNo, currentHouse, isPaidFull, isAdvancePaid, currentYear, periods.length]);
 
   // เพิ่มงวดใหม่ 1 งวด
   const handleAddPeriod = () => {
@@ -490,7 +595,7 @@ export default function InitialBalanceSection({
 
     const startTotal = multiStartYear * 12 + multiStartMonth;
     const endTotal = multiEndYear * 12 + multiEndMonth;
-    if (!multiIsPaidFull && startTotal > endTotal) {
+    if (!multiIsPaidFull && !multiIsAdvance && startTotal > endTotal) {
       Swal.fire({
         icon: 'warning',
         title: 'ช่วงเวลาไม่ถูกต้อง',
@@ -498,6 +603,126 @@ export default function InitialBalanceSection({
         confirmButtonColor: '#376B64',
         customClass: { popup: 'rounded-[2rem]' },
       });
+      return;
+    }
+
+    // กรณีเลือกชำระล่วงหน้าใน Modal
+    if (multiIsAdvance) {
+      let startY = cutoffYear;
+      let startM = cutoffMonth + 1;
+      if (startM > 12) {
+        startY += 1;
+        startM = 1;
+      }
+      const advStartTotal = startY * 12 + startM;
+      const advEndTotal = multiAdvanceUntilYear * 12 + multiAdvanceUntilMonth;
+      if (advStartTotal > advEndTotal) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'ช่วงเวลาล่วงหน้าไม่ถูกต้อง',
+          text: 'เดือน/ปีสิ้นสุด ต้องอยู่หลังเดือนตัดยอดอย่างน้อย 1 เดือน',
+          confirmButtonColor: '#376B64',
+          customClass: { popup: 'rounded-[2rem]' },
+        });
+        return;
+      }
+
+      const advMonthsCount = advEndTotal - advStartTotal + 1;
+      const firstM = ((advStartTotal - 1) % 12) + 1;
+      const firstY = Math.floor((advStartTotal - 1) / 12);
+      const startText = `${THAI_MONTHS[firstM - 1]} ${firstY + 543}`;
+      const endText = `${THAI_MONTHS[multiAdvanceUntilMonth - 1]} ${multiAdvanceUntilYear + 543}`;
+
+      const confirmHtml = `
+        ต้องการบันทึกสถานะ <b>"ชำระล่วงหน้า"</b> จำนวน <b>${advMonthsCount} งวด</b><br/>
+        (ตั้งแต่ <b>${startText}</b> ถึง <b>${endText}</b>)<br/>
+        ให้กับบ้านที่เลือกทั้งหมด <b>${multiSelectedHouseNos.length} หลัง</b> ใช่หรือไม่?<br/>
+        <span class="text-xs text-slate-500">*ระบบจะสร้างบิลสถานะ PAID ให้อัตโนมัติ</span>
+      `;
+
+      const result = await Swal.fire({
+        ...defaultSwalConfig,
+        title: `ยืนยันบันทึกชำระล่วงหน้า ${multiSelectedHouseNos.length} หลังพร้อมกัน?`,
+        html: confirmHtml,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'ยืนยันบันทึกข้อมูล',
+        cancelButtonText: 'ยกเลิก',
+      });
+
+      if (!result.isConfirmed) return;
+
+      setSubmittingMulti(true);
+      Swal.fire({
+        title: 'กำลังบันทึกข้อมูล...',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading(),
+        customClass: { popup: 'rounded-[2rem]' },
+      });
+
+      try {
+        const advList: Array<{ year: number; month: number }> = [];
+        for (let cur = advStartTotal; cur <= advEndTotal; cur++) {
+          const y = Math.floor((cur - 1) / 12);
+          const m = ((cur - 1) % 12) + 1;
+          advList.push({ year: y, month: m });
+        }
+
+        const itemsPayload: HouseMigrationInput[] = multiSelectedHouseNos.map((hNo) => {
+          const houseObj = houses.find((h) => h.houseNo === hNo);
+          const defaultHouseRate = Number(houseObj?.feeRate) || 500;
+          const rate = multiFeeMode === 'custom' ? Number(multiCustomAmount) || defaultHouseRate : defaultHouseRate;
+
+          return {
+            houseNo: hNo,
+            unpaidPeriods: [],
+            advancePeriods: advList.map((p) => ({
+              billingYear: p.year,
+              billingMonth: p.month,
+              amount: rate,
+            })),
+          };
+        });
+
+        const res = await fetch('/api/admin/initial-balance', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'confirm',
+            cutoffDate,
+            penaltyCalcMode: 'NO_PENALTY',
+            flatPenaltyPerMonth: 0,
+            items: itemsPayload,
+          }),
+        });
+
+        const json = await res.json();
+        if (json.success) {
+          setIsMultiModalOpen(false);
+          setMultiSelectedHouseNos([]);
+          onRefreshHouses?.();
+          fetchHistory();
+          await Swal.fire({
+            icon: 'success',
+            title: 'บันทึกสำเร็จ!',
+            html: `บันทึกข้อมูลชำระล่วงหน้าบ้านที่เลือกทั้ง <b>${multiSelectedHouseNos.length} หลัง</b> เรียบร้อยแล้ว`,
+            confirmButtonColor: '#376B64',
+            customClass: { popup: 'rounded-[2rem]' },
+          });
+        } else {
+          throw new Error(json.error);
+        }
+      } catch (err: any) {
+        Swal.fire({
+          icon: 'error',
+          title: 'บันทึกล้มเหลว',
+          text: err.message || 'เกิดข้อผิดพลาดในการบันทึก',
+          confirmButtonColor: '#e11d48',
+          customClass: { popup: 'rounded-[2rem]' },
+        });
+      } finally {
+        setSubmittingMulti(false);
+      }
       return;
     }
 
@@ -763,11 +988,113 @@ export default function InitialBalanceSection({
       return;
     }
 
+    // กรณีเลือกชำระล่วงหน้า (Advance Payment)
+    if (isAdvancePaid) {
+      if (advancePeriodsList.length === 0) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'ช่วงเวลาล่วงหน้าไม่ถูกต้อง',
+          text: 'งวดสิ้นสุดต้องอยู่หลังเดือนตัดยอดอย่างน้อย 1 เดือน (เริ่มคิดตั้งแต่เดือนถัดไปของวันตัดยอด)',
+          confirmButtonColor: '#376B64',
+          customClass: { popup: 'rounded-[2rem]' },
+        });
+        return;
+      }
+
+      const firstPeriod = advancePeriodsList[0];
+      const lastPeriod = advancePeriodsList[advancePeriodsList.length - 1];
+      const startText = `${THAI_MONTHS[firstPeriod.billingMonth - 1]} ${firstPeriod.billingYear + 543}`;
+      const endText = `${THAI_MONTHS[lastPeriod.billingMonth - 1]} ${lastPeriod.billingYear + 543}`;
+
+      const confirmHtml = `
+        ต้องการบันทึกสถานะ <b>"ชำระล่วงหน้า"</b> สำหรับบ้านเลขที่ <b>${selectedHouseNo}</b><br/>
+        ช่วงเวลา: <b>${startText}</b> ถึง <b>${endText}</b><br/>
+        จำนวน: <b>${advancePeriodsList.length} งวด</b> (อัตราเดือนละ ฿${(Number(advanceMonthlyRate) || Number(currentHouse?.feeRate) || 500).toLocaleString()})<br/>
+        <div class="mt-2 text-base font-black text-teal-700">รวมยอดชำระล่วงหน้าทั้งสิ้น: ฿${totalAdvanceAmount.toLocaleString()}</div>
+        <div class="mt-2 text-xs text-slate-500">*ระบบจะสร้างบิลสถานะ PAID ให้อัตโนมัติ เพื่อป้องกัน Cron สร้างบิลซ้ำ และแสดงใน LINE ว่าชำระถึง ${endText}</div>
+      `;
+
+      const result = await Swal.fire({
+        ...defaultSwalConfig,
+        title: 'ยืนยันบันทึกยอดชำระล่วงหน้า?',
+        html: confirmHtml,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'ยืนยันบันทึกข้อมูล',
+        cancelButtonText: 'ยกเลิก',
+      });
+
+      if (!result.isConfirmed) return;
+
+      setSavingSingle(true);
+      Swal.fire({
+        title: 'กำลังบันทึกข้อมูล...',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading(),
+        customClass: { popup: 'rounded-[2rem]' },
+      });
+
+      try {
+        const res = await fetch('/api/admin/initial-balance', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'confirm',
+            cutoffDate,
+            penaltyCalcMode: 'NO_PENALTY',
+            flatPenaltyPerMonth: 0,
+            items: [
+              {
+                houseNo: selectedHouseNo,
+                unpaidPeriods: [],
+                advancePeriods: advancePeriodsList.map((p) => ({
+                  billingYear: p.billingYear,
+                  billingMonth: p.billingMonth,
+                  amount: p.amount,
+                })),
+              },
+            ],
+          }),
+        });
+
+        const json = await res.json();
+        if (json.success) {
+          await Swal.fire({
+            icon: 'success',
+            title: 'บันทึกยอดชำระล่วงหน้าสำเร็จ!',
+            html: `บันทึกข้อมูลชำระล่วงหน้าบ้านเลขที่ <b>${selectedHouseNo}</b> จำนวน <b>${advancePeriodsList.length} งวด</b> เรียบร้อยแล้ว`,
+            confirmButtonColor: '#376B64',
+            customClass: { popup: 'rounded-[2rem]' },
+          });
+
+          onRefreshHouses?.();
+          fetchHistory();
+          setPeriods([]);
+          setIsPaidFull(false);
+          setIsAdvancePaid(false);
+          setSelectedHouseNo('');
+        } else {
+          throw new Error(json.error);
+        }
+      } catch (err: any) {
+        Swal.fire({
+          icon: 'error',
+          title: 'บันทึกข้อมูลล้มเหลว',
+          text: err.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล',
+          confirmButtonColor: '#e11d48',
+          customClass: { popup: 'rounded-[2rem]' },
+        });
+      } finally {
+        setSavingSingle(false);
+      }
+      return;
+    }
+
     if (!isPaidFull && periods.length === 0) {
       Swal.fire({
         icon: 'warning',
         title: 'ยังไม่มีงวดค้างชำระ',
-        text: 'หากบ้านหลังนี้ไม่มีหนี้ค้าง กรุณากดเลือก "จ่ายครบแล้ว" หรือเพิ่มงวดค้างชำระ',
+        text: 'หากบ้านหลังนี้ไม่มีหนี้ค้าง กรุณากดเลือก "จ่ายครบแล้ว" หรือ "ชำระล่วงหน้า" หรือเพิ่มงวดค้างชำระ',
         confirmButtonColor: '#376B64',
         customClass: { popup: 'rounded-[2rem]' },
       });
@@ -857,6 +1184,7 @@ export default function InitialBalanceSection({
         // เคลียร์ฟอร์ม
         setPeriods([]);
         setIsPaidFull(false);
+        setIsAdvancePaid(false);
         setSelectedHouseNo('');
       } else {
         throw new Error(json.error);
@@ -1164,6 +1492,7 @@ export default function InitialBalanceSection({
                     onChange={(e) => {
                       setSelectedHouseNo(e.target.value);
                       setIsPaidFull(false);
+                      setIsAdvancePaid(false);
                       setPeriods([]);
                     }}
                     className="flex-1 border border-slate-200 rounded-xl p-3 bg-white focus:ring-2 focus:ring-[#376B64]/50 focus:border-[#376B64] outline-none font-bold text-sm text-slate-800 shadow-sm"
@@ -1184,6 +1513,7 @@ export default function InitialBalanceSection({
                     onChange={(e) => {
                       setSelectedHouseNo(e.target.value);
                       setIsPaidFull(false);
+                      setIsAdvancePaid(false);
                     }}
                     className="w-44 border border-slate-200 rounded-xl px-3 py-3 bg-white focus:ring-2 focus:ring-[#376B64]/50 font-bold text-sm text-slate-800 shadow-sm"
                   />
@@ -1224,60 +1554,101 @@ export default function InitialBalanceSection({
                   2. ระบุสถานะการชำระเงินยกมาของบ้านเลขที่ <span className="text-[#376B64] font-black">{selectedHouseNo}</span>
                 </label>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {/* ตัวเลือก 1: ชำระครบถ้วนพอดี */}
                   <button
                     type="button"
                     onClick={() => {
                       setIsPaidFull(true);
+                      setIsAdvancePaid(false);
                       setPeriods([]);
                     }}
                     className={`p-4 rounded-xl border-2 text-left transition-all flex items-start gap-3 ${
-                      isPaidFull
-                        ? 'border-emerald-500 bg-emerald-50/80 shadow-sm'
+                      isPaidFull && !isAdvancePaid
+                        ? 'border-emerald-500 bg-emerald-50/80 shadow-sm ring-2 ring-emerald-500/20'
                         : 'border-slate-200 bg-slate-50/50 hover:bg-white hover:border-slate-300'
                     }`}
                   >
                     <div
                       className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
-                        isPaidFull ? 'bg-emerald-500 text-white' : 'border border-slate-300'
+                        isPaidFull && !isAdvancePaid ? 'bg-emerald-500 text-white' : 'border border-slate-300'
                       }`}
                     >
-                      {isPaidFull && <Check size={14} />}
+                      {isPaidFull && !isAdvancePaid && <Check size={14} />}
                     </div>
                     <div>
                       <span className="flex items-center gap-1.5 font-black text-sm text-slate-800">
-                        <CheckCircle2 size={16} className="text-emerald-600" /> ชำระครบถ้วน (ไม่มียอดค้างชำระ)
+                        <CheckCircle2 size={16} className="text-emerald-600" /> ชำระครบถ้วนพอดี
                       </span>
-                      <span className="block text-xs text-slate-500 mt-1">
-                        กำหนดยอดหนี้ยกมาเป็น ฿0.00 และบันทึกสถานะเรียบร้อย
+                      <span className="block text-xs text-slate-500 mt-1 leading-relaxed">
+                        จ่ายครบถึงรอบบิลปัจจุบัน ({THAI_MONTHS[cutoffMonth - 1]} {cutoffYear + 543}) ไม่มียอดหนี้ค้าง ฿0.00
                       </span>
                     </div>
                   </button>
 
+                  {/* ตัวเลือก 2: ชำระล่วงหน้า / จ่ายเกินรอบบิล */}
                   <button
                     type="button"
                     onClick={() => {
+                      setIsAdvancePaid(true);
                       setIsPaidFull(false);
-                      if (periods.length === 0) handleAddPeriod();
+                      setPeriods([]);
+                      if (advanceMonthlyRate === '' && currentHouse) {
+                        setAdvanceMonthlyRate(Number(currentHouse.feeRate) || 500);
+                      }
                     }}
                     className={`p-4 rounded-xl border-2 text-left transition-all flex items-start gap-3 ${
-                      !isPaidFull
-                        ? 'border-[#376B64] bg-[#376B64]/5 shadow-sm'
+                      isAdvancePaid
+                        ? 'border-teal-600 bg-teal-50/80 shadow-sm ring-2 ring-teal-500/20'
                         : 'border-slate-200 bg-slate-50/50 hover:bg-white hover:border-slate-300'
                     }`}
                   >
                     <div
                       className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
-                        !isPaidFull ? 'bg-[#376B64] text-white' : 'border border-slate-300'
+                        isAdvancePaid ? 'bg-teal-600 text-white' : 'border border-slate-300'
                       }`}
                     >
-                      {!isPaidFull && <Check size={14} />}
+                      {isAdvancePaid && <Check size={14} />}
+                    </div>
+                    <div>
+                      <span className="flex items-center gap-1.5 font-black text-sm text-teal-800">
+                        <Sparkles size={16} className="text-teal-600" /> ชำระล่วงหน้า / จ่ายเกิน
+                      </span>
+                      <span className="block text-xs text-slate-500 mt-1 leading-relaxed">
+                        จ่ายค่าส่วนกลางล่วงหน้าข้ามรอบบิล (เช่น ถึงสิ้นปี หรือปีหน้า)
+                      </span>
+                      <span className="inline-block mt-1.5 px-2 py-0.5 bg-teal-100 text-teal-700 text-[10px] font-bold rounded-md">
+                        สร้างบิล PAID อัตโนมัติ
+                      </span>
+                    </div>
+                  </button>
+
+                  {/* ตัวเลือก 3: มียอดค้างชำระย้อนหลัง */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsPaidFull(false);
+                      setIsAdvancePaid(false);
+                      if (periods.length === 0) handleAddPeriod();
+                    }}
+                    className={`p-4 rounded-xl border-2 text-left transition-all flex items-start gap-3 ${
+                      !isPaidFull && !isAdvancePaid
+                        ? 'border-[#376B64] bg-[#376B64]/5 shadow-sm ring-2 ring-[#376B64]/20'
+                        : 'border-slate-200 bg-slate-50/50 hover:bg-white hover:border-slate-300'
+                    }`}
+                  >
+                    <div
+                      className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
+                        !isPaidFull && !isAdvancePaid ? 'bg-[#376B64] text-white' : 'border border-slate-300'
+                      }`}
+                    >
+                      {!isPaidFull && !isAdvancePaid && <Check size={14} />}
                     </div>
                     <div>
                       <span className="flex items-center gap-1.5 font-black text-sm text-slate-800">
                         <AlertTriangle size={16} className="text-[#376B64]" /> มียอดค้างชำระย้อนหลัง
                       </span>
-                      <span className="block text-xs text-slate-500 mt-1">
+                      <span className="block text-xs text-slate-500 mt-1 leading-relaxed">
                         ระบุงวดที่ค้างและเลือกวิธีคิดเบี้ยปรับแต่ละงวดได้
                       </span>
                     </div>
@@ -1286,8 +1657,200 @@ export default function InitialBalanceSection({
               </div>
             )}
 
-            {/* Step 3: รายการงวดค้างชำระ (แสดงเมื่อเลือกมียอดค้าง) */}
-            {selectedHouseNo && !isPaidFull && (
+            {/* แบนเนอร์กรณีชำระครบถ้วนพอดี */}
+            {selectedHouseNo && isPaidFull && !isAdvancePaid && (
+              <div className="p-5 bg-gradient-to-r from-emerald-50 via-teal-50/50 to-emerald-50 border border-emerald-200 rounded-2xl flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 shadow-sm">
+                  <CheckCircle2 size={24} />
+                </div>
+                <div>
+                  <h4 className="font-black text-sm text-emerald-900">
+                    บ้านเลขที่ {selectedHouseNo} ชำระครบถ้วนพอดีถึงรอบบิลปัจจุบัน ({THAI_MONTHS[cutoffMonth - 1]} {cutoffYear + 543})
+                  </h4>
+                  <p className="text-xs text-emerald-700 font-medium mt-0.5">
+                    ไม่มียอดหนี้ค้างชำระยกมา (฿0.00) พร้อมเริ่มรอบบิลใหม่ในเดือนถัดไปได้ทันที
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Step 3 (กรณีชำระล่วงหน้า): แผงกำหนดงวดล่วงหน้าและพรีวิว */}
+            {selectedHouseNo && isAdvancePaid && (
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h3 className="font-bold text-sm text-slate-800 flex items-center gap-2">
+                      <Sparkles size={18} className="text-teal-600" />
+                      3. กำหนดรอบบิลที่ชำระล่วงหน้า (Advance Periods)
+                    </h3>
+                    <span className="text-xs text-slate-500">
+                      ตัดรอบปัจจุบัน ณ วันที่: <b>{cutoffDate}</b> ({THAI_MONTHS[cutoffMonth - 1]} {cutoffYear + 543}) · งวดล่วงหน้าเริ่มจากเดือนถัดไป (<b>{THAI_MONTHS[(cutoffMonth % 12)]} {cutoffMonth === 12 ? cutoffYear + 544 : cutoffYear + 543}</b>)
+                    </span>
+                  </div>
+                  <span className="px-3 py-1 bg-teal-100 text-teal-800 font-black text-xs rounded-xl self-start sm:self-auto">
+                    รวม {advancePeriodsList.length} งวด (฿{totalAdvanceAmount.toLocaleString()})
+                  </span>
+                </div>
+
+                {/* แผงควบคุมกำหนดเดือนสิ้นสุดและอัตราค่าส่วนกลาง */}
+                <div className="p-5 bg-gradient-to-br from-teal-50/90 via-emerald-50/50 to-slate-50 border border-teal-200 rounded-2xl space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <span className="font-black text-xs text-slate-800 flex items-center gap-1.5">
+                      <Calendar size={15} className="text-teal-600" />
+                      ระบุงวดสิ้นสุดที่ชำระล่วงหน้าถึง:
+                    </span>
+                    {/* ปุ่มลัดช่วงเวลายอดนิยม */}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[11px] font-bold text-slate-500">ปุ่มลัด:</span>
+                      <button
+                        type="button"
+                        onClick={() => handleSetAdvanceMonthsAhead(1)}
+                        className="px-2.5 py-1 bg-white hover:bg-teal-100 text-teal-700 border border-teal-300 rounded-lg text-xs font-bold transition-all shadow-sm"
+                      >
+                        +1 เดือน
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSetAdvanceMonthsAhead(2)}
+                        className="px-2.5 py-1 bg-white hover:bg-teal-100 text-teal-700 border border-teal-300 rounded-lg text-xs font-bold transition-all shadow-sm"
+                      >
+                        +2 เดือน (ถึงสิ้นปี 69)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSetAdvanceMonthsAhead(3)}
+                        className="px-2.5 py-1 bg-white hover:bg-teal-100 text-teal-700 border border-teal-300 rounded-lg text-xs font-bold transition-all shadow-sm"
+                      >
+                        +3 เดือน
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSetAdvanceMonthsAhead(6)}
+                        className="px-2.5 py-1 bg-white hover:bg-teal-100 text-teal-700 border border-teal-300 rounded-lg text-xs font-bold transition-all shadow-sm"
+                      >
+                        +6 เดือน
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSetAdvanceMonthsAhead(12)}
+                        className="px-2.5 py-1 bg-white hover:bg-teal-100 text-teal-700 border border-teal-300 rounded-lg text-xs font-bold transition-all shadow-sm"
+                      >
+                        +12 เดือน (1 ปี)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAdvanceUntilYear(2027);
+                          setAdvanceUntilMonth(12);
+                        }}
+                        className="px-2.5 py-1 bg-white hover:bg-teal-100 text-teal-700 border border-teal-300 rounded-lg text-xs font-bold transition-all shadow-sm"
+                      >
+                        ถึงสิ้นปี 2570
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {/* เดือนสิ้นสุด */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        เดือนสิ้นสุดที่จ่ายล่วงหน้าถึง <span className="text-rose-500">*</span>
+                      </label>
+                      <select
+                        value={advanceUntilMonth}
+                        onChange={(e) => setAdvanceUntilMonth(Number(e.target.value))}
+                        className="w-full border border-teal-300 rounded-xl p-2.5 bg-white text-xs font-black text-slate-900 shadow-sm focus:border-teal-600 focus:ring-2 focus:ring-teal-500/30 outline-none"
+                      >
+                        {THAI_MONTHS.map((m, idx) => (
+                          <option key={idx + 1} value={idx + 1}>
+                            {idx + 1}. {m}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* ปีสิ้นสุด */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        ปีสิ้นสุด (พ.ศ.) <span className="text-rose-500">*</span>
+                      </label>
+                      <select
+                        value={advanceUntilYear}
+                        onChange={(e) => setAdvanceUntilYear(Number(e.target.value))}
+                        className="w-full border border-teal-300 rounded-xl p-2.5 bg-white text-xs font-black text-slate-900 shadow-sm focus:border-teal-600 focus:ring-2 focus:ring-teal-500/30 outline-none"
+                      >
+                        {AVAILABLE_YEARS.map((y) => (
+                          <option key={y} value={y}>
+                            {y + 543} ({y})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* อัตราค่าส่วนกลางต่อเดือน */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        อัตราค่าส่วนกลางต่องวด (บาท) <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        value={advanceMonthlyRate}
+                        onChange={(e) => setAdvanceMonthlyRate(e.target.value === '' ? '' : Number(e.target.value))}
+                        placeholder={String(Number(currentHouse?.feeRate) || 500)}
+                        className="w-full border border-teal-300 rounded-xl p-2.5 bg-white text-xs font-black text-slate-900 shadow-sm focus:border-teal-600 focus:ring-2 focus:ring-teal-500/30 outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* พรีวิวรายการงวดล่วงหน้าที่จะถูกสร้าง */}
+                  <div className="pt-3 border-t border-teal-200/60">
+                    <span className="text-xs font-bold text-slate-700 block mb-2">
+                      รายการงวดบิลชำระล่วงหน้าที่จะถูกสร้างอัตโนมัติ (สถานะ: ชำระแล้ว PAID):
+                    </span>
+                    {advancePeriodsList.length > 0 ? (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                        {advancePeriodsList.map((p, pIdx) => (
+                          <div
+                            key={p.invoiceNo}
+                            className="p-2.5 bg-white border border-teal-200 rounded-xl shadow-xs text-center space-y-0.5"
+                          >
+                            <span className="block text-[10px] font-bold text-teal-700">
+                              งวด #{pIdx + 1}
+                            </span>
+                            <span className="block text-xs font-black text-slate-800">
+                              {THAI_MONTHS[p.billingMonth - 1]} {p.billingYear + 543}
+                            </span>
+                            <span className="inline-block px-1.5 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded">
+                              ฿{p.amount.toLocaleString()} (PAID)
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-bold">
+                        ⚠️ งวดสิ้นสุดที่เลือกต้องอยู่หลังเดือนตัดยอด ({THAI_MONTHS[cutoffMonth - 1]} {cutoffYear + 543}) กรุณาเลือกเดือน/ปีสิ้นสุดใหม่
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ข้อมูลอธิบายการทำงาน */}
+                  <div className="p-3 bg-white/80 rounded-xl border border-teal-200/60 text-xs text-slate-600 space-y-1">
+                    <p className="font-bold text-teal-900 flex items-center gap-1.5">
+                      <Info size={14} className="text-teal-600 shrink-0" />
+                      ระบบจะสร้างบิลรหัส ADV (สถานะ PAID) ให้อัตโนมัติ:
+                    </p>
+                    <ul className="list-disc list-inside space-y-0.5 text-[11px] text-slate-600">
+                      <li><b>ระบบ Cron บิลประจำเดือน:</b> จะตรวจพบว่าเดือนดังกล่าวมีบิล PAID แล้ว จึงข้ามการสร้างบิลซ้ำโดยอัตโนมัติ</li>
+                      <li><b>การแจ้งเตือนและตรวจสอบใน LINE:</b> ลูกบ้านจะเห็นว่าชำระครบถ้วนจนถึงเดือน {THAI_MONTHS[advanceUntilMonth - 1]} {advanceUntilYear + 543}</li>
+                      <li><b>รายงานสรุป:</b> ยอดที่ชำระล่วงหน้าจะถูกนับรวมใน &quot;ยอดชำระแล้ว&quot; ของโครงการอย่างถูกต้อง</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 3 (กรณีมียอดค้างชำระย้อนหลัง): รายการงวดค้างชำระ */}
+            {selectedHouseNo && !isPaidFull && !isAdvancePaid && (
               <div className="space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
@@ -1628,7 +2191,16 @@ export default function InitialBalanceSection({
                   <span className="text-xs font-bold text-slate-500 block">
                     ยอดหนี้ยกมาสำหรับบ้านเลขที่ <b>{selectedHouseNo}</b>:
                   </span>
-                  {isPaidFull ? (
+                  {isAdvancePaid ? (
+                    <div className="mt-1">
+                      <span className="text-2xl sm:text-3xl font-black text-teal-700">
+                        ฿{totalAdvanceAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+                      </span>
+                      <span className="text-xs font-bold text-teal-700 ml-2">
+                        (ชำระล่วงหน้า {advancePeriodsList.length} งวด · บิล PAID)
+                      </span>
+                    </div>
+                  ) : isPaidFull ? (
                     <span className="text-xl sm:text-2xl font-black text-emerald-600 block mt-1">
                       ฿0.00 บาท (จ่ายครบแล้ว)
                     </span>
@@ -1652,11 +2224,17 @@ export default function InitialBalanceSection({
                   className={`w-full sm:w-auto px-8 py-3.5 rounded-xl font-bold shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95 ${
                     savingSingle
                       ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                      : isAdvancePaid
+                      ? 'bg-teal-600 hover:bg-teal-700 text-white'
                       : 'bg-[#376B64] hover:bg-[#2A524C] text-white'
                   }`}
                 >
                   <Save size={18} />
-                  {savingSingle ? 'กำลังบันทึก...' : `บันทึกข้อมูลบ้านเลขที่ ${selectedHouseNo}`}
+                  {savingSingle
+                    ? 'กำลังบันทึก...'
+                    : isAdvancePaid
+                    ? `บันทึกยอดชำระล่วงหน้า (${advancePeriodsList.length} งวด)`
+                    : `บันทึกข้อมูลบ้านเลขที่ ${selectedHouseNo}`}
                 </button>
               </div>
             )}
@@ -2090,48 +2668,86 @@ export default function InitialBalanceSection({
                   2. ระบุสถานะและช่วงเวลาที่ค้างชำระ (มีผลกับบ้านที่เลือกทั้งหมด)
                 </span>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {/* ตัวเลือก 1: จ่ายครบ */}
                   <button
                     type="button"
-                    onClick={() => setMultiIsPaidFull(true)}
+                    onClick={() => {
+                      setMultiIsPaidFull(true);
+                      setMultiIsAdvance(false);
+                    }}
                     className={`p-3.5 rounded-xl border-2 text-left transition-all flex items-start gap-3 ${
-                      multiIsPaidFull
+                      multiIsPaidFull && !multiIsAdvance
                         ? 'border-emerald-500 bg-emerald-50 shadow-sm'
                         : 'border-slate-200 hover:border-slate-300'
                     }`}
                   >
                     <div
                       className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
-                        multiIsPaidFull ? 'bg-emerald-500 text-white' : 'border border-slate-300'
+                        multiIsPaidFull && !multiIsAdvance ? 'bg-emerald-500 text-white' : 'border border-slate-300'
                       }`}
                     >
-                      {multiIsPaidFull && <Check size={12} />}
+                      {multiIsPaidFull && !multiIsAdvance && <Check size={12} />}
                     </div>
                     <div>
                       <span className="block font-black text-xs text-slate-900">
-                        ชำระครบถ้วน (ไม่มียอดหนี้ ฿0.00)
+                        ชำระครบถ้วนพอดี (฿0.00)
                       </span>
                       <span className="block text-[11px] text-slate-700 font-medium mt-0.5">
-                        ตั้งค่ายอดหนี้ยกมาเป็น ฿0.00 สำหรับทุกบ้านที่เลือก
+                        ไม่มียอดหนี้ยกมาสำหรับทุกบ้านที่เลือก
                       </span>
                     </div>
                   </button>
 
+                  {/* ตัวเลือก 2: ชำระล่วงหน้า */}
                   <button
                     type="button"
-                    onClick={() => setMultiIsPaidFull(false)}
+                    onClick={() => {
+                      setMultiIsAdvance(true);
+                      setMultiIsPaidFull(false);
+                    }}
                     className={`p-3.5 rounded-xl border-2 text-left transition-all flex items-start gap-3 ${
-                      !multiIsPaidFull
+                      multiIsAdvance
+                        ? 'border-teal-600 bg-teal-50 shadow-sm ring-2 ring-teal-500/20'
+                        : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <div
+                      className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
+                        multiIsAdvance ? 'bg-teal-600 text-white' : 'border border-slate-300'
+                      }`}
+                    >
+                      {multiIsAdvance && <Check size={12} />}
+                    </div>
+                    <div>
+                      <span className="block font-black text-xs text-teal-900">
+                        ชำระล่วงหน้า / จ่ายเกินรอบบิล
+                      </span>
+                      <span className="block text-[11px] text-slate-700 font-medium mt-0.5">
+                        สร้างบิลสถานะ PAID อัตโนมัติ
+                      </span>
+                    </div>
+                  </button>
+
+                  {/* ตัวเลือก 3: ค้างชำระย้อนหลัง */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMultiIsPaidFull(false);
+                      setMultiIsAdvance(false);
+                    }}
+                    className={`p-3.5 rounded-xl border-2 text-left transition-all flex items-start gap-3 ${
+                      !multiIsPaidFull && !multiIsAdvance
                         ? 'border-[#376B64] bg-[#376B64]/5 shadow-sm'
                         : 'border-slate-200 hover:border-slate-300'
                     }`}
                   >
                     <div
                       className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
-                        !multiIsPaidFull ? 'bg-[#376B64] text-white' : 'border border-slate-300'
+                        !multiIsPaidFull && !multiIsAdvance ? 'bg-[#376B64] text-white' : 'border border-slate-300'
                       }`}
                     >
-                      {!multiIsPaidFull && <Check size={12} />}
+                      {!multiIsPaidFull && !multiIsAdvance && <Check size={12} />}
                     </div>
                     <div>
                       <span className="block font-black text-xs text-slate-900">
@@ -2144,8 +2760,168 @@ export default function InitialBalanceSection({
                   </button>
                 </div>
 
+                {/* ฟอร์มระบุงวดล่วงหน้า (แสดงเมื่อเลือกชำระล่วงหน้า) */}
+                {multiIsAdvance && (
+                  <div className="p-4 bg-teal-50/70 rounded-xl border border-teal-200 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <span className="text-xs font-black text-teal-900 flex items-center gap-1.5">
+                        <Sparkles size={15} className="text-teal-600" /> ระบุงวดสิ้นสุดที่ชำระล่วงหน้าถึง:
+                      </span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[10px] font-bold text-slate-500">ปุ่มลัด:</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const targetTotal = cutoffYear * 12 + cutoffMonth + 1;
+                            setMultiAdvanceUntilYear(Math.floor((targetTotal - 1) / 12));
+                            setMultiAdvanceUntilMonth(((targetTotal - 1) % 12) + 1);
+                          }}
+                          className="px-2 py-0.5 bg-white hover:bg-teal-100 text-teal-700 border border-teal-300 rounded-md text-[11px] font-black"
+                        >
+                          +1 เดือน
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const targetTotal = cutoffYear * 12 + cutoffMonth + 2;
+                            setMultiAdvanceUntilYear(Math.floor((targetTotal - 1) / 12));
+                            setMultiAdvanceUntilMonth(((targetTotal - 1) % 12) + 1);
+                          }}
+                          className="px-2 py-0.5 bg-white hover:bg-teal-100 text-teal-700 border border-teal-300 rounded-md text-[11px] font-black"
+                        >
+                          +2 เดือน (ถึงสิ้นปี 69)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const targetTotal = cutoffYear * 12 + cutoffMonth + 3;
+                            setMultiAdvanceUntilYear(Math.floor((targetTotal - 1) / 12));
+                            setMultiAdvanceUntilMonth(((targetTotal - 1) % 12) + 1);
+                          }}
+                          className="px-2 py-0.5 bg-white hover:bg-teal-100 text-teal-700 border border-teal-300 rounded-md text-[11px] font-black"
+                        >
+                          +3 เดือน
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const targetTotal = cutoffYear * 12 + cutoffMonth + 6;
+                            setMultiAdvanceUntilYear(Math.floor((targetTotal - 1) / 12));
+                            setMultiAdvanceUntilMonth(((targetTotal - 1) % 12) + 1);
+                          }}
+                          className="px-2 py-0.5 bg-white hover:bg-teal-100 text-teal-700 border border-teal-300 rounded-md text-[11px] font-black"
+                        >
+                          +6 เดือน
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const targetTotal = cutoffYear * 12 + cutoffMonth + 12;
+                            setMultiAdvanceUntilYear(Math.floor((targetTotal - 1) / 12));
+                            setMultiAdvanceUntilMonth(((targetTotal - 1) % 12) + 1);
+                          }}
+                          className="px-2 py-0.5 bg-white hover:bg-teal-100 text-teal-700 border border-teal-300 rounded-md text-[11px] font-black"
+                        >
+                          +12 เดือน
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMultiAdvanceUntilYear(2027);
+                            setMultiAdvanceUntilMonth(12);
+                          }}
+                          className="px-2 py-0.5 bg-white hover:bg-teal-100 text-teal-700 border border-teal-300 rounded-md text-[11px] font-black"
+                        >
+                          ถึงสิ้นปี 2570
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+                      <div className="flex gap-1.5 items-center">
+                        <span className="text-xs font-black text-slate-700 whitespace-nowrap shrink-0">เดือนสิ้นสุด:</span>
+                        <select
+                          value={multiAdvanceUntilMonth}
+                          onChange={(e) => setMultiAdvanceUntilMonth(Number(e.target.value))}
+                          className="flex-1 border border-teal-300 rounded-xl p-2.5 bg-white text-xs font-black text-slate-900 shadow-sm focus:border-teal-600 focus:ring-2 focus:ring-teal-500/30 outline-none"
+                        >
+                          {THAI_MONTHS.map((m, idx) => (
+                            <option key={idx + 1} value={idx + 1}>
+                              {idx + 1}. {m}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="flex gap-1.5 items-center">
+                        <span className="text-xs font-black text-slate-700 whitespace-nowrap shrink-0">ปีสิ้นสุด:</span>
+                        <select
+                          value={multiAdvanceUntilYear}
+                          onChange={(e) => setMultiAdvanceUntilYear(Number(e.target.value))}
+                          className="flex-1 border border-teal-300 rounded-xl p-2.5 bg-white text-xs font-black text-slate-900 shadow-sm focus:border-teal-600 focus:ring-2 focus:ring-teal-500/30 outline-none"
+                        >
+                          {AVAILABLE_YEARS.map((y) => (
+                            <option key={y} value={y}>
+                              {y + 543} ({y})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* การคิดเงินต้น */}
+                    <div className="pt-2 border-t border-teal-200">
+                      <span className="text-xs font-black text-slate-900 block mb-2">
+                        อัตราเงินต้นต่อเดือน:
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <label className="flex items-center gap-2 p-2.5 bg-white border border-slate-200 rounded-xl cursor-pointer hover:border-teal-600/50 transition-colors">
+                          <input
+                            type="radio"
+                            name="multiFeeModeAdv"
+                            checked={multiFeeMode === 'house_rate'}
+                            onChange={() => setMultiFeeMode('house_rate')}
+                            className="accent-teal-600 w-4 h-4 cursor-pointer"
+                          />
+                          <span className="text-xs font-black text-slate-900">
+                            ใช้อัตราค่าส่วนกลางของแต่ละบ้านตามระบบ (แนะนำ)
+                          </span>
+                        </label>
+                        <label className="flex items-center gap-2 p-2.5 bg-white border border-slate-200 rounded-xl cursor-pointer hover:border-teal-600/50 transition-colors">
+                          <input
+                            type="radio"
+                            name="multiFeeModeAdv"
+                            checked={multiFeeMode === 'custom'}
+                            onChange={() => setMultiFeeMode('custom')}
+                            className="accent-teal-600 w-4 h-4 cursor-pointer"
+                          />
+                          <span className="text-xs font-black text-slate-900 whitespace-nowrap">
+                            กำหนดยอดคงที่เท่ากันทุกหลัง:
+                          </span>
+                          {multiFeeMode === 'custom' && (
+                            <input
+                              type="number"
+                              value={multiCustomAmount}
+                              onChange={(e) => setMultiCustomAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                              placeholder="500"
+                              className="w-24 px-2.5 py-1 bg-white border border-teal-300 rounded-lg text-xs font-black text-slate-900 text-center shadow-sm focus:border-teal-600 outline-none"
+                            />
+                          )}
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="p-2.5 bg-white rounded-lg border border-teal-200 text-xs text-teal-800 font-bold flex items-center justify-between">
+                      <span>จำนวนงวดที่ชำระล่วงหน้าต่อหลัง:</span>
+                      <span className="px-2 py-0.5 bg-teal-100 rounded text-teal-900 font-black">
+                        {multiAdvanceMonthsCount} งวด
+                      </span>
+                    </div>
+                  </div>
+                )}
+
                 {/* ฟอร์มระบุช่วงเวลา (แสดงเมื่อมียอดค้าง) */}
-                {!multiIsPaidFull && (
+                {!multiIsPaidFull && !multiIsAdvance && (
                   <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <span className="text-xs font-black text-slate-900 flex items-center gap-1.5">
@@ -2308,7 +3084,13 @@ export default function InitialBalanceSection({
             <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
               <span className="text-xs font-bold text-slate-600">
                 พร้อมบันทึก: <b className="text-[#376B64]">{multiSelectedHouseNos.length} หลัง</b>
-                {!multiIsPaidFull && <span> (ค้างชำระ {multiTotalMonths} งวด/หลัง)</span>}
+                {multiIsAdvance ? (
+                  <span className="text-teal-700 font-bold"> (ชำระล่วงหน้า {multiAdvanceMonthsCount} งวด/หลัง)</span>
+                ) : !multiIsPaidFull ? (
+                  <span> (ค้างชำระ {multiTotalMonths} งวด/หลัง)</span>
+                ) : (
+                  <span className="text-emerald-700 font-bold"> (ชำระครบถ้วน ฿0.00)</span>
+                )}
               </span>
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <button

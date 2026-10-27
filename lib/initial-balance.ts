@@ -17,9 +17,16 @@ export interface DebtPeriodInput {
   customFlatPenalty?: number; // สำหรับ FLAT_PER_MONTH: จำนวนเงินค่าปรับตายตัว (override)
 }
 
+export interface AdvancePeriodInput {
+  billingYear: number;
+  billingMonth: number;
+  amount: number;
+}
+
 export interface HouseMigrationInput {
   houseNo: string;
   unpaidPeriods?: DebtPeriodInput[];
+  advancePeriods?: AdvancePeriodInput[];
 }
 
 export interface CalculatedPeriod {
@@ -44,6 +51,7 @@ export interface CalculatedHouse {
   totalPenalty: number;
   grandTotal: number;
   periods: CalculatedPeriod[];
+  advancePeriods?: AdvancePeriodInput[];
 }
 
 export interface MigrationCalculationResult {
@@ -52,9 +60,12 @@ export interface MigrationCalculationResult {
   totalProperties: number;
   fullyPaidProperties: number;
   overdueProperties: number;
+  advanceProperties?: number;
   totalPrincipalDebt: number;
   totalPenaltyDebt: number;
   grandTotalDebt: number;
+  totalAdvanceAmount?: number;
+  totalAdvanceMonths?: number;
   details: CalculatedHouse[];
 }
 
@@ -99,9 +110,19 @@ export function processInitialBalances(
   let grandPenalty = 0;
   let fullyPaidHouses = 0;
   let overdueHouses = 0;
+  let advanceHouses = 0;
+  let totalAdvanceAmount = 0;
+  let totalAdvanceMonths = 0;
 
   const details: CalculatedHouse[] = items.map((item) => {
     const rawPeriods = item.unpaidPeriods || [];
+    const rawAdvancePeriods = item.advancePeriods || [];
+
+    if (rawAdvancePeriods.length > 0) {
+      advanceHouses++;
+      totalAdvanceMonths += rawAdvancePeriods.length;
+      totalAdvanceAmount += rawAdvancePeriods.reduce((sum, a) => sum + (Number(a.amount) || 0), 0);
+    }
 
     if (rawPeriods.length === 0) {
       fullyPaidHouses++;
@@ -113,6 +134,7 @@ export function processInitialBalances(
         totalPenalty: 0,
         grandTotal: 0,
         periods: [],
+        advancePeriods: rawAdvancePeriods,
       };
     }
 
@@ -191,6 +213,7 @@ export function processInitialBalances(
       totalPenalty: housePenalty,
       grandTotal: houseTotal,
       periods,
+      advancePeriods: rawAdvancePeriods,
     };
   });
 
@@ -200,9 +223,12 @@ export function processInitialBalances(
     totalProperties: items.length,
     fullyPaidProperties: fullyPaidHouses,
     overdueProperties: overdueHouses,
+    advanceProperties: advanceHouses,
     totalPrincipalDebt: truncate2(grandPrincipal),
     totalPenaltyDebt: truncate2(grandPenalty),
     grandTotalDebt: truncate2(grandPrincipal + grandPenalty),
+    totalAdvanceAmount: truncate2(totalAdvanceAmount),
+    totalAdvanceMonths,
     details,
   };
 }
