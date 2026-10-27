@@ -40,7 +40,9 @@ export async function POST(req: Request) {
     let resolvedFlatPenalty = flatPenaltyPerMonth;
     if (resolvedFlatPenalty === undefined || resolvedFlatPenalty === null) {
       const config = await prisma.systemConfig.findFirst();
-      resolvedFlatPenalty = config?.penaltyRatePerDay ? Number(config.penaltyRatePerDay) : 100;
+      resolvedFlatPenalty = config?.penaltyRatePerDay !== undefined && config?.penaltyRatePerDay !== null
+        ? Number(config.penaltyRatePerDay)
+        : 100;
     }
 
     // แปลงข้อมูลจาก CSV หรือใช้ JSON Array

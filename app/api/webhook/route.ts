@@ -215,7 +215,10 @@ export async function POST(request: Request) {
           }
 
           const config = await prisma.systemConfig.findFirst();
-          const penaltyRate = config?.penaltyRatePerDay ? Number(config.penaltyRatePerDay) : 100;
+          const penaltyRate = config?.penaltyRatePerDay !== undefined && config?.penaltyRatePerDay !== null
+            ? Number(config.penaltyRatePerDay)
+            : 100;
+          const isPenaltyDisabled = penaltyRate <= 0;
           const today = new Date(); today.setHours(0, 0, 0, 0);
           
           let pendingInvoices = user.residentHouse.invoices || [];
@@ -234,17 +237,24 @@ export async function POST(request: Request) {
 
             pendingInvoices.forEach(inv => {
               let paid = truncateDecimals(Number(inv.paidAmount || 0));
-              let penalty = truncateDecimals(Number(inv.penaltyAmount || 0));
+              const isInitialBalance = inv.invoiceNo && inv.invoiceNo.startsWith('INIT-');
+              let penalty = isInitialBalance
+                ? truncateDecimals(Number(inv.penaltyAmount || 0))
+                : (isPenaltyDisabled ? 0 : truncateDecimals(Number(inv.penaltyAmount || 0)));
               let base = truncateDecimals(Number(inv.baseAmount || 0));
 
               const dueDate = inv.dueDate ? new Date(inv.dueDate) : new Date(); 
               dueDate.setHours(0, 0, 0, 0);
               
               // คำนวณค่าปรับสดๆ ถ้าระบบยังไม่แสตมป์
-              if (today > dueDate && penalty === 0) {
-                let monthsLate = (today.getFullYear() - dueDate.getFullYear()) * 12 + (today.getMonth() - dueDate.getMonth());
-                if (monthsLate <= 0) monthsLate = 1;
-                penalty = truncateDecimals(monthsLate * penaltyRate);
+              if (today > dueDate) {
+                if (!isPenaltyDisabled && !isInitialBalance && penalty === 0) {
+                  let monthsLate = (today.getFullYear() - dueDate.getFullYear()) * 12 + (today.getMonth() - dueDate.getMonth());
+                  if (monthsLate <= 0) monthsLate = 1;
+                  penalty = truncateDecimals(monthsLate * penaltyRate);
+                } else if (isPenaltyDisabled && !isInitialBalance) {
+                  penalty = 0;
+                }
               }
 
               if (paid > 0) {

@@ -209,14 +209,18 @@ async function handleManualSend(request: Request) {
     if (!invoice) return NextResponse.json({ success: false, error: 'ไม่พบบิล' }, { status: 404 });
 
     let displayPenalty = 0;
-    let penaltyRatePerMonth = config?.penaltyRatePerDay ? Number(config.penaltyRatePerDay) : 100;
+    const penaltyRatePerMonth = config?.penaltyRatePerDay !== undefined && config?.penaltyRatePerDay !== null
+      ? Number(config.penaltyRatePerDay)
+      : 100;
+    const isPenaltyDisabled = penaltyRatePerMonth <= 0;
 
     const todayObj = new Date(); todayObj.setHours(0, 0, 0, 0);
     const dueDateObj = new Date(invoice.dueDate); dueDateObj.setHours(0, 0, 0, 0);
     const isPastDue = todayObj > dueDateObj;
+    const isInitialBalance = invoice.invoiceNo && invoice.invoiceNo.startsWith('INIT-');
 
     if (type === 'OVERDUE') {
-      if (isPastDue) {
+      if (!isPenaltyDisabled && !isInitialBalance && isPastDue) {
         const diffTime = todayObj.getTime() - dueDateObj.getTime();
         const overdueDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); 
         const overdueMonths = Math.floor(overdueDays / 30);
@@ -230,9 +234,13 @@ async function handleManualSend(request: Request) {
             status: 'OVERDUE' 
           }
         });
+      } else if (isPenaltyDisabled && !isInitialBalance) {
+        displayPenalty = 0;
       }
     } else if (type === 'SEND' || type === 'REMINDER') {
-      displayPenalty = truncateDecimals(Number(invoice.penaltyAmount || 0));
+      displayPenalty = isInitialBalance
+        ? truncateDecimals(Number(invoice.penaltyAmount || 0))
+        : (isPenaltyDisabled ? 0 : truncateDecimals(Number(invoice.penaltyAmount || 0)));
     }
 
     const targetLineIds: string[] = [];
@@ -435,16 +443,22 @@ async function handleCronJob(request: Request) {
       return NextResponse.json({ success: true, message: 'ไม่มีบิลที่ต้องส่งในรอบเวลานี้ครับ' });
     }
 
-    const penaltyRatePerMonth = config?.penaltyRatePerDay ? Number(config.penaltyRatePerDay) : 100;
+    const penaltyRatePerMonth = config?.penaltyRatePerDay !== undefined && config?.penaltyRatePerDay !== null
+      ? Number(config.penaltyRatePerDay)
+      : 100;
+    const isPenaltyDisabled = penaltyRatePerMonth <= 0;
     let stats = { lineSent: 0, updatedInvoices: 0 };
     const todayObj = new Date(); todayObj.setHours(0, 0, 0, 0);
 
     // 🌟 3. อัปเดตค่าปรับสำหรับบิลตัวหลัก (ที่ยังไม่เคยส่ง)
     for (const inv of pendingInvoices) {
       const dueDateObj = new Date(inv.dueDate); dueDateObj.setHours(0, 0, 0, 0);
-      let currentPenalty = truncateDecimals(Number(inv.penaltyAmount || 0));
+      const isInvInitialBalance = inv.invoiceNo && inv.invoiceNo.startsWith('INIT-');
+      let currentPenalty = isInvInitialBalance
+        ? truncateDecimals(Number(inv.penaltyAmount || 0))
+        : (isPenaltyDisabled ? 0 : truncateDecimals(Number(inv.penaltyAmount || 0)));
 
-      if (todayObj > dueDateObj && currentPenalty === 0) {
+      if (!isPenaltyDisabled && !isInvInitialBalance && todayObj > dueDateObj && currentPenalty === 0) {
         let monthsLate = (todayObj.getFullYear() - dueDateObj.getFullYear()) * 12 + (todayObj.getMonth() - dueDateObj.getMonth());
         if (monthsLate <= 0) monthsLate = 1;
         currentPenalty = truncateDecimals(monthsLate * penaltyRatePerMonth);
@@ -455,6 +469,15 @@ async function handleCronJob(request: Request) {
             penaltyAmount: currentPenalty,
             totalAmount: truncateDecimals(Number(inv.baseAmount) + currentPenalty),
             status: inv.status === 'PARTIAL' ? 'PARTIAL' : 'OVERDUE' 
+          }
+        });
+      } else if (isPenaltyDisabled && !isInvInitialBalance && Number(inv.penaltyAmount) > 0) {
+        currentPenalty = 0;
+        await prisma.invoice.update({
+          where: { id: inv.id },
+          data: {
+            penaltyAmount: 0,
+            totalAmount: truncateDecimals(Number(inv.baseAmount))
           }
         });
       }
@@ -504,11 +527,14 @@ async function handleCronJob(request: Request) {
 
         const uInvDueDate = uInv.dueDate ? new Date(uInv.dueDate) : new Date();
         uInvDueDate.setHours(0, 0, 0, 0);
+        const isUInvInitialBalance = uInv.invoiceNo && uInv.invoiceNo.startsWith('INIT-');
 
-        if (todayObj > uInvDueDate && penalty === 0) {
+        if (!isPenaltyDisabled && !isUInvInitialBalance && todayObj > uInvDueDate && penalty === 0) {
           let monthsLate = (todayObj.getFullYear() - uInvDueDate.getFullYear()) * 12 + (todayObj.getMonth() - uInvDueDate.getMonth());
           if (monthsLate <= 0) monthsLate = 1;
           penalty = truncateDecimals(monthsLate * penaltyRatePerMonth);
+        } else if (isPenaltyDisabled && !isUInvInitialBalance) {
+          penalty = 0;
         }
 
         if (paid > 0) {

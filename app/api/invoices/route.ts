@@ -33,19 +33,25 @@ export async function GET(request: Request) {
     });
 
     const config = await prisma.systemConfig.findFirst();
-    let penaltyRatePerMonth = config?.penaltyRatePerDay ? Number(config.penaltyRatePerDay) : 100;
+    let penaltyRatePerMonth = config?.penaltyRatePerDay !== undefined && config?.penaltyRatePerDay !== null
+      ? Number(config.penaltyRatePerDay)
+      : 100;
+    const isPenaltyDisabled = penaltyRatePerMonth <= 0;
     
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     const updatedInvoices = invoices.map((inv) => {
       let base = truncateDecimals(Number(inv.baseAmount || 0));
-      let penalty = truncateDecimals(Number(inv.penaltyAmount || 0));
+      const isInitialBalance = inv.invoiceNo && inv.invoiceNo.startsWith("INIT-");
+      let penalty = isInitialBalance
+        ? truncateDecimals(Number(inv.penaltyAmount || 0))
+        : (isPenaltyDisabled ? 0 : truncateDecimals(Number(inv.penaltyAmount || 0)));
       let paid = truncateDecimals(Number(inv.paidAmount || 0));
       let currentStatus = inv.status;
 
-      // 1. คำนวณค่าปรับ (Logic เดิม)
-      if (['PENDING', 'OVERDUE', 'REJECTED', 'PARTIAL'].includes(currentStatus)) {
+      // 1. คำนวณค่าปรับ
+      if (!isPenaltyDisabled && !isInitialBalance && ['PENDING', 'OVERDUE', 'REJECTED', 'PARTIAL'].includes(currentStatus)) {
         const dueDate = new Date(inv.dueDate);
         dueDate.setHours(0, 0, 0, 0);
 
@@ -58,6 +64,8 @@ export async function GET(request: Request) {
         } else {
           if (currentStatus !== 'REJECTED' && currentStatus !== 'PARTIAL') penalty = 0;
         }
+      } else if (isPenaltyDisabled && !isInitialBalance) {
+        penalty = 0;
       }
 
       // 2. คำนวณแบบแยกฟิลด์ชัดเจน

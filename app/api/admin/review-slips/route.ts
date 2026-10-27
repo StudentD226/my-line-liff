@@ -119,7 +119,10 @@ async function sendInlineFlexNotify(invoice: any, status: string, note?: string)
 export async function GET() {
   try {
     const config = await prisma.systemConfig.findFirst();
-    const penaltyRate = config?.penaltyRatePerDay ? Number(config.penaltyRatePerDay) : 100;
+    const penaltyRate = config?.penaltyRatePerDay !== undefined && config?.penaltyRatePerDay !== null
+      ? Number(config.penaltyRatePerDay)
+      : 100;
+    const isPenaltyDisabled = penaltyRate <= 0;
     const today = new Date(); 
     today.setHours(0, 0, 0, 0);
 
@@ -145,15 +148,18 @@ export async function GET() {
       if (inv.house && inv.house.invoices) {
         inv.house.invoices = inv.house.invoices.map(item => {
           let base = Number(item.baseAmount || 0);
-          let penalty = Number(item.penaltyAmount || 0);
+          const isInitialBalance = item.invoiceNo && item.invoiceNo.startsWith('INIT-');
+          let penalty = isInitialBalance ? Number(item.penaltyAmount || 0) : (isPenaltyDisabled ? 0 : Number(item.penaltyAmount || 0));
           
           const dueDate = item.dueDate ? new Date(item.dueDate) : new Date();
           dueDate.setHours(0, 0, 0, 0);
 
-          if (today > dueDate && penalty === 0) {
+          if (!isPenaltyDisabled && !isInitialBalance && today > dueDate && penalty === 0) {
             let monthsLate = (today.getFullYear() - dueDate.getFullYear()) * 12 + (today.getMonth() - dueDate.getMonth());
             if (monthsLate <= 0) monthsLate = 1;
             penalty = truncateDecimals(monthsLate * penaltyRate);
+          } else if (isPenaltyDisabled && !isInitialBalance) {
+            penalty = 0;
           }
 
           return {
@@ -209,7 +215,10 @@ export async function PATCH(request: Request) {
       let updatedInvoicesCount = 0;
 
       const config = await prisma.systemConfig.findFirst();
-      const penaltyRate = config?.penaltyRatePerDay ? Number(config.penaltyRatePerDay) : 100;
+      const penaltyRate = config?.penaltyRatePerDay !== undefined && config?.penaltyRatePerDay !== null
+        ? Number(config.penaltyRatePerDay)
+        : 100;
+      const isPenaltyDisabled = penaltyRate <= 0;
       const today = new Date(); 
       today.setHours(0, 0, 0, 0);
 
@@ -227,15 +236,18 @@ export async function PATCH(request: Request) {
         if (remainingMoney <= 0) break;
 
         const base = Number(inv.baseAmount || 0);
-        let penalty = Number(inv.penaltyAmount || 0);
+        const isInitialBalance = inv.invoiceNo && inv.invoiceNo.startsWith('INIT-');
+        let penalty = isInitialBalance ? Number(inv.penaltyAmount || 0) : (isPenaltyDisabled ? 0 : Number(inv.penaltyAmount || 0));
 
         const dueDate = inv.dueDate ? new Date(inv.dueDate) : new Date();
         dueDate.setHours(0, 0, 0, 0);
 
-        if (today > dueDate && penalty === 0) {
+        if (!isPenaltyDisabled && !isInitialBalance && today > dueDate && penalty === 0) {
             let monthsLate = (today.getFullYear() - dueDate.getFullYear()) * 12 + (today.getMonth() - dueDate.getMonth());
             if (monthsLate <= 0) monthsLate = 1;
             penalty = truncateDecimals(monthsLate * penaltyRate);
+        } else if (isPenaltyDisabled && !isInitialBalance) {
+          penalty = 0;
         }
 
         const currentTotal = truncateDecimals(base + penalty); 

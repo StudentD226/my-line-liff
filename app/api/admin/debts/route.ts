@@ -19,7 +19,10 @@ export async function GET() {
     today.setHours(0, 0, 0, 0);
 
     const config = await prisma.systemConfig.findFirst();
-    const penaltyRatePerMonth = config?.penaltyRatePerDay ? Number(config.penaltyRatePerDay) : 100;
+    const penaltyRatePerMonth = config?.penaltyRatePerDay !== undefined && config?.penaltyRatePerDay !== null
+      ? Number(config.penaltyRatePerDay)
+      : 100;
+    const isPenaltyDisabled = penaltyRatePerMonth <= 0;
 
     const houses = await prisma.house.findMany({
       include: {
@@ -53,10 +56,13 @@ export async function GET() {
         const base = truncateDecimals(Number(inv.baseAmount ?? 0));
         const paid = truncateDecimals(Number(inv.paidAmount ?? 0));
 
-        let penalty = truncateDecimals(Number(inv.penaltyAmount ?? 0));
+        const isInitialBalance = inv.invoiceNo && inv.invoiceNo.startsWith("INIT-");
+        let penalty = isInitialBalance
+          ? truncateDecimals(Number(inv.penaltyAmount ?? 0))
+          : (isPenaltyDisabled ? 0 : truncateDecimals(Number(inv.penaltyAmount ?? 0)));
 
-        // คำนวณค่าปรับสดๆ ถ้าเลย dueDate แล้ว
-        if (["PENDING", "OVERDUE", "PARTIAL"].includes(inv.status)) {
+        // คำนวณค่าปรับสดๆ ถ้าเลย dueDate แล้ว (เฉพาะเมื่อเปิดคิดค่าปรับ และไม่ใช่บิลยอดยกมา INIT-)
+        if (!isPenaltyDisabled && !isInitialBalance && ["PENDING", "OVERDUE", "PARTIAL"].includes(inv.status)) {
           const dueDate = new Date(inv.dueDate);
           dueDate.setHours(0, 0, 0, 0);
 

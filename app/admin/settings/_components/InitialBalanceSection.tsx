@@ -537,6 +537,9 @@ export default function InitialBalanceSection({
 
       const json = await res.json();
       if (json.success) {
+        setIsMultiModalOpen(false);
+        setMultiSelectedHouseNos([]);
+        onRefreshHouses?.();
         await Swal.fire({
           icon: 'success',
           title: 'บันทึกสำเร็จ!',
@@ -544,9 +547,6 @@ export default function InitialBalanceSection({
           confirmButtonColor: '#376B64',
           customClass: { popup: 'rounded-[2rem]' },
         });
-        setIsMultiModalOpen(false);
-        setMultiSelectedHouseNos([]);
-        onRefreshHouses?.();
       } else {
         throw new Error(json.error);
       }
@@ -1614,7 +1614,7 @@ export default function InitialBalanceSection({
       {/* ============================================================== */}
       {mounted && isMultiModalOpen && typeof document !== 'undefined' && createPortal(
         <div 
-          className="fixed inset-0 z-[99999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 overflow-y-auto"
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 overflow-y-auto"
           onClick={() => setIsMultiModalOpen(false)}
         >
           <div 

@@ -39,8 +39,11 @@ export async function GET(request: Request) {
     const house = user.residentHouse;
     const config = await prisma.systemConfig.findFirst();
     
-    // 🌟 ดึงเรทค่าปรับเหมาจ่ายรายเดือนจากระบบส่วนกลาง (ถ้าไม่มีใช้ 100 บาท)
-    let flatPenaltyPerMonth = config?.penaltyRatePerDay ? Number(config.penaltyRatePerDay) : 100;
+    // 🌟 ดึงเรทค่าปรับเหมาจ่ายรายเดือนจากระบบส่วนกลาง
+    let flatPenaltyPerMonth = config?.penaltyRatePerDay !== undefined && config?.penaltyRatePerDay !== null
+      ? Number(config.penaltyRatePerDay)
+      : 100;
+    const isPenaltyDisabled = flatPenaltyPerMonth <= 0;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -49,7 +52,8 @@ export async function GET(request: Request) {
     // 🌟 2. วนลูปคำนวณปรับโครงสร้างยอดเงินและค่าปรับใหม่แบบเหมาจ่ายรายเดือนให้ตรงกันทั้งระบบ
     const updatedInvoices = house.invoices.map((inv) => {
       let base = Number(inv.baseAmount || 0);
-      let penalty = Number(inv.penaltyAmount || 0);
+      const isInitialBalance = inv.invoiceNo && inv.invoiceNo.startsWith('INIT-');
+      let penalty = isInitialBalance ? Number(inv.penaltyAmount || 0) : (isPenaltyDisabled ? 0 : Number(inv.penaltyAmount || 0));
       let paid = Number(inv.paidAmount || 0);
 
       // ถ้าเป็นบิลค้างชำระ ให้ทำการ Re-calculate ค่าปรับใหม่เรียลไทม์
@@ -58,14 +62,15 @@ export async function GET(request: Request) {
         dueDate.setHours(0, 0, 0, 0);
 
         if (today > dueDate) {
-          // ถ้าเป็นบิลยอดยกมาตั้งต้น (INIT-) ที่มีค่าปรับบันทึกไว้แล้ว (เช่น คิดแบบ % ขั้นบันได) ให้คงค่านั้นไว้
-          const isInitialBalance = inv.invoiceNo.startsWith('INIT-');
-          if (!isInitialBalance || penalty === 0) {
+          // ถ้าเป็นบิลยอดยกมาตั้งต้น (INIT-) ให้คงค่าที่บันทึกไว้ และถ้าปิดค่าปรับให้เป็น 0
+          if (!isPenaltyDisabled && !isInitialBalance) {
             const diffTime = today.getTime() - dueDate.getTime();
             const overdueDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
             const overdueMonths = Math.floor(overdueDays / 30);
             
             penalty = overdueMonths * flatPenaltyPerMonth;
+          } else if (isPenaltyDisabled && !isInitialBalance) {
+            penalty = 0;
           }
           inv.status = inv.status === 'PARTIAL' ? 'PARTIAL' : 'OVERDUE';
         }

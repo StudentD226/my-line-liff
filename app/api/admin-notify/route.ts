@@ -187,15 +187,21 @@ export async function POST(request: Request) {
 
     if (!invoice) return NextResponse.json({ success: false, error: 'ไม่พบบิล' }, { status: 404 });
 
-    const penaltyRatePerMonth = config?.penaltyRatePerDay ? Number(config.penaltyRatePerDay) : 100;
+    const penaltyRatePerMonth = config?.penaltyRatePerDay !== undefined && config?.penaltyRatePerDay !== null
+      ? Number(config.penaltyRatePerDay)
+      : 100;
+    const isPenaltyDisabled = penaltyRatePerMonth <= 0;
     const todayObj = new Date(); todayObj.setHours(0, 0, 0, 0);
     const dueDateObj = new Date(invoice.dueDate); dueDateObj.setHours(0, 0, 0, 0);
     
     const isPastDue = todayObj > dueDateObj;
-    let displayPenalty = truncateDecimals(Number(invoice.penaltyAmount || 0));
+    const isInitialBalance = invoice.invoiceNo && invoice.invoiceNo.startsWith('INIT-');
+    let displayPenalty = isInitialBalance
+      ? truncateDecimals(Number(invoice.penaltyAmount || 0))
+      : (isPenaltyDisabled ? 0 : truncateDecimals(Number(invoice.penaltyAmount || 0)));
 
     // 🌟 ดักคำนวณค่าปรับสดๆ ถ้าระบบยังไม่แสตมป์ค่าปรับ (ไม่ว่าจะกดปุ่มสีอะไรก็ตาม)
-    if (isPastDue && displayPenalty === 0) {
+    if (!isPenaltyDisabled && !isInitialBalance && isPastDue && displayPenalty === 0) {
       let monthsLate = (todayObj.getFullYear() - dueDateObj.getFullYear()) * 12 + (todayObj.getMonth() - dueDateObj.getMonth());
       if (monthsLate <= 0) monthsLate = 1;
       displayPenalty = truncateDecimals(monthsLate * penaltyRatePerMonth);
@@ -208,6 +214,8 @@ export async function POST(request: Request) {
           status: invoice.status === 'PARTIAL' ? 'PARTIAL' : 'OVERDUE' 
         }
       });
+    } else if (isPenaltyDisabled && !isInitialBalance) {
+      displayPenalty = 0;
     }
 
     const targetLineIds: string[] = [];
@@ -250,14 +258,19 @@ export async function POST(request: Request) {
         if (isTargetInvoice) {
           penalty = displayPenalty;
         } else {
-          penalty = truncateDecimals(Number(inv.penaltyAmount || 0));
+          const isInvInitialBalance = inv.invoiceNo && inv.invoiceNo.startsWith('INIT-');
+          penalty = isInvInitialBalance
+            ? truncateDecimals(Number(inv.penaltyAmount || 0))
+            : (isPenaltyDisabled ? 0 : truncateDecimals(Number(inv.penaltyAmount || 0)));
           const invDueDate = inv.dueDate ? new Date(inv.dueDate) : new Date(); 
           invDueDate.setHours(0, 0, 0, 0);
           
-          if (todayObj > invDueDate && penalty === 0) {
+          if (!isPenaltyDisabled && !isInvInitialBalance && todayObj > invDueDate && penalty === 0) {
             let monthsLate = (todayObj.getFullYear() - invDueDate.getFullYear()) * 12 + (todayObj.getMonth() - invDueDate.getMonth());
             if (monthsLate <= 0) monthsLate = 1;
             penalty = truncateDecimals(monthsLate * penaltyRatePerMonth);
+          } else if (isPenaltyDisabled && !isInvInitialBalance) {
+            penalty = 0;
           }
         }
 

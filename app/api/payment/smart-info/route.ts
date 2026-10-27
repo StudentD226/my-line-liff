@@ -33,7 +33,10 @@ export async function GET(request: Request) {
     if (!user?.residentHouse) return NextResponse.json({ success: false, error: 'ไม่พบข้อมูลบ้าน' }, { status: 404 });
 
     const config = await prisma.systemConfig.findFirst();
-    const penaltyRate = config?.penaltyRatePerDay ? Number(config.penaltyRatePerDay) : 100;
+    const penaltyRate = config?.penaltyRatePerDay !== undefined && config?.penaltyRatePerDay !== null
+      ? Number(config.penaltyRatePerDay)
+      : 100;
+    const isPenaltyDisabled = penaltyRate <= 0;
     const today = new Date(); 
     today.setHours(0, 0, 0, 0);
 
@@ -50,14 +53,19 @@ export async function GET(request: Request) {
       dueDate.setHours(0, 0, 0, 0);
 
       const base = truncateDecimals(Number(inv.baseAmount || 0));
-      let penalty = truncateDecimals(Number(inv.penaltyAmount || 0)); 
+      const isInitialBalance = inv.invoiceNo && inv.invoiceNo.startsWith('INIT-');
+      let penalty = isInitialBalance
+        ? truncateDecimals(Number(inv.penaltyAmount || 0))
+        : (isPenaltyDisabled ? 0 : truncateDecimals(Number(inv.penaltyAmount || 0))); 
       const currentPaid = truncateDecimals(Number(inv.paidAmount || 0));
 
       if (today > dueDate) {
-        if (penalty === 0) {
+        if (!isPenaltyDisabled && !isInitialBalance && penalty === 0) {
           let monthsLate = (today.getFullYear() - dueDate.getFullYear()) * 12 + (today.getMonth() - dueDate.getMonth());
           if (monthsLate <= 0) monthsLate = 1; 
           penalty = truncateDecimals(monthsLate * penaltyRate);
+        } else if (isPenaltyDisabled && !isInitialBalance) {
+          penalty = 0;
         }
       } else {
         if (inv.status !== 'REJECTED' && inv.status !== 'PARTIAL') penalty = 0;

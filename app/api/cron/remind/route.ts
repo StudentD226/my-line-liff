@@ -229,15 +229,21 @@ async function handleRemindCronJob(request: Request) {
     
     if (pendingInvoices.length === 0) return NextResponse.json({ success: true, message: 'ไม่มีบิลค้างชำระที่ต้องทวง' });
 
-    const penaltyRatePerMonth = config?.penaltyRatePerDay ? Number(config.penaltyRatePerDay) : 100;
+    const penaltyRatePerMonth = config?.penaltyRatePerDay !== undefined && config?.penaltyRatePerDay !== null
+      ? Number(config.penaltyRatePerDay)
+      : 100;
+    const isPenaltyDisabled = penaltyRatePerMonth <= 0;
     let stats = { lineSent: 0, updatedInvoices: 0 };
     const todayNoTime = new Date(); todayNoTime.setHours(0, 0, 0, 0);
 
     for (const inv of pendingInvoices) {
       const dueDate = new Date(inv.dueDate); dueDate.setHours(0, 0, 0, 0);
-      let currentPenalty = truncateDecimals(Number(inv.penaltyAmount || 0));
+      const isInvInitialBalance = inv.invoiceNo && inv.invoiceNo.startsWith('INIT-');
+      let currentPenalty = isInvInitialBalance
+        ? truncateDecimals(Number(inv.penaltyAmount || 0))
+        : (isPenaltyDisabled ? 0 : truncateDecimals(Number(inv.penaltyAmount || 0)));
 
-      if (todayNoTime > dueDate && currentPenalty === 0) {
+      if (!isPenaltyDisabled && !isInvInitialBalance && todayNoTime > dueDate && currentPenalty === 0) {
         const diffTime = todayNoTime.getTime() - dueDate.getTime();
         const overdueDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
         let overdueMonths = Math.floor(overdueDays / 30);
@@ -251,6 +257,14 @@ async function handleRemindCronJob(request: Request) {
             penaltyAmount: currentPenalty,
             totalAmount: truncateDecimals(Number(inv.baseAmount) + currentPenalty),
             status: inv.status === 'PARTIAL' ? 'PARTIAL' : 'OVERDUE'
+          }
+        });
+      } else if (isPenaltyDisabled && !isInvInitialBalance && Number(inv.penaltyAmount) > 0) {
+        await prisma.invoice.update({
+          where: { id: inv.id },
+          data: {
+            penaltyAmount: 0,
+            totalAmount: truncateDecimals(Number(inv.baseAmount))
           }
         });
       }
