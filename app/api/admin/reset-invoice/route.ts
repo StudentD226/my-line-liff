@@ -35,8 +35,9 @@ export async function POST(request: Request) {
         paidAt: null
       };
     } else if (newStatus === 'PAID') {
-      // ถ้าจ่ายแล้ว ให้ล็อคยอดรวมตามที่โชว์ตอนนั้น (หรือจะให้บวกค่าปรับที่คำนวณไว้ก่อนหน้าก็ได้)
+      // ถ้าจ่ายแล้ว ให้ล็อคยอดรวมตามที่โชว์ตอนนั้น และลงบันทึก paidAmount เท่ากับยอดรวม
       if (!invoice.paidAt) updateData.paidAt = new Date();
+      updateData.paidAmount = truncateDecimals(Number(invoice.totalAmount));
     }
 
     // อัปเดตสถานะใน DB
