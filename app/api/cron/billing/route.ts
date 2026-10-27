@@ -416,45 +416,48 @@ async function handleCronJob(request: Request) {
         targetYear += 1;
       }
 
-      const existingInvoice = await prisma.invoice.findFirst({
-        where: { 
-          billingMonth: targetMonth, 
-          billingYear: targetYear,
-          invoiceNo: { not: { startsWith: 'TR-' } }
+      const houses = await prisma.house.findMany();
+      const dueDate = new Date(targetYear, targetMonth - 1, config.dueDateDay, 23, 59, 59);
+      const dayStr = String(bkkTime.getDate()).padStart(2, '0');
+      const monthStr = String(bkkTime.getMonth() + 1).padStart(2, '0');
+      const yearStrTh = String(bkkTime.getFullYear() + 543);
+
+      for (const house of houses) {
+        const existingHouseInvoice = await prisma.invoice.findFirst({
+          where: { 
+            residentHouseId: house.id,
+            billingMonth: targetMonth, 
+            billingYear: targetYear,
+            invoiceNo: { not: { startsWith: 'TR-' } }
+          }
+        });
+
+        if (existingHouseInvoice) {
+          continue; // 🌟 ถ้าบ้านนี้มีบิลเดือนนี้แล้ว (เช่น ชำระล่วงหน้า ADV- หรือ PENDING อยู่แล้ว) ให้ข้ามไป ไม่สร้างบิลซ้ำ
         }
-      });
 
-      if (!existingInvoice) {
-        const houses = await prisma.house.findMany();
-        const dueDate = new Date(targetYear, targetMonth - 1, config.dueDateDay, 23, 59, 59);
-        const dayStr = String(bkkTime.getDate()).padStart(2, '0');
-        const monthStr = String(bkkTime.getMonth() + 1).padStart(2, '0');
-        const yearStrTh = String(bkkTime.getFullYear() + 543);
+        const monthlyRate = truncateDecimals(
+          house.feeType === 'CALCULATED' && house.houseSize
+            ? Number(house.feeRate) * Number(house.houseSize)
+            : Number(house.feeRate || 1000)
+        );
+        const customInvoiceNo = `${house.houseNo}-${dayStr}${monthStr}${yearStrTh}-M${String(targetMonth).padStart(2, '0')}`;
 
-        for (const house of houses) {
-          const monthlyRate = truncateDecimals(
-            house.feeType === 'CALCULATED' && house.houseSize
-              ? Number(house.feeRate) * Number(house.houseSize)
-              : Number(house.feeRate || 1000)
-          );
-          const customInvoiceNo = `${house.houseNo}-${dayStr}${monthStr}${yearStrTh}-M${String(targetMonth).padStart(2, '0')}`;
-
-          await prisma.invoice.create({
-            data: {
-              invoiceNo: customInvoiceNo,
-              billingMonth: targetMonth,
-              billingYear: targetYear,
-              baseAmount: monthlyRate,
-              totalAmount: monthlyRate,
-              paidAmount: 0, 
-              status: 'PENDING',
-              isNotified: false,
-              dueDate: dueDate,
-              scheduledSendAt: now,
-              residentHouseId: house.id
-            }
-          });
-        }
+        await prisma.invoice.create({
+          data: {
+            invoiceNo: customInvoiceNo,
+            billingMonth: targetMonth,
+            billingYear: targetYear,
+            baseAmount: monthlyRate,
+            totalAmount: monthlyRate,
+            paidAmount: 0, 
+            status: 'PENDING',
+            isNotified: false,
+            dueDate: dueDate,
+            scheduledSendAt: now,
+            residentHouseId: house.id
+          }
+        });
       }
     }
 

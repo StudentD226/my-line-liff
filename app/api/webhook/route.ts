@@ -362,14 +362,17 @@ export async function POST(request: Request) {
             };
 
           } else {
-            // 🌟 กรณีไม่มีหนี้ค้างชำระ ส่งการ์ดสีเขียวปกติ พร้อมแจ้งงวดที่ชำระเรียบร้อย
-            let paidUpToText = `${fullThaiMonths[targetBillingMonth]} ${targetBillingYear + 543}`;
+            // 🌟 กรณีไม่มีหนี้ค้างชำระ ส่งการ์ดสีเขียวปกติ พร้อมแจ้งงวดที่ชำระเรียบร้อย (ดึงงวดที่ชำระจริง/ล่วงหน้า/จ่ายเกิน ไม่บังคับงวดปัจจุบัน)
+            let paidUpToText = '';
             if (paidInvoices.length > 0) {
               const sortedPaid = [...paidInvoices].sort((a,b) => (b.billingYear * 12 + b.billingMonth) - (a.billingYear * 12 + a.billingMonth));
               const topPaid = sortedPaid[0];
-              if (topPaid && (topPaid.billingYear * 12 + topPaid.billingMonth) > (targetBillingYear * 12 + targetBillingMonth)) {
+              if (topPaid) {
                 paidUpToText = `${fullThaiMonths[topPaid.billingMonth]} ${topPaid.billingYear + 543}`;
               }
+            }
+            if (!paidUpToText) {
+              paidUpToText = `${fullThaiMonths[targetBillingMonth]} ${targetBillingYear + 543}`;
             }
 
             flexMessage = {
