@@ -164,10 +164,75 @@ export async function GET() {
 }
 
 // ========================================================
-// 🔴 DELETE: รีเซ็ตข้อมูลยอดยกมาทั้งหมด (ล้าง INIT- และประวัติทั้งหมด)
+// 🔴 DELETE: ลบรายการประวัติรายตัว (historyId) หรือ รีเซ็ตทั้งหมด
 // ========================================================
-export async function DELETE() {
+export async function DELETE(req: Request) {
   try {
+    const { searchParams } = new URL(req.url);
+    const historyId = searchParams.get('historyId');
+
+    // 🟢 กรณีระบุ historyId = ลบเฉพาะรายการนั้น พร้อมคืนค่าบ้านที่เกี่ยวข้อง
+    if (historyId) {
+      const historyItem = await prisma.initialBalanceHistory.findUnique({
+        where: { id: historyId },
+      });
+
+      if (!historyItem) {
+        return NextResponse.json(
+          { success: false, error: 'ไม่พบรายการประวัติที่ต้องการลบ' },
+          { status: 404 }
+        );
+      }
+
+      // ดึงบ้านเลขที่ที่เกี่ยวข้องจาก historyItem.houseNo
+      let touchedHouseIds: string[] = [];
+      if (historyItem.houseNo && historyItem.houseNo !== 'ไม่ระบุ') {
+        const rawNos = historyItem.houseNo
+          .split(',')
+          .map((s) => s.replace(/และอีก.*$/, '').trim())
+          .filter(Boolean);
+
+        if (rawNos.length > 0) {
+          const matchedHouses = await prisma.house.findMany({
+            where: { houseNo: { in: rawNos } },
+            select: { id: true },
+          });
+          touchedHouseIds = matchedHouses.map((h) => h.id);
+        }
+      }
+
+      let deletedInvoicesCount = 0;
+      if (touchedHouseIds.length > 0) {
+        // ลบบิลยอดยกมา (INIT-) และบิลชำระล่วงหน้า (ADV- ที่ไม่มีสลิปจริง) ของบ้านในรายการนี้
+        const delInit = await prisma.invoice.deleteMany({
+          where: {
+            residentHouseId: { in: touchedHouseIds },
+            invoiceNo: { startsWith: 'INIT-' },
+          },
+        });
+        const delAdv = await prisma.invoice.deleteMany({
+          where: {
+            residentHouseId: { in: touchedHouseIds },
+            invoiceNo: { startsWith: 'ADV-' },
+            slipUrl: null,
+          },
+        });
+        deletedInvoicesCount = delInit.count + delAdv.count;
+      }
+
+      // ลบรายการประวัติ
+      await prisma.initialBalanceHistory.delete({
+        where: { id: historyId },
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: `ลบรายการประวัติสำเร็จ (คืนค่าและลบบิลที่เกี่ยวข้อง ${deletedInvoicesCount} รายการ)`,
+        deletedInvoicesCount,
+      });
+    }
+
+    // 🔴 ถ้ารีเซ็ตทั้งหมด (ไม่มี historyId)
     const deletedInvoices = await prisma.invoice.deleteMany({
       where: {
         OR: [
@@ -186,9 +251,9 @@ export async function DELETE() {
       deletedHistoryCount: deletedHistory.count,
     });
   } catch (error: any) {
-    console.error('Error resetting initial balances:', error);
+    console.error('Error in DELETE initial balance:', error);
     return NextResponse.json(
-      { success: false, error: error.message || 'ไม่สามารถรีเซ็ตข้อมูลยอดยกมาได้' },
+      { success: false, error: error.message || 'ไม่สามารถลบรายการได้' },
       { status: 500 }
     );
   }

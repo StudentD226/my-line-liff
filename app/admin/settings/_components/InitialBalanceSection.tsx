@@ -987,6 +987,68 @@ export default function InitialBalanceSection({
     }
   };
 
+  // ลบรายการประวัติรายตัว (พร้อมคืนค่าบิลที่เกี่ยวข้องและคำนวณยอดสรุปใหม่)
+  const handleDeleteHistoryItem = async (item: any) => {
+    const houseDisplay = item.houseNo ? `บ้านเลขที่ ${item.houseNo}` : `${item.housesCount || item.houseCount} หลัง`;
+    const result = await Swal.fire({
+      ...defaultSwalConfig,
+      icon: 'warning',
+      title: 'ต้องการลบรายการนี้ใช่หรือไม่?',
+      html: `
+        <div class="text-left text-xs space-y-2 p-3.5 bg-rose-50/70 border border-rose-200 rounded-2xl text-slate-700">
+          <div><b class="text-slate-900">บ้านที่เกี่ยวข้อง:</b> <span class="text-rose-700 font-black">${houseDisplay}</span></div>
+          <div><b class="text-slate-900">รายละเอียด:</b> ${item.note || '-'}</div>
+          ${Number(item.grandTotalDebt || item.totalDebt || 0) > 0 ? `<div class="text-rose-800 font-bold">ยอดหนี้ที่บันทึกไว้: ฿${Number(item.grandTotalDebt || item.totalDebt || 0).toLocaleString('th-TH', { minimumFractionDigits: 2 })}</div>` : ''}
+          <div class="text-[11px] text-slate-500 pt-2 border-t border-rose-200/60 leading-relaxed">
+            *ระบบจะลบบิลยอดยกมา / บิลชำระล่วงหน้าของบ้านในรายการนี้ออก และคำนวณยอดสรุปภาพรวมใหม่ให้อัตโนมัติ
+          </div>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: 'ยืนยันลบรายการนี้',
+      cancelButtonText: 'ยกเลิก',
+      confirmButtonColor: '#e11d48',
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      Swal.fire({
+        title: 'กำลังลบรายการ...',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading(),
+        customClass: { popup: 'rounded-[2rem]' },
+      });
+
+      const res = await fetch(`/api/admin/initial-balance?historyId=${encodeURIComponent(item.id)}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        await Swal.fire({
+          icon: 'success',
+          title: 'ลบรายการสำเร็จ!',
+          text: data.message || 'ลบรายการและอัปเดตยอดสรุปเรียบร้อยแล้ว',
+          confirmButtonColor: '#376B64',
+          customClass: { popup: 'rounded-[2rem]' },
+        });
+        fetchHistory();
+        onRefreshHouses?.();
+      } else {
+        throw new Error(data.error || 'ไม่สามารถลบรายการได้');
+      }
+    } catch (err: any) {
+      Swal.fire({
+        icon: 'error',
+        title: 'เกิดข้อผิดพลาด',
+        text: err.message || 'ไม่สามารถลบรายการได้',
+        confirmButtonColor: '#e11d48',
+        customClass: { popup: 'rounded-[2rem]' },
+      });
+    }
+  };
+
   // คำนวณยอดสด (Live Calculation) สำหรับบ้านหลังที่เลือก
   const singleCalculation = useMemo(() => {
     if (isPaidFull || periods.length === 0) {
@@ -2662,18 +2724,19 @@ export default function InitialBalanceSection({
                     <th className="py-3 px-4 text-right">ยอดรวม</th>
                     <th className="py-3 px-4 text-center">โหมดเบี้ยปรับ</th>
                     <th className="py-3 px-4">ผู้บันทึก</th>
+                    <th className="py-3 px-3 text-center w-12"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
                   {historyList.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="py-8 text-center text-slate-400">
+                      <td colSpan={10} className="py-8 text-center text-slate-400">
                         {loadingHistory ? 'กำลังโหลดประวัติ...' : 'ยังไม่มีประวัติการตั้งค่ายอดยกมา'}
                       </td>
                     </tr>
                   ) : (
                     historyList.map((item) => (
-                      <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
+                      <tr key={item.id} className="group hover:bg-slate-50/80 transition-colors">
                         <td className="py-3 px-4 whitespace-nowrap text-slate-500 font-medium">
                           {new Date(item.createdAt).toLocaleString('th-TH', {
                             year: 'numeric',
@@ -2685,9 +2748,11 @@ export default function InitialBalanceSection({
                         </td>
                         <td className="py-3 px-4 whitespace-nowrap">
                           <span className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md text-[11px]">
-                            {item.action === 'SINGLE'
+                            {item.actionType === 'SINGLE' || item.action === 'SINGLE'
                               ? 'รายหลัง'
-                              : item.action === 'MULTI'
+                              : item.actionType === 'ADVANCE'
+                              ? 'ชำระล่วงหน้า'
+                              : item.action === 'MULTI' || item.actionType === 'BATCH_MULTI'
                               ? 'กลุ่มบ้าน'
                               : item.action === 'MARK_ALL_PAID'
                               ? 'จ่ายครบทั้งหมด'
@@ -2696,7 +2761,7 @@ export default function InitialBalanceSection({
                         </td>
                         <td className="py-3 px-4 whitespace-nowrap">
                           <span className="font-black text-slate-800 block">
-                            {item.houseNo ? `บ้านเลขที่ ${item.houseNo}` : `${item.houseCount} หลัง`}
+                            {item.houseNo ? `บ้านเลขที่ ${item.houseNo}` : `${item.housesCount || item.houseCount} หลัง`}
                           </span>
                           {item.note && (
                             <span className="text-[10px] text-slate-500 font-normal block max-w-sm truncate" title={item.note}>
@@ -2705,9 +2770,9 @@ export default function InitialBalanceSection({
                           )}
                         </td>
                         <td className="py-3 px-4 text-center whitespace-nowrap">
-                          {item.periodCount > 0 ? (
+                          {(item.invoicesCount !== undefined ? item.invoicesCount : item.periodCount) > 0 ? (
                             <span className="px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full text-[10px]">
-                              {item.periodCount} งวด
+                              {item.invoicesCount !== undefined ? item.invoicesCount : item.periodCount} งวด
                             </span>
                           ) : (
                             <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full text-[10px]">
@@ -2716,29 +2781,39 @@ export default function InitialBalanceSection({
                           )}
                         </td>
                         <td className="py-3 px-4 text-right whitespace-nowrap">
-                          ฿{Number(item.principalDebt || 0).toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+                          ฿{Number(item.totalPrincipalDebt !== undefined ? item.totalPrincipalDebt : item.principalDebt || 0).toLocaleString('th-TH', { minimumFractionDigits: 2 })}
                         </td>
                         <td className="py-3 px-4 text-right whitespace-nowrap">
-                          ฿{Number(item.penaltyDebt || 0).toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+                          ฿{Number(item.totalPenaltyDebt !== undefined ? item.totalPenaltyDebt : item.penaltyDebt || 0).toLocaleString('th-TH', { minimumFractionDigits: 2 })}
                         </td>
                         <td className="py-3 px-4 text-right whitespace-nowrap font-black text-[#2A524C]">
-                          ฿{Number(item.totalDebt || 0).toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+                          ฿{Number(item.grandTotalDebt !== undefined ? item.grandTotalDebt : item.totalDebt || 0).toLocaleString('th-TH', { minimumFractionDigits: 2 })}
                         </td>
                         <td className="py-3 px-4 text-center whitespace-nowrap">
                           <span className={`px-2 py-0.5 rounded-md text-[10px] ${
-                            item.penaltyMode === 'NO_PENALTY'
+                            (item.penaltyCalcMode || item.penaltyMode) === 'NO_PENALTY'
                               ? 'bg-emerald-50 text-emerald-700'
                               : 'bg-slate-100 text-slate-600'
                           }`}>
-                            {item.penaltyMode === 'NO_PENALTY'
+                            {(item.penaltyCalcMode || item.penaltyMode) === 'NO_PENALTY'
                               ? 'ปลอดเบี้ยปรับ'
-                              : item.penaltyMode === 'STEP_RATE_PERCENT'
+                              : (item.penaltyCalcMode || item.penaltyMode) === 'STEP_RATE_PERCENT'
                               ? 'ขั้นบันได %'
                               : 'รายเดือน'}
                           </span>
                         </td>
                         <td className="py-3 px-4 whitespace-nowrap text-slate-500 font-medium">
                           {item.recordedBy || 'Admin'}
+                        </td>
+                        <td className="py-3 px-3 text-center whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteHistoryItem(item)}
+                            title="ลบรายการนี้ (คืนค่าและอัปเดตยอด)"
+                            className="opacity-0 group-hover:opacity-100 p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all active:scale-90"
+                          >
+                            <Trash2 size={15} />
+                          </button>
                         </td>
                       </tr>
                     ))
