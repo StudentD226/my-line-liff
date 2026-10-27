@@ -10,6 +10,51 @@ import {
 export const dynamic = 'force-dynamic';
 const prisma = new PrismaClient();
 
+// ========================================================
+// 🟢 GET: เรียกดูประวัติการตั้งค่ายอดยกมา (History Log) & สรุปภาพรวม
+// ========================================================
+export async function GET() {
+  try {
+    const history = await prisma.initialBalanceHistory.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+
+    const initInvoices = await prisma.invoice.findMany({
+      where: { invoiceNo: { startsWith: 'INIT-' } },
+      select: {
+        id: true,
+        invoiceNo: true,
+        baseAmount: true,
+        penaltyAmount: true,
+        totalAmount: true,
+        status: true,
+        house: { select: { houseNo: true } },
+      },
+    });
+
+    const distinctHouses = new Set(initInvoices.map((i) => i.house?.houseNo).filter(Boolean));
+    const totalPrincipal = initInvoices.reduce((sum, i) => sum + (Number(i.baseAmount) || 0), 0);
+    const totalPenalty = initInvoices.reduce((sum, i) => sum + (Number(i.penaltyAmount) || 0), 0);
+    const grandTotal = initInvoices.reduce((sum, i) => sum + (Number(i.totalAmount) || 0), 0);
+
+    return NextResponse.json({
+      success: true,
+      history,
+      summary: {
+        totalHousesWithDebt: distinctHouses.size,
+        totalInvoices: initInvoices.length,
+        totalPrincipal,
+        totalPenalty,
+        grandTotal,
+      },
+    });
+  } catch (error: any) {
+    console.error('Error fetching initial balance history:', error);
+    return NextResponse.json({ success: false, error: 'ไม่สามารถดึงประวัติการตั้งค่ายอดยกมาได้' }, { status: 500 });
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -123,6 +168,34 @@ export async function POST(req: Request) {
             insertedInvoicesCount++;
           }
         }
+
+        // 🌟 บันทึกประวัติการตั้งค่ายอดยกมาลงตาราง InitialBalanceHistory
+        const actionType = parsedItems.length === 1
+          ? 'SINGLE'
+          : (rawCsvText ? 'BATCH_CSV' : 'BATCH_MULTI');
+        const houseList = calculation.details.map((d) => d.houseNo).slice(0, 30).join(', ');
+        const houseSummary = calculation.details.length > 30
+          ? `${houseList} และอีก ${calculation.details.length - 30} หลัง`
+          : houseList;
+
+        await tx.initialBalanceHistory.create({
+          data: {
+            actionType,
+            houseNo: houseSummary || 'ไม่ระบุ',
+            cutoffDate,
+            penaltyCalcMode,
+            flatPenaltyPerMonth: resolvedFlatPenalty,
+            housesCount: touchedHousesCount,
+            invoicesCount: insertedInvoicesCount,
+            totalPrincipalDebt: calculation.totalPrincipalDebt,
+            totalPenaltyDebt: calculation.totalPenaltyDebt,
+            grandTotalDebt: calculation.grandTotalDebt,
+            note: calculation.overdueProperties > 0
+              ? `บันทึกค้างชำระ ${calculation.overdueProperties} หลัง (รวม ${insertedInvoicesCount} งวด)`
+              : `บันทึกชำระครบถ้วนทั้งหมด ${touchedHousesCount} หลัง (฿0.00)`,
+            recordedBy: 'Admin',
+          },
+        });
       },
       {
         timeout: 60000, // รองรับกรณีนำเข้าข้อมูลย้อนหลังจำนวนมาก

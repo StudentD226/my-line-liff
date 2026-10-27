@@ -76,6 +76,17 @@ export async function POST(request: Request) {
       });
     }
 
+    // 🌟 บันทึกประวัติการตั้งค่าระบบลงตาราง SystemConfigHistory
+    await prisma.systemConfigHistory.create({
+      data: {
+        projectType: body.projectType,
+        flatRateAmount: flatAmount,
+        penaltyRatePerDay: penaltyAmount,
+        changedBy: (session.user as any)?.name || (session.user as any)?.email || 'Admin',
+        note: body.applyToAllHouses ? 'บันทึกตั้งค่าระบบ และปรับใช้อัตรากับบ้านทุกหลัง' : 'บันทึกตั้งค่าระบบ',
+      },
+    });
+
     // การผูกเงื่อนไขเฉพาะการจัดตั้งฐานข้อมูลประจำยูนิตล่วงหน้า (ไม่ส่งผลกระทบต่อรายการประวัติบิลสถานะชำระเงินแล้วเสร็จ)
     if (body.applyToAllHouses) {
       await prisma.house.updateMany({

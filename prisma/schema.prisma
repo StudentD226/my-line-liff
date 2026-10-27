@@ -236,6 +236,7 @@ model AdminReminder {
 enum AdminRole {
   ADMIN
   NITI
+  SUPER_ADMIN
 }
 
 model AdminUser {
@@ -250,3 +251,34 @@ model AdminUser {
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @default(now()) @updatedAt
 }
+
+// ------------------------------------------------------
+// 9. ประวัติการตั้งค่ายอดยกมาและตั้งค่าระบบ (Setup & History Logs)
+// ------------------------------------------------------
+model InitialBalanceHistory {
+  id                  String   @id @default(cuid())
+  actionType          String   // 'SINGLE' | 'BATCH_MULTI' | 'BATCH_CSV' | 'MARK_ALL_PAID'
+  houseNo             String?  @db.Text // เลขที่บ้าน หรือรายการบ้านที่กำหนด
+  cutoffDate          String   // วันที่ตัดยอด เช่น "2026-10-27"
+  penaltyCalcMode     String   // 'NO_PENALTY' | 'STEP_RATE_PERCENT' | 'FLAT_PER_MONTH'
+  flatPenaltyPerMonth Float    @default(0)
+  housesCount         Int      @default(1)
+  invoicesCount       Int      @default(0)
+  totalPrincipalDebt  Float    @default(0)
+  totalPenaltyDebt    Float    @default(0)
+  grandTotalDebt      Float    @default(0)
+  note                String?  @db.Text
+  recordedBy          String?  // แอดมินผู้ดำเนินการ
+  createdAt           DateTime @default(now())
+}
+
+model SystemConfigHistory {
+  id                String       @id @default(cuid())
+  projectType       ProjectType  @default(HOUSING_ESTATE)
+  flatRateAmount    Float
+  penaltyRatePerDay Float
+  changedBy         String?
+  note              String?      @db.Text
+  createdAt         DateTime     @default(now())
+}
+

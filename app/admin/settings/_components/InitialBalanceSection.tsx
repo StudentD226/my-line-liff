@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import Swal from 'sweetalert2';
 import {
@@ -34,6 +34,8 @@ import {
   X,
   CheckSquare,
   Square,
+  Clock,
+  RefreshCw,
 } from 'lucide-react';
 import { defaultSwalConfig } from '@/lib/swal-helper';
 import {
@@ -114,9 +116,39 @@ export default function InitialBalanceSection({
   const [submittingMulti, setSubmittingMulti] = useState<boolean>(false);
   const [mounted, setMounted] = useState<boolean>(false);
 
+  // ----------------------------------------------------
+  // History & Summary State (ประวัติการตั้งค่ายอดยกมา)
+  // ----------------------------------------------------
+  const [historyList, setHistoryList] = useState<any[]>([]);
+  const [historySummary, setHistorySummary] = useState<{
+    totalHousesWithDebt: number;
+    totalInvoices: number;
+    totalPrincipal: number;
+    totalPenalty: number;
+    grandTotal: number;
+  } | null>(null);
+  const [loadingHistory, setLoadingHistory] = useState<boolean>(false);
+
+  const fetchHistory = useCallback(async () => {
+    try {
+      setLoadingHistory(true);
+      const res = await fetch('/api/admin/initial-balance');
+      const data = await res.json();
+      if (data.success) {
+        setHistoryList(data.history || []);
+        setHistorySummary(data.summary || null);
+      }
+    } catch (error) {
+      console.error('Failed to fetch initial balance history:', error);
+    } finally {
+      setLoadingHistory(false);
+    }
+  }, []);
+
   useEffect(() => {
     setMounted(true);
-  }, []);
+    fetchHistory();
+  }, [fetchHistory]);
 
   useEffect(() => {
     if (isMultiModalOpen) {
@@ -419,6 +451,7 @@ export default function InitialBalanceSection({
           customClass: { popup: 'rounded-[2rem]' },
         });
         onRefreshHouses?.();
+        fetchHistory();
       } else {
         throw new Error(json.error);
       }
@@ -540,6 +573,7 @@ export default function InitialBalanceSection({
         setIsMultiModalOpen(false);
         setMultiSelectedHouseNos([]);
         onRefreshHouses?.();
+        fetchHistory();
         await Swal.fire({
           icon: 'success',
           title: 'บันทึกสำเร็จ!',
@@ -745,6 +779,7 @@ export default function InitialBalanceSection({
         });
 
         onRefreshHouses?.();
+        fetchHistory();
         // เคลียร์ฟอร์ม
         setPeriods([]);
         setIsPaidFull(false);
@@ -838,6 +873,7 @@ export default function InitialBalanceSection({
         setBatchPreviewData(null);
         setRawText('');
         onRefreshHouses?.();
+        fetchHistory();
       } else {
         throw new Error(json.error);
       }
@@ -1607,6 +1643,162 @@ export default function InitialBalanceSection({
             )}
           </div>
         )}
+
+        {/* ============================================================== */}
+        {/* 📜 ส่วนแสดงประวัติและภาพรวมการตั้งค่ายอดยกมา (History Log & Summary) */}
+        {/* ============================================================== */}
+        <div className="mt-8 pt-8 border-t border-slate-200/80">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+            <div>
+              <h3 className="text-base sm:text-lg font-black text-slate-800 flex items-center gap-2">
+                <span className="p-2 bg-[#376B64]/10 text-[#376B64] rounded-lg">
+                  <Clock size={18} />
+                </span>
+                <span>ประวัติและภาพรวมการตั้งค่ายอดยกมา (Setup History & Summary)</span>
+              </h3>
+              <p className="text-xs text-slate-500 font-bold mt-0.5">
+                ตรวจสอบยอดยกมาในระบบ และประวัติการบันทึกการตั้งค่าที่ถูกบันทึกลงฐานข้อมูล
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={fetchHistory}
+              disabled={loadingHistory}
+              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 self-start sm:self-auto shadow-sm"
+            >
+              <RefreshCw size={13} className={loadingHistory ? 'animate-spin text-[#376B64]' : ''} />
+              {loadingHistory ? 'กำลังโหลด...' : 'รีเฟรชประวัติ'}
+            </button>
+          </div>
+
+          {/* Summary Cards */}
+          {historySummary && (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+              <div className="p-4 bg-gradient-to-br from-slate-50 to-white rounded-2xl border border-slate-200/80 shadow-sm">
+                <span className="text-[11px] font-bold text-slate-500 block">บ้านที่มียอดค้างยกมา</span>
+                <span className="text-xl sm:text-2xl font-black text-slate-800 mt-1 block">
+                  {historySummary.totalHousesWithDebt.toLocaleString()} <span className="text-xs font-bold text-slate-500">หลัง</span>
+                </span>
+              </div>
+
+              <div className="p-4 bg-gradient-to-br from-blue-50/50 to-white rounded-2xl border border-blue-100 shadow-sm">
+                <span className="text-[11px] font-bold text-blue-600 block">จำนวนงวดค้างชำระรวม</span>
+                <span className="text-xl sm:text-2xl font-black text-blue-900 mt-1 block">
+                  {historySummary.totalInvoices.toLocaleString()} <span className="text-xs font-bold text-blue-600">งวด</span>
+                </span>
+              </div>
+
+              <div className="p-4 bg-gradient-to-br from-amber-50/50 to-white rounded-2xl border border-amber-100 shadow-sm">
+                <span className="text-[11px] font-bold text-amber-700 block">เงินต้นค้างชำระรวม</span>
+                <span className="text-xl sm:text-2xl font-black text-amber-800 mt-1 block">
+                  ฿{historySummary.totalPrincipal.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+
+              <div className="p-4 bg-gradient-to-br from-[#376B64]/10 to-[#376B64]/5 rounded-2xl border border-[#376B64]/20 shadow-sm">
+                <span className="text-[11px] font-bold text-[#376B64] block">ยอดหนี้ยกมารวมทั้งสิ้น</span>
+                <span className="text-xl sm:text-2xl font-black text-[#2A524C] mt-1 block">
+                  ฿{historySummary.grandTotal.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* History Table */}
+          <div className="border border-slate-200/80 rounded-2xl overflow-hidden shadow-sm bg-white">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-black">
+                    <th className="py-3 px-4">วัน-เวลาบันทึก</th>
+                    <th className="py-3 px-4">การดำเนินการ</th>
+                    <th className="py-3 px-4">บ้านเลขที่ / จำนวน</th>
+                    <th className="py-3 px-4 text-center">งวดค้าง</th>
+                    <th className="py-3 px-4 text-right">เงินต้น</th>
+                    <th className="py-3 px-4 text-right">เบี้ยปรับ</th>
+                    <th className="py-3 px-4 text-right">ยอดรวม</th>
+                    <th className="py-3 px-4 text-center">โหมดเบี้ยปรับ</th>
+                    <th className="py-3 px-4">ผู้บันทึก</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-bold text-slate-700">
+                  {historyList.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="py-8 text-center text-slate-400">
+                        {loadingHistory ? 'กำลังโหลดประวัติ...' : 'ยังไม่มีประวัติการตั้งค่ายอดยกมา'}
+                      </td>
+                    </tr>
+                  ) : (
+                    historyList.map((item) => (
+                      <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-3 px-4 whitespace-nowrap text-slate-500 font-medium">
+                          {new Date(item.createdAt).toLocaleString('th-TH', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </td>
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <span className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md text-[11px]">
+                            {item.action === 'SINGLE'
+                              ? 'รายหลัง'
+                              : item.action === 'MULTI'
+                              ? 'กลุ่มบ้าน'
+                              : item.action === 'MARK_ALL_PAID'
+                              ? 'จ่ายครบทั้งหมด'
+                              : 'นำเข้าไฟล์ CSV'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 whitespace-nowrap font-black text-slate-800">
+                          {item.houseNo ? `บ้านเลขที่ ${item.houseNo}` : `${item.houseCount} หลัง`}
+                        </td>
+                        <td className="py-3 px-4 text-center whitespace-nowrap">
+                          {item.periodCount > 0 ? (
+                            <span className="px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full text-[10px]">
+                              {item.periodCount} งวด
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full text-[10px]">
+                              จ่ายครบ (0)
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-right whitespace-nowrap">
+                          ฿{Number(item.principalDebt || 0).toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+                        </td>
+                        <td className="py-3 px-4 text-right whitespace-nowrap">
+                          ฿{Number(item.penaltyDebt || 0).toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+                        </td>
+                        <td className="py-3 px-4 text-right whitespace-nowrap font-black text-[#2A524C]">
+                          ฿{Number(item.totalDebt || 0).toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+                        </td>
+                        <td className="py-3 px-4 text-center whitespace-nowrap">
+                          <span className={`px-2 py-0.5 rounded-md text-[10px] ${
+                            item.penaltyMode === 'NO_PENALTY'
+                              ? 'bg-emerald-50 text-emerald-700'
+                              : 'bg-slate-100 text-slate-600'
+                          }`}>
+                            {item.penaltyMode === 'NO_PENALTY'
+                              ? 'ปลอดเบี้ยปรับ'
+                              : item.penaltyMode === 'STEP_RATE_PERCENT'
+                              ? 'ขั้นบันได %'
+                              : 'รายเดือน'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 whitespace-nowrap text-slate-500 font-medium">
+                          {item.recordedBy || 'Admin'}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* ============================================================== */}
