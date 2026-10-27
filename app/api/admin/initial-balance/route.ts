@@ -20,13 +20,29 @@ export async function GET() {
       take: 50,
     });
 
-    const totalHouses = await prisma.house.count();
+    // ดึงข้อมูลบ้านทั้งหมดในโครงการ
+    const allHouses = await prisma.house.findMany({
+      select: {
+        id: true,
+        houseNo: true,
+        feeRate: true,
+      },
+    });
+    const totalHouses = allHouses.length;
 
+    // ดึงบิลยอดยกมา (INIT-) และบิลชำระล่วงหน้า (ADV-)
     const initInvoices = await prisma.invoice.findMany({
-      where: { invoiceNo: { startsWith: 'INIT-' } },
+      where: {
+        OR: [
+          { invoiceNo: { startsWith: 'INIT-' } },
+          { invoiceNo: { startsWith: 'ADV-' } },
+        ],
+      },
       select: {
         id: true,
         invoiceNo: true,
+        billingMonth: true,
+        billingYear: true,
         baseAmount: true,
         penaltyAmount: true,
         totalAmount: true,
@@ -38,43 +54,86 @@ export async function GET() {
 
     // 1. ข้อมูลบิลยอดยกมาที่ยังค้างชำระ (Overdue / Pending)
     const overdueInitInvoices = initInvoices.filter((i) =>
-      ['OVERDUE', 'PENDING', 'PARTIAL'].includes(i.status)
+      i.invoiceNo.startsWith('INIT-') && ['OVERDUE', 'PENDING', 'PARTIAL'].includes(i.status)
     );
     const distinctHouses = new Set(overdueInitInvoices.map((i) => i.house?.houseNo).filter(Boolean));
     const totalPrincipal = overdueInitInvoices.reduce((sum, i) => sum + (Number(i.baseAmount) || 0), 0);
     const totalPenalty = overdueInitInvoices.reduce((sum, i) => sum + (Number(i.penaltyAmount) || 0), 0);
     const grandTotal = overdueInitInvoices.reduce((sum, i) => sum + (Number(i.totalAmount) || 0), 0);
 
-    // 2. ข้อมูลบิลที่จ่ายครบแล้ว (PAID) ทั้งหมดในระบบ (ไม่รวมบิลทดสอบ TR-)
-    const allPaidInvoices = await prisma.invoice.findMany({
+    // 2. คำนวณช่วงเดือนของโครงการ (Migration Window: ตั้งแต่งวดแรกสุดจนถึงวันตัดยอด)
+    // เริ่มต้นจาก ก.ย. 2564 (9/2021) ถึง ต.ค. 2569 (10/2026)
+    let minMonthTotal = 2021 * 12 + 9;
+    let maxMonthTotal = 2026 * 12 + 10;
+
+    if (overdueInitInvoices.length > 0) {
+      for (const inv of overdueInitInvoices) {
+        if (inv.billingYear && inv.billingMonth) {
+          const val = inv.billingYear * 12 + inv.billingMonth;
+          if (val < minMonthTotal) minMonthTotal = val;
+          if (val > maxMonthTotal) maxMonthTotal = val;
+        }
+      }
+    }
+
+    const totalMonthsPerHouse = Math.max(0, maxMonthTotal - minMonthTotal + 1);
+
+    // นับงวดค้างชำระของแต่ละบ้าน
+    const unpaidCountByHouse: Record<string, number> = {};
+    for (const inv of overdueInitInvoices) {
+      const hNo = inv.house?.houseNo;
+      if (hNo) {
+        unpaidCountByHouse[hNo] = (unpaidCountByHouse[hNo] || 0) + 1;
+      }
+    }
+
+    // ตรวจสอบว่ามีการบันทึกยอดยกมาแล้วหรือไม่
+    const hasInitialBalanceData = overdueInitInvoices.length > 0 || history.length > 0;
+
+    let paidInvoicesCount = 0;
+    let totalPaidAmount = 0;
+
+    if (hasInitialBalanceData) {
+      for (const house of allHouses) {
+        const unpaidCount = unpaidCountByHouse[house.houseNo] || 0;
+        const paidMonths = Math.max(0, totalMonthsPerHouse - unpaidCount);
+        const rate = Number(house.feeRate) || 0;
+
+        paidInvoicesCount += paidMonths;
+        totalPaidAmount += paidMonths * rate;
+      }
+    }
+
+    // รวมบิลชำระล่วงหน้า (ADV-) ที่มีสถานะ PAID
+    const advancePaidInvoices = initInvoices.filter(
+      (i) => i.invoiceNo.startsWith('ADV-') && i.status === 'PAID'
+    );
+    for (const adv of advancePaidInvoices) {
+      paidInvoicesCount += 1;
+      totalPaidAmount += Number(adv.paidAmount) || Number(adv.totalAmount) || 0;
+    }
+
+    // รวมบิลอื่นในระบบที่มีสถานะ PAID (ถ้ามี)
+    const otherPaidInvoices = await prisma.invoice.findMany({
       where: {
         status: 'PAID',
         invoiceNo: { not: { startsWith: 'TR-' } },
+        NOT: [
+          { invoiceNo: { startsWith: 'INIT-' } },
+          { invoiceNo: { startsWith: 'ADV-' } },
+        ],
       },
       select: {
         id: true,
-        invoiceNo: true,
-        baseAmount: true,
         paidAmount: true,
         totalAmount: true,
       },
     });
 
-    const totalPaidInvoices = allPaidInvoices.length;
-    const totalPaidAmount = allPaidInvoices.reduce((sum, i) => {
-      const paid = Number(i.paidAmount) || 0;
-      const total = Number(i.totalAmount) || 0;
-      return sum + (paid > 0 ? paid : total);
-    }, 0);
-
-    // บิลยอดยกมาที่ได้รับชำระแล้ว (ถ้ามี)
-    const paidInitInvoices = initInvoices.filter((i) => i.status === 'PAID');
-    const paidInitCount = paidInitInvoices.length;
-    const paidInitAmount = paidInitInvoices.reduce((sum, i) => {
-      const paid = Number(i.paidAmount) || 0;
-      const total = Number(i.totalAmount) || 0;
-      return sum + (paid > 0 ? paid : total);
-    }, 0);
+    for (const op of otherPaidInvoices) {
+      paidInvoicesCount += 1;
+      totalPaidAmount += Number(op.paidAmount) || Number(op.totalAmount) || 0;
+    }
 
     const totalHousesWithDebt = distinctHouses.size;
     const fullyPaidHousesCount = Math.max(0, totalHouses - totalHousesWithDebt);
@@ -91,10 +150,9 @@ export async function GET() {
         totalPenalty,
         grandTotal,
         // 🌟 ข้อมูลที่จ่ายครบแล้ว
-        paidInvoicesCount: totalPaidInvoices,
+        paidInvoicesCount,
         totalPaidAmount,
-        paidInitCount,
-        paidInitAmount,
+        totalMonthsPerHouse,
       },
     });
   } catch (error: any) {

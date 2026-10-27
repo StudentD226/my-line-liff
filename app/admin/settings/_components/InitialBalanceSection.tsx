@@ -2358,7 +2358,7 @@ export default function InitialBalanceSection({
                       ฿{(historySummary.totalPaidAmount ?? 0).toLocaleString('th-TH', { minimumFractionDigits: 2 })}
                     </span>
                     <span className="text-[10px] font-semibold text-emerald-600/80 mt-0.5 block">
-                      ยอดเงินที่ได้รับชำระแล้วทั้งหมดในระบบ
+                      ยอดชำระแล้วจริง (แยกจากยอดค้างชำระ ไม่ปนกัน)
                     </span>
                   </div>
 
@@ -2368,7 +2368,7 @@ export default function InitialBalanceSection({
                       {(historySummary.paidInvoicesCount ?? 0).toLocaleString()} <span className="text-xs font-bold text-teal-600">งวด</span>
                     </span>
                     <span className="text-[10px] font-semibold text-teal-600/80 mt-0.5 block">
-                      งวดบิลที่สถานะชำระเรียบร้อย (PAID)
+                      งวดที่ชำระเรียบร้อยทั้งหมดในระบบ
                     </span>
                   </div>
 
