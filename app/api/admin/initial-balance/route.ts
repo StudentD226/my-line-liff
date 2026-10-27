@@ -314,7 +314,7 @@ export async function POST(req: Request) {
             where: {
               residentHouseId: { in: touchedHouseIds },
               invoiceNo: { startsWith: 'INIT-' },
-              status: { in: ['OVERDUE', 'PENDING'] },
+              status: { in: ['OVERDUE', 'PENDING', 'PARTIAL'] },
             },
           });
           await tx.invoice.deleteMany({
