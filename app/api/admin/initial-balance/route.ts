@@ -203,14 +203,17 @@ export async function POST(req: Request) {
         let detailedNote = '';
         if (calculation.overdueProperties > 0) {
           detailedNote = `บันทึกค้างชำระ ${calculation.overdueProperties} หลัง (รวม ${insertedInvoicesCount} งวด)`;
-          if (parsedItems.length === 1 && parsedItems[0].unpaidPeriods.length > 0) {
-            const periods = parsedItems[0].unpaidPeriods;
+          const firstItem = parsedItems[0];
+          if (parsedItems.length === 1 && firstItem && firstItem.unpaidPeriods && firstItem.unpaidPeriods.length > 0) {
+            const periods = firstItem.unpaidPeriods;
             const minP = periods[0];
             const maxP = periods[periods.length - 1];
-            let prevM = minP.billingMonth - 1;
-            let prevY = minP.billingYear;
-            if (prevM < 1) { prevM = 12; prevY--; }
-            detailedNote += ` [ค้างงวด ${fullThaiMonths[minP.billingMonth]} ${minP.billingYear + 543} ถึง ${fullThaiMonths[maxP.billingMonth]} ${maxP.billingYear + 543} · ชำระล่าสุดถึงงวด ${fullThaiMonths[prevM]} ${prevY + 543}]`;
+            if (minP && maxP) {
+              let prevM = minP.billingMonth - 1;
+              let prevY = minP.billingYear;
+              if (prevM < 1) { prevM = 12; prevY--; }
+              detailedNote += ` [ค้างงวด ${fullThaiMonths[minP.billingMonth]} ${minP.billingYear + 543} ถึง ${fullThaiMonths[maxP.billingMonth]} ${maxP.billingYear + 543} · ชำระล่าสุดถึงงวด ${fullThaiMonths[prevM]} ${prevY + 543}]`;
+            }
           }
         } else {
           const cutoffObj = new Date(cutoffDate);

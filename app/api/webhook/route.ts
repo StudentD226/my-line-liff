@@ -324,14 +324,19 @@ export async function POST(request: Request) {
             let lastPaidText = '';
             if (paidInvoices.length > 0) {
               const sortedPaid = [...paidInvoices].sort((a,b) => (b.billingYear * 12 + b.billingMonth) - (a.billingYear * 12 + a.billingMonth));
-              lastPaidText = `${fullThaiMonths[sortedPaid[0].billingMonth]} ${sortedPaid[0].billingYear + 543}`;
+              const topPaid = sortedPaid[0];
+              if (topPaid) {
+                lastPaidText = `${fullThaiMonths[topPaid.billingMonth]} ${topPaid.billingYear + 543}`;
+              }
             } else {
               const sortedUnpaid = [...pendingInvoices].sort((a,b) => (a.billingYear * 12 + a.billingMonth) - (b.billingYear * 12 + b.billingMonth));
               const earliest = sortedUnpaid[0];
-              let prevM = earliest.billingMonth - 1;
-              let prevY = earliest.billingYear;
-              if (prevM < 1) { prevM = 12; prevY--; }
-              lastPaidText = `${fullThaiMonths[prevM]} ${prevY + 543}`;
+              if (earliest) {
+                let prevM = earliest.billingMonth - 1;
+                let prevY = earliest.billingYear;
+                if (prevM < 1) { prevM = 12; prevY--; }
+                lastPaidText = `${fullThaiMonths[prevM]} ${prevY + 543}`;
+              }
             }
 
             // 🌟 เรียกใช้ฟังก์ชันมาตรฐาน
@@ -362,7 +367,7 @@ export async function POST(request: Request) {
             if (paidInvoices.length > 0) {
               const sortedPaid = [...paidInvoices].sort((a,b) => (b.billingYear * 12 + b.billingMonth) - (a.billingYear * 12 + a.billingMonth));
               const topPaid = sortedPaid[0];
-              if ((topPaid.billingYear * 12 + topPaid.billingMonth) > (targetBillingYear * 12 + targetBillingMonth)) {
+              if (topPaid && (topPaid.billingYear * 12 + topPaid.billingMonth) > (targetBillingYear * 12 + targetBillingMonth)) {
                 paidUpToText = `${fullThaiMonths[topPaid.billingMonth]} ${topPaid.billingYear + 543}`;
               }
             }

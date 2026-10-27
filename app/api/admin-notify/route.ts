@@ -329,8 +329,8 @@ export async function POST(request: Request) {
       lastPaidText = `${fullThaiMonths[lastPaidInvoice.billingMonth]} ${lastPaidInvoice.billingYear + 543}`;
     } else {
       const sortedUnpaid = [...allUnpaidInvoices].sort((a,b) => (a.billingYear*12 + a.billingMonth) - (b.billingYear*12 + b.billingMonth));
-      if (sortedUnpaid.length > 0) {
-        const earliest = sortedUnpaid[0];
+      const earliest = sortedUnpaid[0];
+      if (earliest) {
         let prevM = earliest.billingMonth - 1;
         let prevY = earliest.billingYear;
         if (prevM < 1) { prevM = 12; prevY--; }
