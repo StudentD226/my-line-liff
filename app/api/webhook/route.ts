@@ -151,7 +151,14 @@ function createInvoiceFlexMessage(data: any) {
               ]
             }
           ]
-        }
+        },
+        ...(data.lastPaidText ? [{
+          type: "box", layout: "horizontal", margin: "md", backgroundColor: "#F8FAFC", cornerRadius: "lg", paddingAll: "sm", paddingStart: "md", paddingEnd: "md", alignItems: "center", borderWidth: "light", borderColor: "#E2E8F0",
+          contents: [
+            { type: "text", text: "ชำระล่าสุดถึงงวด:", size: "xs", color: "#64748B", weight: "bold", flex: 0 },
+            { type: "text", text: data.lastPaidText, size: "xs", color: "#0F766E", weight: "bold", align: "end", flex: 1 }
+          ]
+        }] : [])
       ]
     },
     footer: {
@@ -195,7 +202,6 @@ export async function POST(request: Request) {
                 include: {
                   invoices: {
                     where: { 
-                      status: { in: ['PENDING', 'OVERDUE', 'REJECTED', 'PARTIAL'] },
                       billingYear: { not: 9999 },
                       invoiceNo: { not: { startsWith: 'TR-' } } 
                     },
@@ -220,8 +226,27 @@ export async function POST(request: Request) {
             : 100;
           const isPenaltyDisabled = penaltyRate <= 0;
           const today = new Date(); today.setHours(0, 0, 0, 0);
-          
-          let pendingInvoices = user.residentHouse.invoices || [];
+
+          // คำนวณงวดของเดือน/ปีตามวันที่ออกบิล
+          const bkkNow = new Date(Date.now() + 7 * 60 * 60 * 1000);
+          const bkkDay = bkkNow.getUTCDate();
+          const bkkMonth = bkkNow.getUTCMonth() + 1;
+          const bkkYear = bkkNow.getUTCFullYear();
+          const genDay = config?.invoiceGenerateDay || 27;
+
+          let targetBillingMonth = bkkMonth;
+          let targetBillingYear = bkkYear;
+          if (bkkDay >= genDay) {
+            targetBillingMonth += 1;
+            if (targetBillingMonth > 12) {
+              targetBillingMonth = 1;
+              targetBillingYear += 1;
+            }
+          }
+
+          const allHouseInvoices = user.residentHouse.invoices || [];
+          const pendingInvoices = allHouseInvoices.filter(i => ['PENDING', 'OVERDUE', 'REJECTED', 'PARTIAL'].includes(i.status));
+          const paidInvoices = allHouseInvoices.filter(i => i.status === 'PAID');
           let flexMessage: any;
 
           if (pendingInvoices.length > 0) {
@@ -295,6 +320,20 @@ export async function POST(request: Request) {
             const dueDateText = `${String(dueObj.getDate()).padStart(2, '0')} ${fullThaiMonths[dueObj.getMonth() + 1]} ${dueObj.getFullYear() + 543}`;
             const headerBillingMonthText = `${fullThaiMonths[latestInv.billingMonth]} ${latestInv.billingYear + 543}`;
 
+            // คำนวณงวดที่ชำระล่าสุด
+            let lastPaidText = '';
+            if (paidInvoices.length > 0) {
+              const sortedPaid = [...paidInvoices].sort((a,b) => (b.billingYear * 12 + b.billingMonth) - (a.billingYear * 12 + a.billingMonth));
+              lastPaidText = `${fullThaiMonths[sortedPaid[0].billingMonth]} ${sortedPaid[0].billingYear + 543}`;
+            } else {
+              const sortedUnpaid = [...pendingInvoices].sort((a,b) => (a.billingYear * 12 + a.billingMonth) - (b.billingYear * 12 + b.billingMonth));
+              const earliest = sortedUnpaid[0];
+              let prevM = earliest.billingMonth - 1;
+              let prevY = earliest.billingYear;
+              if (prevM < 1) { prevM = 12; prevY--; }
+              lastPaidText = `${fullThaiMonths[prevM]} ${prevY + 543}`;
+            }
+
             // 🌟 เรียกใช้ฟังก์ชันมาตรฐาน
             const flexBubble = createInvoiceFlexMessage({
               type: isOverdue ? 'OVERDUE' : 'SEND',
@@ -307,7 +346,8 @@ export async function POST(request: Request) {
               finalGrandTotal: finalGrandTotal,
               isOverdue: isOverdue,
               dueDateText: dueDateText,
-              invoiceNo: latestInv.invoiceNo || latestInv.id
+              invoiceNo: latestInv.invoiceNo || latestInv.id,
+              lastPaidText: lastPaidText,
             });
 
             flexMessage = {
@@ -317,7 +357,16 @@ export async function POST(request: Request) {
             };
 
           } else {
-            // 🌟 กรณีไม่มีหนี้ค้างชำระ ส่งการ์ดสีเขียวปกติ
+            // 🌟 กรณีไม่มีหนี้ค้างชำระ ส่งการ์ดสีเขียวปกติ พร้อมแจ้งงวดที่ชำระเรียบร้อย
+            let paidUpToText = `${fullThaiMonths[targetBillingMonth]} ${targetBillingYear + 543}`;
+            if (paidInvoices.length > 0) {
+              const sortedPaid = [...paidInvoices].sort((a,b) => (b.billingYear * 12 + b.billingMonth) - (a.billingYear * 12 + a.billingMonth));
+              const topPaid = sortedPaid[0];
+              if ((topPaid.billingYear * 12 + topPaid.billingMonth) > (targetBillingYear * 12 + targetBillingMonth)) {
+                paidUpToText = `${fullThaiMonths[topPaid.billingMonth]} ${topPaid.billingYear + 543}`;
+              }
+            }
+
             flexMessage = {
               type: "flex",
               altText: `ตรวจสอบค่าส่วนกลาง บ้านเลขที่ ${user.residentHouse.houseNo}`,
@@ -352,7 +401,14 @@ export async function POST(request: Request) {
                       ]
                     },
                     { type: "separator", margin: "xl", color: "#E5E7EB" },
-                    { type: "text", text: "คุณชำระค่าส่วนกลางครบถ้วนแล้ว ขอบคุณที่ให้ความร่วมมือครับ", size: "xs", color: "#4B5563", margin: "lg", wrap: true }
+                    {
+                      type: "box", layout: "horizontal", margin: "lg", backgroundColor: "#F0FDF4", cornerRadius: "lg", paddingAll: "sm", paddingStart: "md", paddingEnd: "md", alignItems: "center", borderWidth: "light", borderColor: "#BBF7D0",
+                      contents: [
+                        { type: "text", text: "ชำระเรียบร้อยถึงงวด:", size: "xs", color: "#166534", weight: "bold", flex: 0 },
+                        { type: "text", text: paidUpToText, size: "xs", color: "#15803D", weight: "bold", align: "end", flex: 1 }
+                      ]
+                    },
+                    { type: "text", text: "คุณชำระค่าส่วนกลางครบถ้วนแล้ว ขอบคุณที่ให้ความร่วมมือครับ", size: "xs", color: "#4B5563", margin: "md", wrap: true }
                   ]
                 }
               }

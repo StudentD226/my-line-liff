@@ -148,7 +148,14 @@ function createInvoiceFlexMessage(data: any) {
               ]
             }
           ]
-        }
+        },
+        ...(data.lastPaidText ? [{
+          type: "box", layout: "horizontal", margin: "md", backgroundColor: "#F8FAFC", cornerRadius: "lg", paddingAll: "sm", paddingStart: "md", paddingEnd: "md", alignItems: "center", borderWidth: "light", borderColor: "#E2E8F0",
+          contents: [
+            { type: "text", text: "ชำระล่าสุดถึงงวด:", size: "xs", color: "#64748B", weight: "bold", flex: 0 },
+            { type: "text", text: data.lastPaidText, size: "xs", color: "#0F766E", weight: "bold", align: "end", flex: 1 }
+          ]
+        }] : [])
       ]
     },
     footer: {
@@ -306,6 +313,33 @@ export async function POST(request: Request) {
     const headerBillingMonthText = `${fullThaiMonths[invoice.billingMonth]} ${invoice.billingYear + 543}`;
     const dueDateText = `${String(dueDateObj.getDate()).padStart(2, '0')} ${fullThaiMonths[dueDateObj.getMonth() + 1]} ${dueDateObj.getFullYear() + 543}`;
 
+    // คำนวณงวดที่ชำระล่าสุด
+    const lastPaidInvoice = await prisma.invoice.findFirst({
+      where: {
+        residentHouseId: invoice.residentHouseId,
+        status: 'PAID',
+        billingYear: { not: 9999 },
+        invoiceNo: { not: { startsWith: 'TR-' } }
+      },
+      orderBy: [{ billingYear: 'desc' }, { billingMonth: 'desc' }]
+    });
+
+    let lastPaidText = '';
+    if (lastPaidInvoice) {
+      lastPaidText = `${fullThaiMonths[lastPaidInvoice.billingMonth]} ${lastPaidInvoice.billingYear + 543}`;
+    } else {
+      const sortedUnpaid = [...allUnpaidInvoices].sort((a,b) => (a.billingYear*12 + a.billingMonth) - (b.billingYear*12 + b.billingMonth));
+      if (sortedUnpaid.length > 0) {
+        const earliest = sortedUnpaid[0];
+        let prevM = earliest.billingMonth - 1;
+        let prevY = earliest.billingYear;
+        if (prevM < 1) { prevM = 12; prevY--; }
+        lastPaidText = `${fullThaiMonths[prevM]} ${prevY + 543}`;
+      } else {
+        lastPaidText = `${fullThaiMonths[invoice.billingMonth]} ${invoice.billingYear + 543}`;
+      }
+    }
+
     const flexBubble = createInvoiceFlexMessage({
       type: type, // 🌟 ส่ง type ตรงๆ ไปเลย ให้ฟังก์ชันการ์ดมันจัดการสีเอง
       houseNo: invoice.house.houseNo,
@@ -317,7 +351,8 @@ export async function POST(request: Request) {
       finalGrandTotal,
       isOverdue: type === 'OVERDUE' || totalPenalty > 0 || isPastDue || invoice.status === 'OVERDUE',
       dueDateText,
-      invoiceNo: invoice.invoiceNo || invoice.id 
+      invoiceNo: invoice.invoiceNo || invoice.id,
+      lastPaidText: lastPaidText,
     });
 
     const flexMessage: messagingApi.FlexMessage = {

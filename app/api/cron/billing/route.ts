@@ -146,7 +146,14 @@ function createInvoiceFlexMessage(data: any) {
               ]
             }
           ]
-        }
+        },
+        ...(data.lastPaidText ? [{
+          type: "box", layout: "horizontal", margin: "md", backgroundColor: "#F8FAFC", cornerRadius: "lg", paddingAll: "sm", paddingStart: "md", paddingEnd: "md", alignItems: "center", borderWidth: "light", borderColor: "#E2E8F0",
+          contents: [
+            { type: "text", text: "ชำระล่าสุดถึงงวด:", size: "xs", color: "#64748B", weight: "bold", flex: 0 },
+            { type: "text", text: data.lastPaidText, size: "xs", color: "#0F766E", weight: "bold", align: "end", flex: 1 }
+          ]
+        }] : [])
       ]
     },
     footer: {
@@ -311,6 +318,33 @@ async function handleManualSend(request: Request) {
     const headerBillingMonthText = `${fullThaiMonths[invoice.billingMonth]} ${invoice.billingYear + 543}`;
     const dueDateText = `${String(dueDateObj.getDate()).padStart(2, '0')} ${fullThaiMonths[dueDateObj.getMonth() + 1]} ${dueDateObj.getFullYear() + 543}`;
 
+    // คำนวณงวดที่ชำระล่าสุด
+    const lastPaidInvoice = await prisma.invoice.findFirst({
+      where: {
+        residentHouseId: invoice.residentHouseId,
+        status: 'PAID',
+        billingYear: { not: 9999 },
+        invoiceNo: { not: { startsWith: 'TR-' } }
+      },
+      orderBy: [{ billingYear: 'desc' }, { billingMonth: 'desc' }]
+    });
+
+    let lastPaidText = '';
+    if (lastPaidInvoice) {
+      lastPaidText = `${fullThaiMonths[lastPaidInvoice.billingMonth]} ${lastPaidInvoice.billingYear + 543}`;
+    } else {
+      const sortedUnpaid = [...allUnpaidInvoices].sort((a,b) => (a.billingYear*12 + a.billingMonth) - (b.billingYear*12 + b.billingMonth));
+      if (sortedUnpaid.length > 0) {
+        const earliest = sortedUnpaid[0];
+        let prevM = earliest.billingMonth - 1;
+        let prevY = earliest.billingYear;
+        if (prevM < 1) { prevM = 12; prevY--; }
+        lastPaidText = `${fullThaiMonths[prevM]} ${prevY + 543}`;
+      } else {
+        lastPaidText = `${fullThaiMonths[invoice.billingMonth]} ${invoice.billingYear + 543}`;
+      }
+    }
+
     const flexBubble = createInvoiceFlexMessage({
       type: type,
       houseNo: invoice.house.houseNo,
@@ -322,7 +356,8 @@ async function handleManualSend(request: Request) {
       finalGrandTotal,
       isOverdue: type === 'OVERDUE' || totalPenalty > 0 || isPastDue || invoice.status === 'OVERDUE',
       dueDateText,
-      invoiceNo: invoice.invoiceNo || invoice.id 
+      invoiceNo: invoice.invoiceNo || invoice.id,
+      lastPaidText: lastPaidText,
     });
 
     const flexMessage: messagingApi.FlexMessage = {
@@ -573,6 +608,32 @@ async function handleCronJob(request: Request) {
       const dueDateText = `${String(due.getDate()).padStart(2, '0')} ${fullThaiMonths[due.getMonth() + 1]} ${due.getFullYear() + 543}`;
       const headerBillingMonthText = `${fullThaiMonths[latestInv.billingMonth]} ${latestInv.billingYear + 543}`;
 
+      const lastPaidForThisHouse = await prisma.invoice.findFirst({
+        where: {
+          residentHouseId: sampleInv.house.id,
+          status: 'PAID',
+          billingYear: { not: 9999 },
+          invoiceNo: { not: { startsWith: 'TR-' } }
+        },
+        orderBy: [{ billingYear: 'desc' }, { billingMonth: 'desc' }]
+      });
+
+      let lastPaidText = '';
+      if (lastPaidForThisHouse) {
+        lastPaidText = `${fullThaiMonths[lastPaidForThisHouse.billingMonth]} ${lastPaidForThisHouse.billingYear + 543}`;
+      } else {
+        const sortedUnpaid = [...allUnpaidForThisHouse].sort((a,b) => (a.billingYear*12 + a.billingMonth) - (b.billingYear*12 + b.billingMonth));
+        if (sortedUnpaid.length > 0) {
+          const earliest = sortedUnpaid[0];
+          let prevM = earliest.billingMonth - 1;
+          let prevY = earliest.billingYear;
+          if (prevM < 1) { prevM = 12; prevY--; }
+          lastPaidText = `${fullThaiMonths[prevM]} ${prevY + 543}`;
+        } else {
+          lastPaidText = `${fullThaiMonths[latestInv.billingMonth]} ${latestInv.billingYear + 543}`;
+        }
+      }
+
       for (const resident of sampleInv.house.residents) {
         if (resident.lineId) {
           const flexMsg = createInvoiceFlexMessage({
@@ -586,7 +647,8 @@ async function handleCronJob(request: Request) {
             finalGrandTotal: finalGrandTotal,
             isOverdue: isOverdue,
             dueDateText: dueDateText,
-            invoiceNo: latestInv.invoiceNo || latestInv.id
+            invoiceNo: latestInv.invoiceNo || latestInv.id,
+            lastPaidText: lastPaidText,
           });
 
           await sendAutoLineMessage(resident.lineId, flexMsg);
