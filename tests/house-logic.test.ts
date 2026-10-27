@@ -42,6 +42,29 @@ export function filterNewHouseNumbers(
   return candidateNumbers.filter((num) => !existingSet.has(num.toUpperCase()));
 }
 
+// Pure helper functions for table selection state logic
+export function toggleSelectAll(currentSelected: string[], allIds: string[], checked: boolean): string[] {
+  if (checked) {
+    return [...allIds];
+  }
+  return [];
+}
+
+export function toggleSelectOne(currentSelected: string[], id: string): string[] {
+  if (currentSelected.includes(id)) {
+    return currentSelected.filter((item) => item !== id);
+  }
+  return [...currentSelected, id];
+}
+
+export function isSelectAllChecked(selectedCount: number, totalCount: number): boolean {
+  return totalCount > 0 && selectedCount === totalCount;
+}
+
+export function isSelectAllIndeterminate(selectedCount: number, totalCount: number): boolean {
+  return selectedCount > 0 && selectedCount < totalCount;
+}
+
 describe('House Management Logic & Edge Cases', () => {
   describe('Natural Alphanumeric Sorting', () => {
     it('should sort integer house numbers naturally (2 before 10)', () => {
@@ -65,7 +88,6 @@ describe('House Management Logic & Edge Cases', () => {
     it('should handle empty, null, or whitespace values safely without crashing', () => {
       const input = ['10', '', null as any, '  ', '2'];
       const sorted = [...input].sort(naturalHouseSort);
-      // Empty and whitespace should be ordered before numbers without error
       assert.equal(sorted[sorted.length - 1], '10');
       assert.equal(sorted[sorted.length - 2], '2');
     });
@@ -120,6 +142,52 @@ describe('House Management Logic & Edge Cases', () => {
     it('should return empty array if startNum > endNum', () => {
       const newHouses = filterNewHouseNumbers('99/', 10, 5, []);
       assert.deepEqual(newHouses, []);
+    });
+  });
+
+  describe('House Selection & Select All Logic', () => {
+    const allHouseIds = ['house-1', 'house-2', 'house-3'];
+
+    it('should select all house ids when select-all is checked', () => {
+      const selected = toggleSelectAll([], allHouseIds, true);
+      assert.deepEqual(selected, ['house-1', 'house-2', 'house-3']);
+      assert.equal(isSelectAllChecked(selected.length, allHouseIds.length), true);
+      assert.equal(isSelectAllIndeterminate(selected.length, allHouseIds.length), false);
+    });
+
+    it('should deselect all when select-all is unchecked', () => {
+      const selected = toggleSelectAll(['house-1', 'house-2', 'house-3'], allHouseIds, false);
+      assert.deepEqual(selected, []);
+      assert.equal(isSelectAllChecked(selected.length, allHouseIds.length), false);
+      assert.equal(isSelectAllIndeterminate(selected.length, allHouseIds.length), false);
+    });
+
+    it('should toggle single item correctly and show indeterminate when partial', () => {
+      let selected: string[] = [];
+      selected = toggleSelectOne(selected, 'house-1');
+      assert.deepEqual(selected, ['house-1']);
+      assert.equal(isSelectAllChecked(selected.length, allHouseIds.length), false);
+      assert.equal(isSelectAllIndeterminate(selected.length, allHouseIds.length), true);
+
+      selected = toggleSelectOne(selected, 'house-2');
+      assert.deepEqual(selected, ['house-1', 'house-2']);
+      assert.equal(isSelectAllChecked(selected.length, allHouseIds.length), false);
+      assert.equal(isSelectAllIndeterminate(selected.length, allHouseIds.length), true);
+
+      selected = toggleSelectOne(selected, 'house-3');
+      assert.deepEqual(selected, ['house-1', 'house-2', 'house-3']);
+      assert.equal(isSelectAllChecked(selected.length, allHouseIds.length), true);
+      assert.equal(isSelectAllIndeterminate(selected.length, allHouseIds.length), false);
+
+      selected = toggleSelectOne(selected, 'house-2');
+      assert.deepEqual(selected, ['house-1', 'house-3']);
+      assert.equal(isSelectAllChecked(selected.length, allHouseIds.length), false);
+      assert.equal(isSelectAllIndeterminate(selected.length, allHouseIds.length), true);
+    });
+
+    it('should handle empty houses list gracefully', () => {
+      assert.equal(isSelectAllChecked(0, 0), false);
+      assert.equal(isSelectAllIndeterminate(0, 0), false);
     });
   });
 });

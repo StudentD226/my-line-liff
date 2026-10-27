@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Link from 'next/link';
-import { 
-  Settings, Trash2, Plus, Edit, RefreshCw, Send, AlertCircle, Clock, 
-  Search, Filter, CheckCircle2, Receipt, X, ChevronLeft, ChevronRight, ChevronDown 
+import {
+  Settings, Trash2, Plus, Edit, RefreshCw, Send, AlertCircle, Clock,
+  Search, Filter, CheckCircle2, Receipt, X, ChevronLeft, ChevronRight, ChevronDown
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { useAdminRole } from '@/lib/admin-role';
@@ -41,14 +41,14 @@ const Toast = Swal.mixin({
 });
 
 // --- Components ---
-const CustomDropdown = React.memo(({ 
-  value, options, onChange, placeholder, icon: Icon, className 
-}: { 
-  value: string | number; 
-  options: { label: string, value: string | number }[]; 
-  onChange: (val: string | number) => void; 
-  placeholder?: string; 
-  icon?: any; 
+const CustomDropdown = React.memo(({
+  value, options, onChange, placeholder, icon: Icon, className
+}: {
+  value: string | number;
+  options: { label: string, value: string | number }[];
+  onChange: (val: string | number) => void;
+  placeholder?: string;
+  icon?: any;
   className?: string;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -189,7 +189,7 @@ export default function AdminInvoicesPage() {
   }, [filteredInvoices]);
 
   const handleSelectOne = useCallback((id: string) => {
-    setSelectedInvoices(prev => 
+    setSelectedInvoices(prev =>
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
     );
   }, []);
@@ -387,14 +387,14 @@ export default function AdminInvoicesPage() {
               Toast.fire({ icon: 'success', title: 'จัดส่งการแจ้งเตือนสำเร็จ' });
               if (type === 'OVERDUE') fetchInvoices();
             } else {
-              Swal.fire({ 
-                icon: 'info', 
-                title: 'ระบบไม่พร้อมใช้งาน', 
-                text: 'ฟังก์ชันการแจ้งเตือนยังไม่ได้ตั้งค่าการเชื่อมต่อ API', 
-                showCloseButton: true, 
+              Swal.fire({
+                icon: 'info',
+                title: 'ระบบไม่พร้อมใช้งาน',
+                text: 'ฟังก์ชันการแจ้งเตือนยังไม่ได้ตั้งค่าการเชื่อมต่อ API',
+                showCloseButton: true,
                 confirmButtonColor: '#376B64',
-                confirmButtonText: 'รับทราบ', 
-                customClass: { popup: 'rounded-[2rem] w-auto max-w-[90vw]', confirmButton: 'rounded-xl px-6 py-2.5 font-bold' } 
+                confirmButtonText: 'รับทราบ',
+                customClass: { popup: 'rounded-[2rem] w-auto max-w-[90vw]', confirmButton: 'rounded-xl px-6 py-2.5 font-bold' }
               });
             }
           });
@@ -665,7 +665,7 @@ export default function AdminInvoicesPage() {
                     <div className="h-px w-full sm:w-px sm:h-6 bg-slate-700 mx-1 my-1 sm:my-0" />
                   </>
                 )}
-                
+
                 <div className="flex flex-row w-full sm:w-auto gap-2">
                   <button onClick={() => handleBulkNotify('SEND')} className="flex-1 sm:flex-none flex justify-center items-center px-3 sm:px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 text-xs font-bold rounded-xl transition active:scale-[0.98] whitespace-nowrap"><Send size={14} className="mr-1.5 shrink-0" /> นำส่งใบแจ้งหนี้</button>
                   <button onClick={() => handleBulkNotify('REMINDER')} className="flex-1 sm:flex-none flex justify-center items-center px-3 sm:px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-orange-400 border border-slate-700 text-xs font-bold rounded-xl transition active:scale-[0.98] whitespace-nowrap"><Clock size={14} className="mr-1.5 shrink-0" /> แจ้งเตือนล่วงหน้า</button>
@@ -687,7 +687,7 @@ export default function AdminInvoicesPage() {
                       checked={selectedInvoices.length === filteredInvoices.length && filteredInvoices.length > 0}
                     />
                   </th>
-                  <th className="py-4 px-2 text-sm font-bold tracking-wide text-center whitespace-nowrap">ยูนิตอ้างอิง</th>
+                  <th className="py-4 px-2 text-sm font-bold tracking-wide text-center whitespace-nowrap">บ้านเลขที่</th>
                   <th className="py-4 px-2 text-sm font-bold tracking-wide text-center whitespace-nowrap">รอบการเรียกเก็บเงิน</th>
                   <th className="py-4 px-2 text-sm font-bold tracking-wide text-center whitespace-nowrap">ยอดชำระดำเนินการ</th>
                   <th className="py-4 px-2 text-sm font-bold tracking-wide text-center whitespace-nowrap">สถานะปัจจุบัน</th>
@@ -836,38 +836,35 @@ export default function AdminInvoicesPage() {
 
                         <td className="py-4 px-4 border-l border-slate-50 text-center whitespace-nowrap min-w-[320px]">
                           <div className="flex flex-nowrap items-center justify-center gap-1.5">
-                            <button 
-                              onClick={() => handleNotify(inv.id, 'SEND')} 
+                            <button
+                              onClick={() => handleNotify(inv.id, 'SEND')}
                               disabled={inv.status === 'PAID'}
-                              className={`flex items-center px-3 py-1.5 rounded-xl text-[11px] font-bold transition border whitespace-nowrap shadow-sm ${
-                                inv.status === 'PAID' 
-                                ? 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed opacity-60' 
+                              className={`flex items-center px-3 py-1.5 rounded-xl text-[11px] font-bold transition border whitespace-nowrap shadow-sm ${inv.status === 'PAID'
+                                ? 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed opacity-60'
                                 : 'bg-blue-50 hover:bg-blue-100 text-blue-600 border-blue-100 active:scale-95'
-                              }`}
+                                }`}
                             >
                               <Send size={12} className="mr-1 shrink-0" /> ส่งใบแจ้งหนี้
                             </button>
 
-                            <button 
-                              onClick={() => handleNotify(inv.id, 'REMINDER')} 
+                            <button
+                              onClick={() => handleNotify(inv.id, 'REMINDER')}
                               disabled={inv.status === 'PAID'}
-                              className={`flex items-center px-3 py-1.5 rounded-xl text-[11px] font-bold transition border whitespace-nowrap shadow-sm ${
-                                inv.status === 'PAID' 
-                                ? 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed opacity-60' 
+                              className={`flex items-center px-3 py-1.5 rounded-xl text-[11px] font-bold transition border whitespace-nowrap shadow-sm ${inv.status === 'PAID'
+                                ? 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed opacity-60'
                                 : 'bg-orange-50 hover:bg-orange-100 text-orange-600 border-orange-100 active:scale-95'
-                              }`}
+                                }`}
                             >
-                              <Clock size={12} className="mr-1 shrink-0" /> ทวงถามล่วงหน้า
+                              <Clock size={12} className="mr-1 shrink-0" /> ทวงถาม
                             </button>
 
-                            <button 
-                              onClick={() => handleNotify(inv.id, 'OVERDUE')} 
+                            <button
+                              onClick={() => handleNotify(inv.id, 'OVERDUE')}
                               disabled={inv.status === 'PAID'}
-                              className={`flex items-center px-3 py-1.5 rounded-xl text-[11px] font-bold transition border whitespace-nowrap shadow-sm ${
-                                inv.status === 'PAID' 
-                                ? 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed opacity-60' 
+                              className={`flex items-center px-3 py-1.5 rounded-xl text-[11px] font-bold transition border whitespace-nowrap shadow-sm ${inv.status === 'PAID'
+                                ? 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed opacity-60'
                                 : 'bg-rose-50 hover:bg-rose-100 text-rose-600 border-rose-100 active:scale-95'
-                              }`}
+                                }`}
                             >
                               <AlertCircle size={12} className="mr-1 shrink-0" /> แจ้งยอดค้างชำระ
                             </button>
