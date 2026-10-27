@@ -104,13 +104,15 @@ export async function GET() {
       }
     }
 
-    // รวมบิลชำระล่วงหน้า (ADV-) ที่มีสถานะ PAID
+    // รวมบิลชำระล่วงหน้า (ADV-) ที่มีสถานะ PAID หรือ PARTIAL
     const advancePaidInvoices = initInvoices.filter(
-      (i) => i.invoiceNo.startsWith('ADV-') && i.status === 'PAID'
+      (i) => i.invoiceNo.startsWith('ADV-') && (i.status === 'PAID' || i.status === 'PARTIAL')
     );
     for (const adv of advancePaidInvoices) {
-      paidInvoicesCount += 1;
-      totalPaidAmount += Number(adv.paidAmount) || Number(adv.totalAmount) || 0;
+      if (adv.status === 'PAID') {
+        paidInvoicesCount += 1;
+      }
+      totalPaidAmount += Number(adv.paidAmount) || (adv.status === 'PAID' ? Number(adv.totalAmount) : 0);
     }
 
     // รวมบิลอื่นในระบบที่มีสถานะ PAID (ถ้ามี)
@@ -334,7 +336,7 @@ export async function POST(req: Request) {
           totalAmount: number;
           paidAmount: number;
           dueDate: Date;
-          status: 'OVERDUE' | 'PAID';
+          status: 'OVERDUE' | 'PAID' | 'PARTIAL';
           paidAt?: Date | null;
           isNotified?: boolean;
           residentHouseId: string;
@@ -366,24 +368,29 @@ export async function POST(req: Request) {
             });
           }
 
-          // 2. 🌟 งวดชำระล่วงหน้า / จ่ายเกินรอบบิล (สถานะ PAID)
+          // 2. 🌟 งวดชำระล่วงหน้า / จ่ายเกินรอบบิล (สถานะ PAID หรือ PARTIAL ตามยอดเงินที่ตัดชำระจริง)
           if (houseData.advancePeriods && houseData.advancePeriods.length > 0) {
             for (const adv of houseData.advancePeriods) {
               const mPad = String(adv.billingMonth).padStart(2, '0');
               const invoiceNo = `ADV-${cleanHouse}-${mPad}${adv.billingYear}`;
               const dueDate = new Date(adv.billingYear, adv.billingMonth - 1, 7, 23, 59, 59);
 
+              const base = Number(adv.baseAmount) || Number(adv.amount) || 0;
+              const paid = Number(adv.paidAmount !== undefined ? adv.paidAmount : adv.amount) || 0;
+              const isPaid = paid >= base;
+              const status: 'PAID' | 'PARTIAL' = adv.status || (isPaid ? 'PAID' : 'PARTIAL');
+
               invoicesToInsert.push({
                 invoiceNo,
                 billingYear: adv.billingYear,
                 billingMonth: adv.billingMonth,
-                baseAmount: adv.amount,
+                baseAmount: base,
                 penaltyAmount: 0,
-                totalAmount: adv.amount,
-                paidAmount: adv.amount,
+                totalAmount: base,
+                paidAmount: paid,
                 dueDate,
-                status: 'PAID',
-                paidAt: new Date(),
+                status,
+                paidAt: paid > 0 ? new Date() : null,
                 isNotified: true,
                 residentHouseId: houseId,
               });

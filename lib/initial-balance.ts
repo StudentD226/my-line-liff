@@ -20,7 +20,11 @@ export interface DebtPeriodInput {
 export interface AdvancePeriodInput {
   billingYear: number;
   billingMonth: number;
-  amount: number;
+  amount: number; // ยอดชำระจริง (paidAmount)
+  baseAmount?: number; // อัตราเต็มงวดตามเรทของบ้าน (เช่น 1000)
+  paidAmount?: number; // ยอดที่ตัดชำระ (เช่น 1000 หรือ 500)
+  remainingAmount?: number; // ยอดคงเหลือค้างในงวดนั้น (เช่น 0 หรือ 500)
+  status?: 'PAID' | 'PARTIAL'; // สถานะบิล ชำระครบ หรือ ชำระบางส่วน
 }
 
 export interface HouseMigrationInput {
@@ -121,7 +125,10 @@ export function processInitialBalances(
     if (rawAdvancePeriods.length > 0) {
       advanceHouses++;
       totalAdvanceMonths += rawAdvancePeriods.length;
-      totalAdvanceAmount += rawAdvancePeriods.reduce((sum, a) => sum + (Number(a.amount) || 0), 0);
+      totalAdvanceAmount += rawAdvancePeriods.reduce(
+        (sum, a) => sum + (Number(a.paidAmount !== undefined ? a.paidAmount : a.amount) || 0),
+        0
+      );
     }
 
     if (rawPeriods.length === 0) {

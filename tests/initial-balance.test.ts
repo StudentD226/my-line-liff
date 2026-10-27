@@ -264,5 +264,43 @@ describe('Initial Balance & Debt Calculation Logic', () => {
       assert.equal(periods[0].billingYear, 2025);
       assert.equal(periods[0].principalAmount, 600);
     });
+
+    it('should correctly process advance periods with full and partial payments', () => {
+      const items: HouseMigrationInput[] = [
+        {
+          houseNo: '333/12',
+          unpaidPeriods: [],
+          advancePeriods: [
+            {
+              billingYear: 2026,
+              billingMonth: 11,
+              amount: 1000,
+              baseAmount: 1000,
+              paidAmount: 1000,
+              remainingAmount: 0,
+              status: 'PAID',
+            },
+            {
+              billingYear: 2026,
+              billingMonth: 12,
+              amount: 500,
+              baseAmount: 1000,
+              paidAmount: 500,
+              remainingAmount: 500,
+              status: 'PARTIAL',
+            },
+          ],
+        },
+      ];
+
+      const res = processInitialBalances(items, '2026-10-27');
+      assert.equal(res.advanceProperties, 1);
+      assert.equal(res.totalAdvanceMonths, 2);
+      assert.equal(res.totalAdvanceAmount, 1500);
+      assert.equal(res.details[0].advancePeriods?.length, 2);
+      assert.equal(res.details[0].advancePeriods?.[0].status, 'PAID');
+      assert.equal(res.details[0].advancePeriods?.[1].status, 'PARTIAL');
+      assert.equal(res.details[0].advancePeriods?.[1].remainingAmount, 500);
+    });
   });
 });
