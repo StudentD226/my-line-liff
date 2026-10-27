@@ -195,6 +195,30 @@ export async function POST(req: Request) {
           ? `${houseList} และอีก ${calculation.details.length - 30} หลัง`
           : houseList;
 
+        const fullThaiMonths = [
+          '', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+          'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม',
+        ];
+
+        let detailedNote = '';
+        if (calculation.overdueProperties > 0) {
+          detailedNote = `บันทึกค้างชำระ ${calculation.overdueProperties} หลัง (รวม ${insertedInvoicesCount} งวด)`;
+          if (parsedItems.length === 1 && parsedItems[0].unpaidPeriods.length > 0) {
+            const periods = parsedItems[0].unpaidPeriods;
+            const minP = periods[0];
+            const maxP = periods[periods.length - 1];
+            let prevM = minP.billingMonth - 1;
+            let prevY = minP.billingYear;
+            if (prevM < 1) { prevM = 12; prevY--; }
+            detailedNote += ` [ค้างงวด ${fullThaiMonths[minP.billingMonth]} ${minP.billingYear + 543} ถึง ${fullThaiMonths[maxP.billingMonth]} ${maxP.billingYear + 543} · ชำระล่าสุดถึงงวด ${fullThaiMonths[prevM]} ${prevY + 543}]`;
+          }
+        } else {
+          const cutoffObj = new Date(cutoffDate);
+          const cMonth = cutoffObj.getMonth() + 1;
+          const cYear = cutoffObj.getFullYear();
+          detailedNote = `ชำระครบถ้วนถึงรอบบิล ${fullThaiMonths[cMonth]} ${cYear + 543} (ตัดยอด ณ วันที่ ${cutoffDate})`;
+        }
+
         await tx.initialBalanceHistory.create({
           data: {
             actionType,
@@ -207,9 +231,7 @@ export async function POST(req: Request) {
             totalPrincipalDebt: calculation.totalPrincipalDebt,
             totalPenaltyDebt: calculation.totalPenaltyDebt,
             grandTotalDebt: calculation.grandTotalDebt,
-            note: calculation.overdueProperties > 0
-              ? `บันทึกค้างชำระ ${calculation.overdueProperties} หลัง (รวม ${insertedInvoicesCount} งวด)`
-              : `บันทึกชำระครบถ้วนทั้งหมด ${touchedHousesCount} หลัง (฿0.00)`,
+            note: detailedNote,
             recordedBy: 'Admin',
           },
         });

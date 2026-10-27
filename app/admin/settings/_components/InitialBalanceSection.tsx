@@ -1752,8 +1752,15 @@ export default function InitialBalanceSection({
                               : 'นำเข้าไฟล์ CSV'}
                           </span>
                         </td>
-                        <td className="py-3 px-4 whitespace-nowrap font-black text-slate-800">
-                          {item.houseNo ? `บ้านเลขที่ ${item.houseNo}` : `${item.houseCount} หลัง`}
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <span className="font-black text-slate-800 block">
+                            {item.houseNo ? `บ้านเลขที่ ${item.houseNo}` : `${item.houseCount} หลัง`}
+                          </span>
+                          {item.note && (
+                            <span className="text-[10px] text-slate-500 font-normal block max-w-sm truncate" title={item.note}>
+                              {item.note}
+                            </span>
+                          )}
                         </td>
                         <td className="py-3 px-4 text-center whitespace-nowrap">
                           {item.periodCount > 0 ? (

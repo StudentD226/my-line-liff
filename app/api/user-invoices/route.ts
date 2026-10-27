@@ -90,6 +90,38 @@ export async function GET(request: Request) {
       };
     });
 
+    const fullThaiMonths = [
+      '', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+      'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+    ];
+
+    // หารอบบิลที่ชำระแล้วล่าสุด
+    const paidInvoices = house.invoices.filter((inv) => inv.status === 'PAID');
+    const sortedPaid = [...paidInvoices].sort((a, b) => (b.billingYear * 12 + b.billingMonth) - (a.billingYear * 12 + a.billingMonth));
+    const lastPaid = sortedPaid.length > 0 ? sortedPaid[0] : null;
+
+    // หารอบบิลที่ค้างชำระเริ่มต้น
+    const unpaidInvoices = updatedInvoices.filter((inv) => ['OVERDUE', 'PENDING', 'PARTIAL', 'REJECTED'].includes(inv.status));
+    const sortedUnpaid = [...unpaidInvoices].sort((a, b) => (a.billingYear * 12 + a.billingMonth) - (b.billingYear * 12 + b.billingMonth));
+    const earliestUnpaid = sortedUnpaid.length > 0 ? sortedUnpaid[0] : null;
+
+    let lastPaidPeriodText = 'ยังไม่มีประวัติการชำระ';
+    if (lastPaid) {
+      lastPaidPeriodText = `${fullThaiMonths[lastPaid.billingMonth]} ${lastPaid.billingYear + 543}`;
+    } else if (earliestUnpaid) {
+      // คำนวณรอบบิลก่อนหน้างวดที่เริ่มค้าง
+      let prevM = earliestUnpaid.billingMonth - 1;
+      let prevY = earliestUnpaid.billingYear;
+      if (prevM < 1) { prevM = 12; prevY--; }
+      lastPaidPeriodText = `ก่อนงวด ${fullThaiMonths[earliestUnpaid.billingMonth]} ${earliestUnpaid.billingYear + 543} (ชำระถึง ${fullThaiMonths[prevM]} ${prevY + 543})`;
+    } else if (updatedInvoices.length > 0) {
+      lastPaidPeriodText = 'ชำระครบถ้วนทุกรอบบิลแล้ว';
+    }
+
+    const lastPaidDateText = lastPaid?.paidAt
+      ? new Date(lastPaid.paidAt).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' })
+      : (lastPaid?.transferDate || null);
+
     return NextResponse.json({
       success: true,
       data: {
@@ -101,7 +133,19 @@ export async function GET(request: Request) {
         },
         invoices: updatedInvoices,
         totalUnpaid, // ส่งยอดรวมเหมาจ่ายแบบกลมๆ ไปอัปเดตบนหน้า UI วงกลม
-        penaltyRate: flatPenaltyPerMonth
+        penaltyRate: flatPenaltyPerMonth,
+        lastPaidInfo: {
+          periodText: lastPaidPeriodText,
+          paidAt: lastPaid?.paidAt || null,
+          paidDateText: lastPaidDateText,
+          transferDate: lastPaid?.transferDate || null,
+          transferTime: lastPaid?.transferTime || null,
+          billingMonth: lastPaid?.billingMonth || null,
+          billingYear: lastPaid?.billingYear || null,
+        },
+        debtStatusText: unpaidInvoices.length === 0
+          ? 'ชำระครบถ้วนทุกรอบบิลแล้ว'
+          : `ค้างชำระตั้งแต่รอบบิล ${fullThaiMonths[earliestUnpaid?.billingMonth || 1]} ${(earliestUnpaid?.billingYear || 0) + 543} เป็นต้นมา`,
       }
     });
 
