@@ -20,6 +20,8 @@ export async function GET() {
       take: 50,
     });
 
+    const totalHouses = await prisma.house.count();
+
     const initInvoices = await prisma.invoice.findMany({
       where: { invoiceNo: { startsWith: 'INIT-' } },
       select: {
@@ -28,30 +30,102 @@ export async function GET() {
         baseAmount: true,
         penaltyAmount: true,
         totalAmount: true,
+        paidAmount: true,
         status: true,
         house: { select: { houseNo: true } },
       },
     });
 
-    const distinctHouses = new Set(initInvoices.map((i) => i.house?.houseNo).filter(Boolean));
-    const totalPrincipal = initInvoices.reduce((sum, i) => sum + (Number(i.baseAmount) || 0), 0);
-    const totalPenalty = initInvoices.reduce((sum, i) => sum + (Number(i.penaltyAmount) || 0), 0);
-    const grandTotal = initInvoices.reduce((sum, i) => sum + (Number(i.totalAmount) || 0), 0);
+    // 1. ข้อมูลบิลยอดยกมาที่ยังค้างชำระ (Overdue / Pending)
+    const overdueInitInvoices = initInvoices.filter((i) =>
+      ['OVERDUE', 'PENDING', 'PARTIAL'].includes(i.status)
+    );
+    const distinctHouses = new Set(overdueInitInvoices.map((i) => i.house?.houseNo).filter(Boolean));
+    const totalPrincipal = overdueInitInvoices.reduce((sum, i) => sum + (Number(i.baseAmount) || 0), 0);
+    const totalPenalty = overdueInitInvoices.reduce((sum, i) => sum + (Number(i.penaltyAmount) || 0), 0);
+    const grandTotal = overdueInitInvoices.reduce((sum, i) => sum + (Number(i.totalAmount) || 0), 0);
+
+    // 2. ข้อมูลบิลที่จ่ายครบแล้ว (PAID) ทั้งหมดในระบบ (ไม่รวมบิลทดสอบ TR-)
+    const allPaidInvoices = await prisma.invoice.findMany({
+      where: {
+        status: 'PAID',
+        invoiceNo: { not: { startsWith: 'TR-' } },
+      },
+      select: {
+        id: true,
+        invoiceNo: true,
+        baseAmount: true,
+        paidAmount: true,
+        totalAmount: true,
+      },
+    });
+
+    const totalPaidInvoices = allPaidInvoices.length;
+    const totalPaidAmount = allPaidInvoices.reduce((sum, i) => {
+      const paid = Number(i.paidAmount) || 0;
+      const total = Number(i.totalAmount) || 0;
+      return sum + (paid > 0 ? paid : total);
+    }, 0);
+
+    // บิลยอดยกมาที่ได้รับชำระแล้ว (ถ้ามี)
+    const paidInitInvoices = initInvoices.filter((i) => i.status === 'PAID');
+    const paidInitCount = paidInitInvoices.length;
+    const paidInitAmount = paidInitInvoices.reduce((sum, i) => {
+      const paid = Number(i.paidAmount) || 0;
+      const total = Number(i.totalAmount) || 0;
+      return sum + (paid > 0 ? paid : total);
+    }, 0);
+
+    const totalHousesWithDebt = distinctHouses.size;
+    const fullyPaidHousesCount = Math.max(0, totalHouses - totalHousesWithDebt);
 
     return NextResponse.json({
       success: true,
       history,
       summary: {
-        totalHousesWithDebt: distinctHouses.size,
-        totalInvoices: initInvoices.length,
+        totalHouses,
+        totalHousesWithDebt,
+        fullyPaidHousesCount,
+        totalInvoices: overdueInitInvoices.length,
         totalPrincipal,
         totalPenalty,
         grandTotal,
+        // 🌟 ข้อมูลที่จ่ายครบแล้ว
+        paidInvoicesCount: totalPaidInvoices,
+        totalPaidAmount,
+        paidInitCount,
+        paidInitAmount,
       },
     });
   } catch (error: any) {
     console.error('Error fetching initial balance history:', error);
     return NextResponse.json({ success: false, error: 'ไม่สามารถดึงประวัติการตั้งค่ายอดยกมาได้' }, { status: 500 });
+  }
+}
+
+// ========================================================
+// 🔴 DELETE: รีเซ็ตข้อมูลยอดยกมาทั้งหมด (ล้าง INIT- และประวัติทั้งหมด)
+// ========================================================
+export async function DELETE() {
+  try {
+    const deletedInvoices = await prisma.invoice.deleteMany({
+      where: { invoiceNo: { startsWith: 'INIT-' } },
+    });
+
+    const deletedHistory = await prisma.initialBalanceHistory.deleteMany({});
+
+    return NextResponse.json({
+      success: true,
+      message: `รีเซ็ตข้อมูลยอดยกมาทั้งหมดสำเร็จ (ลบบิลยอดยกมา ${deletedInvoices.count} รายการ, ล้างประวัติ ${deletedHistory.count} รายการ)`,
+      deletedInvoicesCount: deletedInvoices.count,
+      deletedHistoryCount: deletedHistory.count,
+    });
+  } catch (error: any) {
+    console.error('Error resetting initial balances:', error);
+    return NextResponse.json(
+      { success: false, error: error.message || 'ไม่สามารถรีเซ็ตข้อมูลยอดยกมาได้' },
+      { status: 500 }
+    );
   }
 }
 
@@ -66,13 +140,27 @@ export async function POST(req: Request) {
       penaltyCalcMode = 'FLAT_PER_MONTH',
       flatPenaltyPerMonth,
     } = body as {
-      action?: 'preview' | 'confirm';
+      action?: 'preview' | 'confirm' | 'reset_all';
       cutoffDate?: string;
       items?: HouseMigrationInput[];
       rawCsvText?: string;
       penaltyCalcMode?: PenaltyCalcMode;
       flatPenaltyPerMonth?: number;
     };
+
+    // รองรับการรีเซ็ตข้อมูลผ่าน POST ด้วย
+    if (action === 'reset_all') {
+      const deletedInvoices = await prisma.invoice.deleteMany({
+        where: { invoiceNo: { startsWith: 'INIT-' } },
+      });
+      const deletedHistory = await prisma.initialBalanceHistory.deleteMany({});
+      return NextResponse.json({
+        success: true,
+        message: `รีเซ็ตข้อมูลยอดยกมาทั้งหมดสำเร็จ (ลบบิลยอดยกมา ${deletedInvoices.count} รายการ, ล้างประวัติ ${deletedHistory.count} รายการ)`,
+        deletedInvoicesCount: deletedInvoices.count,
+        deletedHistoryCount: deletedHistory.count,
+      });
+    }
 
     if (!cutoffDate) {
       return NextResponse.json(
@@ -122,67 +210,96 @@ export async function POST(req: Request) {
 
     await prisma.$transaction(
       async (tx) => {
-        for (const houseData of calculation.details) {
-          touchedHousesCount++;
+        // ดึงหรือสร้าง House ID สำหรับทุกบ้านที่เกี่ยวข้องในรอบนี้
+        const houseNos = Array.from(new Set(calculation.details.map((d) => d.houseNo.trim())));
 
-          // ตรวจสอบหรือสร้างบ้าน
-          const house = await tx.house.upsert({
-            where: { houseNo: houseData.houseNo },
-            update: {},
-            create: {
-              houseNo: houseData.houseNo,
+        const existingHouses = await tx.house.findMany({
+          where: { houseNo: { in: houseNos } },
+          select: { id: true, houseNo: true },
+        });
+
+        const houseMap = new Map<string, string>(
+          existingHouses.map((h) => [h.houseNo, h.id])
+        );
+
+        // สร้างบ้านที่ยังไม่มีในระบบ (upsert/create)
+        const missingHouseNos = houseNos.filter((no) => !houseMap.has(no));
+        for (const hNo of missingHouseNos) {
+          const created = await tx.house.create({
+            data: {
+              houseNo: hNo,
               feeType: 'FIXED',
               feeRate: 0,
             },
+            select: { id: true, houseNo: true },
           });
+          houseMap.set(created.houseNo, created.id);
+        }
 
-          const cleanHouse = houseData.houseNo.replace(/[^a-zA-Z0-9]/g, '_');
-          const currentNewInvoiceNos = houseData.periods.map(
-            (p) => `INIT-${cleanHouse}-${p.billingYear}-${String(p.billingMonth).padStart(2, '0')}`
-          );
+        const touchedHouseIds = Array.from(houseMap.values());
 
-          // ลบบิลยอดยกมา (INIT-) เดิมของบ้านนี้ที่ค้างชำระอยู่ แต่ไม่ได้อยู่ในรายการใหม่
-          // (เช่น กรณีตั้งค่าว่าจ่ายครบแล้ว หรือลดจำนวนงวดค้างชำระ)
+        // 🌟 ลบบิลยอดยกมา (INIT-) เดิมที่ยังค้างชำระ (OVERDUE/PENDING) ของบ้านเหล่านี้ทั้งหมดในครั้งเดียว
+        // หมายเหตุ: บิลที่สถานะ PAID (ชำระแล้ว) หรือ CHECKING (กำลังตรวจสลิป) จะไม่ถูกลบเด็ดขาด
+        if (touchedHouseIds.length > 0) {
           await tx.invoice.deleteMany({
             where: {
-              residentHouseId: house.id,
-              invoiceNo: {
-                startsWith: `INIT-${cleanHouse}-`,
-                notIn: currentNewInvoiceNos,
-              },
+              residentHouseId: { in: touchedHouseIds },
+              invoiceNo: { startsWith: 'INIT-' },
               status: { in: ['OVERDUE', 'PENDING'] },
             },
           });
+        }
 
-          // บันทึกบิลย้อนหลังเฉพาะงวดที่ค้าง
+        // เตรียมข้อมูล Invoices ทั้งหมดที่จะบันทึกใหม่
+        const invoicesToInsert: Array<{
+          invoiceNo: string;
+          billingYear: number;
+          billingMonth: number;
+          baseAmount: number;
+          penaltyAmount: number;
+          totalAmount: number;
+          paidAmount: number;
+          dueDate: Date;
+          status: 'OVERDUE';
+          residentHouseId: string;
+        }> = [];
+
+        for (const houseData of calculation.details) {
+          touchedHousesCount++;
+          const houseId = houseMap.get(houseData.houseNo.trim());
+          if (!houseId) continue;
+
+          const cleanHouse = houseData.houseNo.trim().replace(/[^a-zA-Z0-9]/g, '_');
+
           for (const period of houseData.periods) {
             const monthPad = String(period.billingMonth).padStart(2, '0');
             const invoiceNo = `INIT-${cleanHouse}-${period.billingYear}-${monthPad}`;
 
-            await tx.invoice.upsert({
-              where: { invoiceNo },
-              update: {
-                baseAmount: period.principalAmount,
-                penaltyAmount: period.penaltyAmount,
-                totalAmount: period.totalAmount,
-                dueDate: new Date(period.dueDate),
-                status: 'OVERDUE',
-              },
-              create: {
-                invoiceNo,
-                billingYear: period.billingYear,
-                billingMonth: period.billingMonth,
-                baseAmount: period.principalAmount,
-                penaltyAmount: period.penaltyAmount,
-                totalAmount: period.totalAmount,
-                paidAmount: 0,
-                dueDate: new Date(period.dueDate),
-                status: 'OVERDUE',
-                residentHouseId: house.id,
-              },
+            invoicesToInsert.push({
+              invoiceNo,
+              billingYear: period.billingYear,
+              billingMonth: period.billingMonth,
+              baseAmount: period.principalAmount,
+              penaltyAmount: period.penaltyAmount,
+              totalAmount: period.totalAmount,
+              paidAmount: 0,
+              dueDate: new Date(period.dueDate),
+              status: 'OVERDUE',
+              residentHouseId: houseId,
             });
+          }
+        }
 
-            insertedInvoicesCount++;
+        // 🌟 บันทึกด้วย createMany แบบ Chunk (รวดเร็วกว่า upsert ทีละแถวถึง 100 เท่า และไม่ทำให้ Transaction Timeout)
+        if (invoicesToInsert.length > 0) {
+          const CHUNK_SIZE = 500;
+          for (let i = 0; i < invoicesToInsert.length; i += CHUNK_SIZE) {
+            const chunk = invoicesToInsert.slice(i, i + CHUNK_SIZE);
+            const res = await tx.invoice.createMany({
+              data: chunk,
+              skipDuplicates: true, // ป้องกันกรณีชนกับบิลที่จ่ายแล้ว
+            });
+            insertedInvoicesCount += res.count;
           }
         }
 
@@ -240,7 +357,8 @@ export async function POST(req: Request) {
         });
       },
       {
-        timeout: 60000, // รองรับกรณีนำเข้าข้อมูลย้อนหลังจำนวนมาก
+        maxWait: 20000,
+        timeout: 60000,
       }
     );
 

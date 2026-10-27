@@ -121,12 +121,19 @@ export default function InitialBalanceSection({
   // ----------------------------------------------------
   const [historyList, setHistoryList] = useState<any[]>([]);
   const [historySummary, setHistorySummary] = useState<{
+    totalHouses?: number;
     totalHousesWithDebt: number;
+    fullyPaidHousesCount?: number;
     totalInvoices: number;
     totalPrincipal: number;
     totalPenalty: number;
     grandTotal: number;
+    paidInvoicesCount?: number;
+    totalPaidAmount?: number;
+    paidInitCount?: number;
+    paidInitAmount?: number;
   } | null>(null);
+  const [resettingAll, setResettingAll] = useState<boolean>(false);
   const [loadingHistory, setLoadingHistory] = useState<boolean>(false);
 
   const fetchHistory = useCallback(async () => {
@@ -594,6 +601,73 @@ export default function InitialBalanceSection({
       });
     } finally {
       setSubmittingMulti(false);
+    }
+  };
+
+  // 🌟 ฟังก์ชันรีเซ็ตข้อมูลยอดยกมาทั้งหมด (ลบบิล INIT- และประวัติทั้งหมด)
+  const handleResetAllInitialBalances = async () => {
+    const result = await Swal.fire({
+      ...defaultSwalConfig,
+      title: 'ยืนยันรีเซ็ตข้อมูลยอดยกมาทั้งหมด?',
+      html: `
+        <div class="text-left text-xs text-slate-600 leading-relaxed space-y-2">
+          <p>ระบบจะทำการล้างข้อมูลยอดยกมาตั้งต้นทั้งหมดในระบบ ได้แก่:</p>
+          <ul class="list-disc list-inside space-y-1 font-semibold text-slate-700">
+            <li>บิลยอดยกมา (INIT-) ทั้งหมดในฐานข้อมูล</li>
+            <li>ประวัติการตั้งค่ายอดยกมา (History Log) ทั้งหมด</li>
+          </ul>
+          <div class="mt-3 p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 font-bold text-xs flex items-center gap-2">
+            <span>⚠️</span>
+            <span>ข้อมูลที่ถูกรีเซ็ตจะไม่สามารถกู้คืนได้ และจะคืนสถานะให้สามารถบันทึกใหม่ได้</span>
+          </div>
+        </div>
+      `,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'ยืนยันรีเซ็ตทั้งหมด',
+      cancelButtonText: 'ยกเลิก',
+      confirmButtonColor: '#e11d48',
+      customClass: { popup: 'rounded-[2rem]' },
+    });
+
+    if (!result.isConfirmed) return;
+
+    setResettingAll(true);
+    Swal.fire({
+      title: 'กำลังรีเซ็ตข้อมูล...',
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading(),
+      customClass: { popup: 'rounded-[2rem]' },
+    });
+
+    try {
+      const res = await fetch('/api/admin/initial-balance', {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (data.success) {
+        await Swal.fire({
+          icon: 'success',
+          title: 'รีเซ็ตข้อมูลสำเร็จ!',
+          text: data.message || 'ระบบได้ล้างข้อมูลยอดยกมาทั้งหมดเรียบร้อยแล้ว',
+          confirmButtonColor: '#376B64',
+          customClass: { popup: 'rounded-[2rem]' },
+        });
+        onRefreshHouses?.();
+        fetchHistory();
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (err: any) {
+      Swal.fire({
+        icon: 'error',
+        title: 'เกิดข้อผิดพลาด',
+        text: err.message || 'ไม่สามารถรีเซ็ตข้อมูลได้',
+        confirmButtonColor: '#e11d48',
+        customClass: { popup: 'rounded-[2rem]' },
+      });
+    } finally {
+      setResettingAll(false);
     }
   };
 
@@ -1661,46 +1735,118 @@ export default function InitialBalanceSection({
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={fetchHistory}
-              disabled={loadingHistory}
-              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 self-start sm:self-auto shadow-sm"
-            >
-              <RefreshCw size={13} className={loadingHistory ? 'animate-spin text-[#376B64]' : ''} />
-              {loadingHistory ? 'กำลังโหลด...' : 'รีเฟรชประวัติ'}
-            </button>
+            <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+              <button
+                type="button"
+                onClick={fetchHistory}
+                disabled={loadingHistory || resettingAll}
+                className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
+              >
+                <RefreshCw size={13} className={loadingHistory ? 'animate-spin text-[#376B64]' : ''} />
+                {loadingHistory ? 'กำลังโหลด...' : 'รีเฟรชประวัติ'}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleResetAllInitialBalances}
+                disabled={loadingHistory || resettingAll}
+                className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/80 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 shadow-sm hover:shadow active:scale-95"
+              >
+                <Trash2 size={13} className="text-rose-600" />
+                {resettingAll ? 'กำลังรีเซ็ต...' : 'รีเซ็ตข้อมูลยอดยกมาทั้งหมด'}
+              </button>
+            </div>
           </div>
 
           {/* Summary Cards */}
           {historySummary && (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
-              <div className="p-4 bg-gradient-to-br from-slate-50 to-white rounded-2xl border border-slate-200/80 shadow-sm">
-                <span className="text-[11px] font-bold text-slate-500 block">บ้านที่มียอดค้างยกมา</span>
-                <span className="text-xl sm:text-2xl font-black text-slate-800 mt-1 block">
-                  {historySummary.totalHousesWithDebt.toLocaleString()} <span className="text-xs font-bold text-slate-500">หลัง</span>
-                </span>
+            <div className="space-y-4 mb-6">
+              {/* 🟢 แถวที่ 1: สรุปข้อมูลที่ชำระครบถ้วน / ได้รับชำระเงินแล้ว (Paid & Settled Status) */}
+              <div className="p-4 sm:p-5 bg-gradient-to-br from-emerald-50/70 via-teal-50/30 to-white rounded-2xl border border-emerald-200/80 shadow-sm">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-black text-emerald-800 flex items-center gap-1.5">
+                    <CheckCircle2 size={16} className="text-emerald-600" />
+                    สรุปข้อมูลที่ชำระครบถ้วน / ได้รับชำระแล้ว (Paid & Settled)
+                  </span>
+                  <span className="text-[11px] font-bold px-2 py-0.5 bg-emerald-100/90 text-emerald-800 rounded-full border border-emerald-200/50">
+                    ชำระเงินเรียบร้อย
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                  <div className="p-3.5 bg-white/95 backdrop-blur-sm rounded-xl border border-emerald-100/80 shadow-xs">
+                    <span className="text-[11px] font-bold text-emerald-700 block">ยอดเงินที่จ่ายครบแล้วรวม</span>
+                    <span className="text-xl sm:text-2xl font-black text-emerald-900 mt-1 block">
+                      ฿{(historySummary.totalPaidAmount ?? 0).toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+                    </span>
+                    <span className="text-[10px] font-semibold text-emerald-600/80 mt-0.5 block">
+                      ยอดเงินที่ได้รับชำระแล้วทั้งหมดในระบบ
+                    </span>
+                  </div>
+
+                  <div className="p-3.5 bg-white/95 backdrop-blur-sm rounded-xl border border-teal-100/80 shadow-xs">
+                    <span className="text-[11px] font-bold text-teal-700 block">จำนวนงวดที่จ่ายเข้ามาแล้ว</span>
+                    <span className="text-xl sm:text-2xl font-black text-teal-900 mt-1 block">
+                      {(historySummary.paidInvoicesCount ?? 0).toLocaleString()} <span className="text-xs font-bold text-teal-600">งวด</span>
+                    </span>
+                    <span className="text-[10px] font-semibold text-teal-600/80 mt-0.5 block">
+                      งวดบิลที่สถานะชำระเรียบร้อย (PAID)
+                    </span>
+                  </div>
+
+                  <div className="p-3.5 bg-white/95 backdrop-blur-sm rounded-xl border border-[#376B64]/20 shadow-xs">
+                    <span className="text-[11px] font-bold text-[#376B64] block">บ้านที่ชำระครบถ้วน (ไม่มีหนี้ค้าง)</span>
+                    <span className="text-xl sm:text-2xl font-black text-[#2A524C] mt-1 block">
+                      {(historySummary.fullyPaidHousesCount ?? 0).toLocaleString()} <span className="text-xs font-bold text-[#376B64]">หลัง</span>
+                    </span>
+                    <span className="text-[10px] font-semibold text-slate-500 mt-0.5 block">
+                      จากบ้านทั้งหมด {(historySummary.totalHouses ?? houses.length).toLocaleString()} หลัง
+                    </span>
+                  </div>
+                </div>
               </div>
 
-              <div className="p-4 bg-gradient-to-br from-blue-50/50 to-white rounded-2xl border border-blue-100 shadow-sm">
-                <span className="text-[11px] font-bold text-blue-600 block">จำนวนงวดค้างชำระรวม</span>
-                <span className="text-xl sm:text-2xl font-black text-blue-900 mt-1 block">
-                  {historySummary.totalInvoices.toLocaleString()} <span className="text-xs font-bold text-blue-600">งวด</span>
-                </span>
-              </div>
+              {/* 🔴 แถวที่ 2: สรุปยอดหนี้ค้างชำระยกมา (Overdue Debts) */}
+              <div>
+                <div className="flex items-center justify-between mb-2 px-1">
+                  <span className="text-xs font-black text-slate-700 flex items-center gap-1.5">
+                    <AlertCircle size={15} className="text-amber-600" />
+                    สรุปยอดหนี้ค้างชำระยกมา (Overdue Debts)
+                  </span>
+                  <span className="text-[11px] font-bold text-slate-500">
+                    รายการหนี้ย้อนหลังที่ยังค้างชำระ
+                  </span>
+                </div>
 
-              <div className="p-4 bg-gradient-to-br from-amber-50/50 to-white rounded-2xl border border-amber-100 shadow-sm">
-                <span className="text-[11px] font-bold text-amber-700 block">เงินต้นค้างชำระรวม</span>
-                <span className="text-xl sm:text-2xl font-black text-amber-800 mt-1 block">
-                  ฿{historySummary.totalPrincipal.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
-                </span>
-              </div>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                  <div className="p-4 bg-gradient-to-br from-slate-50 to-white rounded-2xl border border-slate-200/80 shadow-sm">
+                    <span className="text-[11px] font-bold text-slate-500 block">บ้านที่มียอดค้างยกมา</span>
+                    <span className="text-xl sm:text-2xl font-black text-slate-800 mt-1 block">
+                      {historySummary.totalHousesWithDebt.toLocaleString()} <span className="text-xs font-bold text-slate-500">หลัง</span>
+                    </span>
+                  </div>
 
-              <div className="p-4 bg-gradient-to-br from-[#376B64]/10 to-[#376B64]/5 rounded-2xl border border-[#376B64]/20 shadow-sm">
-                <span className="text-[11px] font-bold text-[#376B64] block">ยอดหนี้ยกมารวมทั้งสิ้น</span>
-                <span className="text-xl sm:text-2xl font-black text-[#2A524C] mt-1 block">
-                  ฿{historySummary.grandTotal.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
-                </span>
+                  <div className="p-4 bg-gradient-to-br from-blue-50/50 to-white rounded-2xl border border-blue-100 shadow-sm">
+                    <span className="text-[11px] font-bold text-blue-600 block">จำนวนงวดค้างชำระรวม</span>
+                    <span className="text-xl sm:text-2xl font-black text-blue-900 mt-1 block">
+                      {historySummary.totalInvoices.toLocaleString()} <span className="text-xs font-bold text-blue-600">งวด</span>
+                    </span>
+                  </div>
+
+                  <div className="p-4 bg-gradient-to-br from-amber-50/50 to-white rounded-2xl border border-amber-100 shadow-sm">
+                    <span className="text-[11px] font-bold text-amber-700 block">เงินต้นค้างชำระรวม</span>
+                    <span className="text-xl sm:text-2xl font-black text-amber-800 mt-1 block">
+                      ฿{historySummary.totalPrincipal.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+
+                  <div className="p-4 bg-gradient-to-br from-[#376B64]/10 to-[#376B64]/5 rounded-2xl border border-[#376B64]/20 shadow-sm">
+                    <span className="text-[11px] font-bold text-[#376B64] block">ยอดหนี้ยกมารวมทั้งสิ้น</span>
+                    <span className="text-xl sm:text-2xl font-black text-[#2A524C] mt-1 block">
+                      ฿{historySummary.grandTotal.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           )}
