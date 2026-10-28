@@ -51,6 +51,48 @@ export async function GET() {
         (inv) => `${thaiMonths[inv.billingMonth - 1]} ${inv.billingYear + 543}`
       );
 
+      const overdueDetails = unpaidInvoices.map((inv) => {
+        const base = truncateDecimals(Number(inv.baseAmount ?? 0));
+        const paid = truncateDecimals(Number(inv.paidAmount ?? 0));
+
+        const isInitialBalance = inv.invoiceNo && inv.invoiceNo.startsWith("INIT-");
+        let penalty = isInitialBalance
+          ? truncateDecimals(Number(inv.penaltyAmount ?? 0))
+          : (isPenaltyDisabled ? 0 : truncateDecimals(Number(inv.penaltyAmount ?? 0)));
+
+        if (!isPenaltyDisabled && !isInitialBalance && ["PENDING", "OVERDUE", "PARTIAL"].includes(inv.status)) {
+          const dueDate = new Date(inv.dueDate);
+          dueDate.setHours(0, 0, 0, 0);
+
+          if (today > dueDate) {
+            const diffTime = today.getTime() - dueDate.getTime();
+            const overdueDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            const overdueMonths = Math.floor(overdueDays / 30);
+            penalty = truncateDecimals(overdueMonths * penaltyRatePerMonth);
+          }
+        }
+
+        const totalDue = truncateDecimals(base + penalty);
+        const outstanding = truncateDecimals(totalDue - paid);
+
+        return {
+          id: inv.id,
+          invoiceNo: inv.invoiceNo,
+          billingMonth: inv.billingMonth,
+          billingYear: inv.billingYear,
+          yearThai: inv.billingYear + 543,
+          monthName: thaiMonths[inv.billingMonth - 1] || `เดือน ${inv.billingMonth}`,
+          monthLabel: `${thaiMonths[inv.billingMonth - 1] || `เดือน ${inv.billingMonth}`} ${inv.billingYear + 543}`,
+          baseAmount: base,
+          penaltyAmount: penalty,
+          totalAmount: totalDue,
+          paidAmount: paid,
+          outstandingAmount: outstanding > 0 ? outstanding : 0,
+          status: inv.status,
+          dueDate: inv.dueDate ? new Date(inv.dueDate).toISOString() : null,
+        };
+      });
+
       // 🌟 คำนวณค่าปรับแบบเดียวกับ invoice detail API
       const totalOwed = unpaidInvoices.reduce((sum, inv) => {
         const base = truncateDecimals(Number(inv.baseAmount ?? 0));
@@ -92,6 +134,7 @@ export async function GET() {
         phone: house.owner?.phone ?? "-",
         overdueCount: unpaidInvoices.length,
         overdueMonths,
+        overdueDetails,
         totalOwed,
         lastPaidMonth,
       };
