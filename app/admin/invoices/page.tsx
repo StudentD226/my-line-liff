@@ -183,16 +183,76 @@ export default function AdminInvoicesPage() {
     { label: 'ถูกปฏิเสธ (REJECTED)', value: 'REJECTED' },
   ], []);
 
+  const ITEMS_PER_PAGE = 10;
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset to page 1 when search or filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterMonth, filterYear, filterStatus]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredInvoices.length / ITEMS_PER_PAGE));
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const paginatedInvoices = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredInvoices.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredInvoices, currentPage]);
+
+  const isAllCurrentPageSelected = useMemo(() => {
+    return paginatedInvoices.length > 0 && paginatedInvoices.every(inv => selectedInvoices.includes(inv.id));
+  }, [paginatedInvoices, selectedInvoices]);
+
+  const isSomeCurrentPageSelected = useMemo(() => {
+    return paginatedInvoices.some(inv => selectedInvoices.includes(inv.id)) && !isAllCurrentPageSelected;
+  }, [paginatedInvoices, selectedInvoices, isAllCurrentPageSelected]);
+
   const handleSelectAll = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.checked) setSelectedInvoices(filteredInvoices.map(inv => inv.id));
-    else setSelectedInvoices([]);
-  }, [filteredInvoices]);
+    if (e.target.checked) {
+      setSelectedInvoices(prev => {
+        const set = new Set(prev);
+        paginatedInvoices.forEach(inv => set.add(inv.id));
+        return Array.from(set);
+      });
+    } else {
+      setSelectedInvoices(prev => prev.filter(id => !paginatedInvoices.some(inv => inv.id === id)));
+    }
+  }, [paginatedInvoices]);
 
   const handleSelectOne = useCallback((id: string) => {
     setSelectedInvoices(prev =>
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
     );
   }, []);
+
+  const getPageNumbers = useCallback(() => {
+    const pages: (number | string)[] = [];
+    if (totalPages <= 5) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else if (currentPage <= 3) {
+      for (let i = 1; i <= 4; i++) pages.push(i);
+      pages.push('...');
+      pages.push(totalPages);
+    } else if (currentPage >= totalPages - 2) {
+      pages.push(1);
+      pages.push('...');
+      for (let i = totalPages - 3; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      pages.push('...');
+      pages.push(currentPage - 1);
+      pages.push(currentPage);
+      pages.push(currentPage + 1);
+      pages.push('...');
+      pages.push(totalPages);
+    }
+    return pages;
+  }, [totalPages, currentPage]);
 
   const handleCreateBillChoice = useCallback(() => {
     Swal.fire({
@@ -650,9 +710,27 @@ export default function AdminInvoicesPage() {
 
           {selectedInvoices.length > 0 && (
             <div className="bg-slate-900 text-white px-4 sm:px-6 py-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-in slide-in-from-top duration-300 z-10 relative">
-              <span className="text-sm font-bold flex items-center gap-2 whitespace-nowrap">
-                <span className="flex items-center justify-center bg-[#376B64] text-white w-6 h-6 rounded-full text-xs shadow-sm font-black shrink-0">{selectedInvoices.length}</span> รายการอ้างอิง
-              </span>
+              <div className="flex flex-wrap items-center gap-2.5">
+                <span className="text-sm font-bold flex items-center gap-2 whitespace-nowrap">
+                  <span className="flex items-center justify-center bg-[#376B64] text-white w-6 h-6 rounded-full text-xs shadow-sm font-black shrink-0">{selectedInvoices.length}</span> รายการที่เลือก
+                </span>
+                {selectedInvoices.length < filteredInvoices.length && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedInvoices(filteredInvoices.map(inv => inv.id))}
+                    className="text-xs text-teal-400 hover:text-teal-300 underline font-semibold transition cursor-pointer"
+                  >
+                    (เลือกทั้งหมดในตัวกรองนี้ {filteredInvoices.length} รายการ)
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setSelectedInvoices([])}
+                  className="text-xs text-slate-400 hover:text-slate-200 underline font-medium transition cursor-pointer"
+                >
+                  ยกเลิกการเลือก
+                </button>
+              </div>
               <div className="flex flex-col sm:flex-row flex-wrap items-center gap-2 w-full md:w-auto justify-end">
                 {isSuperAdmin && (
                   <>
@@ -682,9 +760,12 @@ export default function AdminInvoicesPage() {
                   <th className="p-4 w-12 text-center">
                     <input
                       type="checkbox"
+                      ref={(el) => {
+                        if (el) el.indeterminate = isSomeCurrentPageSelected;
+                      }}
                       className="rounded border-slate-300 text-[#376B64] focus:ring-[#376B64] w-5 h-5 cursor-pointer"
                       onChange={handleSelectAll}
-                      checked={selectedInvoices.length === filteredInvoices.length && filteredInvoices.length > 0}
+                      checked={isAllCurrentPageSelected}
                     />
                   </th>
                   <th className="py-4 px-2 text-sm font-bold tracking-wide text-center whitespace-nowrap">บ้านเลขที่</th>
@@ -706,7 +787,7 @@ export default function AdminInvoicesPage() {
                     </td>
                   </tr>
                 ) : (
-                  filteredInvoices.map((inv) => {
+                  paginatedInvoices.map((inv) => {
                     const thMonth = thaiMonths.find(m => m.num === inv.billingMonth)?.short || inv.billingMonth;
                     const isSelected = selectedInvoices.includes(inv.id);
 
@@ -878,6 +959,79 @@ export default function AdminInvoicesPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Controls */}
+          {filteredInvoices.length > 0 && (
+            <div className="p-4 sm:p-5 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between bg-white gap-4">
+              <div className="text-xs sm:text-sm text-slate-500 font-medium">
+                แสดง <span className="font-bold text-slate-800">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> ถึง{' '}
+                <span className="font-bold text-slate-800">{Math.min(currentPage * ITEMS_PER_PAGE, filteredInvoices.length)}</span> จากทั้งหมด{' '}
+                <span className="font-bold text-slate-800">{filteredInvoices.length}</span> รายการ
+              </div>
+
+              {totalPages > 1 && (
+                <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-center">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className={`px-3 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1 transition-all ${
+                      currentPage === 1
+                        ? 'text-slate-300 cursor-not-allowed bg-slate-50 border border-slate-100'
+                        : 'text-slate-700 bg-slate-50 hover:bg-[#376B64]/10 hover:text-[#376B64] border border-slate-200 active:scale-95'
+                    }`}
+                    title="หน้าก่อนหน้า"
+                  >
+                    <ChevronLeft size={16} />
+                    <span className="hidden sm:inline">ก่อนหน้า</span>
+                  </button>
+
+                  <div className="flex items-center gap-1">
+                    {getPageNumbers().map((page, idx) => {
+                      if (page === '...') {
+                        return (
+                          <span key={`ellipsis-${idx}`} className="px-2 text-slate-400 text-xs font-bold select-none">
+                            ...
+                          </span>
+                        );
+                      }
+                      const pageNum = Number(page);
+                      const isActive = currentPage === pageNum;
+                      return (
+                        <button
+                          key={pageNum}
+                          type="button"
+                          onClick={() => setCurrentPage(pageNum)}
+                          className={`w-9 h-9 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center transition-all ${
+                            isActive
+                              ? 'bg-[#376B64] text-white shadow-md shadow-[#376B64]/30'
+                              : 'text-slate-700 bg-white hover:bg-slate-100 border border-slate-200/80 active:scale-95'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className={`px-3 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1 transition-all ${
+                      currentPage === totalPages
+                        ? 'text-slate-300 cursor-not-allowed bg-slate-50 border border-slate-100'
+                        : 'text-slate-700 bg-slate-50 hover:bg-[#376B64]/10 hover:text-[#376B64] border border-slate-200 active:scale-95'
+                    }`}
+                    title="หน้าถัดไป"
+                  >
+                    <span className="hidden sm:inline">ถัดไป</span>
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
