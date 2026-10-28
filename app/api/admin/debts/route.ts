@@ -17,6 +17,8 @@ export async function GET() {
     const now = new Date();
     const today = new Date(now);
     today.setHours(0, 0, 0, 0);
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
 
     const config = await prisma.systemConfig.findFirst();
     const penaltyRatePerMonth = config?.penaltyRatePerDay !== undefined && config?.penaltyRatePerDay !== null
@@ -36,7 +38,11 @@ export async function GET() {
       },
     });
 
-    const formattedDebts = houses.map((house) => {
+    const formattedDebts: any[] = [];
+    const formattedAdvances: any[] = [];
+
+    for (const house of houses) {
+      // 1. คัดกรองบิลที่ค้างชำระ (Overdue / Pending past due)
       const unpaidInvoices = house.invoices.filter((inv) => {
         if (inv.billingYear === 9999) return false;
         if (inv.invoiceNo && inv.invoiceNo.startsWith("TR-")) return false;
@@ -48,7 +54,7 @@ export async function GET() {
       const paidInvoices = house.invoices.filter((inv) => inv.status === "PAID");
 
       const overdueMonths = unpaidInvoices.map(
-        (inv) => `${thaiMonths[inv.billingMonth - 1]} ${inv.billingYear + 543}`
+        (inv) => `${thaiMonths[inv.billingMonth - 1] || `เดือน ${inv.billingMonth}`} ${inv.billingYear + 543}`
       );
 
       const overdueDetails = unpaidInvoices.map((inv) => {
@@ -93,7 +99,7 @@ export async function GET() {
         };
       });
 
-      // 🌟 คำนวณค่าปรับแบบเดียวกับ invoice detail API
+      // คำนวณยอดค้างชำระสุทธิ
       const totalOwed = unpaidInvoices.reduce((sum, inv) => {
         const base = truncateDecimals(Number(inv.baseAmount ?? 0));
         const paid = truncateDecimals(Number(inv.paidAmount ?? 0));
@@ -103,7 +109,6 @@ export async function GET() {
           ? truncateDecimals(Number(inv.penaltyAmount ?? 0))
           : (isPenaltyDisabled ? 0 : truncateDecimals(Number(inv.penaltyAmount ?? 0)));
 
-        // คำนวณค่าปรับสดๆ ถ้าเลย dueDate แล้ว (เฉพาะเมื่อเปิดคิดค่าปรับ และไม่ใช่บิลยอดยกมา INIT-)
         if (!isPenaltyDisabled && !isInitialBalance && ["PENDING", "OVERDUE", "PARTIAL"].includes(inv.status)) {
           const dueDate = new Date(inv.dueDate);
           dueDate.setHours(0, 0, 0, 0);
@@ -123,28 +128,96 @@ export async function GET() {
 
       const lastPaidMonth =
         paidInvoices.length > 0
-          ? `${thaiMonths[paidInvoices[0].billingMonth - 1]} ${paidInvoices[0].billingYear + 543}`
+          ? `${thaiMonths[paidInvoices[0].billingMonth - 1] || `เดือน ${paidInvoices[0].billingMonth}`} ${paidInvoices[0].billingYear + 543}`
           : "ยังไม่เคยชำระ";
 
-      return {
-        id: house.id,
-        latestInvoiceId: unpaidInvoices[0]?.id ?? null,
-        houseNumber: house.houseNo,
-        ownerName: house.owner?.name ?? "-",
-        phone: house.owner?.phone ?? "-",
-        overdueCount: unpaidInvoices.length,
-        overdueMonths,
-        overdueDetails,
-        totalOwed,
-        lastPaidMonth,
-      };
+      if (unpaidInvoices.length > 0 && totalOwed > 0) {
+        formattedDebts.push({
+          id: house.id,
+          latestInvoiceId: unpaidInvoices[0]?.id ?? null,
+          houseNumber: house.houseNo,
+          ownerName: house.owner?.name ?? "-",
+          phone: house.owner?.phone ?? "-",
+          overdueCount: unpaidInvoices.length,
+          overdueMonths,
+          overdueDetails,
+          totalOwed,
+          lastPaidMonth,
+        });
+      }
+
+      // 2. คัดกรองบิลที่ชำระล่วงหน้า (Advance Payments)
+      // คือบิลที่ขึ้นต้นด้วย ADV- หรือเป็นบิลสถานะ PAID ในงวดอนาคต (billingYear/billingMonth > ปัจจุบัน)
+      const advanceInvoices = house.invoices.filter((inv) => {
+        if (inv.billingYear === 9999) return false;
+        if (inv.invoiceNo && inv.invoiceNo.startsWith("TR-")) return false;
+        if (inv.status !== "PAID" && inv.status !== "PARTIAL") return false;
+        const paidVal = Number(inv.paidAmount || inv.totalAmount || 0);
+        if (paidVal <= 0) return false;
+
+        const isAdvInvoice = inv.invoiceNo && inv.invoiceNo.startsWith("ADV-");
+        const isFuture = inv.billingYear > currentYear || (inv.billingYear === currentYear && inv.billingMonth > currentMonth);
+
+        return isAdvInvoice || isFuture;
+      });
+
+      if (advanceInvoices.length > 0) {
+        // เรียงจากงวดใกล้สุดไปไกลสุด
+        advanceInvoices.sort((a, b) => {
+          if (a.billingYear !== b.billingYear) return a.billingYear - b.billingYear;
+          return a.billingMonth - b.billingMonth;
+        });
+
+        const advanceMonths = advanceInvoices.map(
+          (inv) => `${thaiMonths[inv.billingMonth - 1] || `เดือน ${inv.billingMonth}`} ${inv.billingYear + 543}`
+        );
+
+        const advanceDetails = advanceInvoices.map((inv) => {
+          const paid = truncateDecimals(Number(inv.paidAmount || inv.totalAmount || inv.baseAmount || 0));
+          return {
+            id: inv.id,
+            invoiceNo: inv.invoiceNo,
+            billingMonth: inv.billingMonth,
+            billingYear: inv.billingYear,
+            yearThai: inv.billingYear + 543,
+            monthName: thaiMonths[inv.billingMonth - 1] || `เดือน ${inv.billingMonth}`,
+            monthLabel: `${thaiMonths[inv.billingMonth - 1] || `เดือน ${inv.billingMonth}`} ${inv.billingYear + 543}`,
+            baseAmount: Number(inv.baseAmount || 0),
+            paidAmount: paid,
+            amount: paid,
+            status: inv.status,
+            paidAt: inv.paidAt ? new Date(inv.paidAt).toISOString() : null,
+          };
+        });
+
+        const totalAdvanceAmount = advanceDetails.reduce((sum, d) => sum + d.amount, 0);
+        const lastAdv = advanceInvoices[advanceInvoices.length - 1];
+        const coveredUntil = lastAdv
+          ? `${thaiMonths[lastAdv.billingMonth - 1] || `เดือน ${lastAdv.billingMonth}`} ${lastAdv.billingYear + 543}`
+          : "-";
+
+        if (totalAdvanceAmount > 0) {
+          formattedAdvances.push({
+            id: house.id,
+            houseNumber: house.houseNo,
+            ownerName: house.owner?.name ?? "-",
+            phone: house.owner?.phone ?? "-",
+            advanceCount: advanceInvoices.length,
+            advanceMonths,
+            advanceDetails,
+            totalAdvanceAmount,
+            coveredUntil,
+          });
+        }
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: formattedDebts, // backward compatible
+      debts: formattedDebts,
+      advances: formattedAdvances,
     });
-
-    const result = formattedDebts.filter(
-      (h) => h.overdueCount > 0 && h.totalOwed > 0
-    );
-
-    return NextResponse.json({ success: true, data: result });
   } catch (error) {
     console.error("Fetch API error:", error);
     return NextResponse.json(
