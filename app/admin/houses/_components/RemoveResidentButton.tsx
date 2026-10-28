@@ -19,15 +19,15 @@ export default function RemoveResidentButton({
     if (loading) return;
 
     const result = await Swal.fire({
-      title: "นำผู้พักอาศัยออกจากบ้าน?",
-      html: `ต้องการนำ <b>${userName || "ผู้พักอาศัย"}</b> ออกจากบ้านหลังนี้ใช่หรือไม่?`,
+      title: "ลบผู้พักอาศัยออกจากระบบ?",
+      html: `ต้องการลบข้อมูลของ <b>${userName || "ผู้พักอาศัย"}</b> ออกจากระบบอย่างถาวรใช่หรือไม่?<br><span class="text-xs text-rose-500 font-semibold mt-1 block">*ข้อมูลผู้ใช้นี้จะถูกลบออกจากฐานข้อมูล เพื่อให้ผู้พักอาศัยคนใหม่สามารถลงทะเบียนได้</span>`,
       icon: "warning",
       showCancelButton: true,
       showCloseButton: true,
       reverseButtons: false,
       confirmButtonColor: "#ef4444",
       cancelButtonColor: "#94a3b8",
-      confirmButtonText: "ยืนยันนำออก",
+      confirmButtonText: "ยืนยันการลบ",
       cancelButtonText: "ยกเลิก",
       customClass: {
         popup: "rounded-2xl shadow-2xl",
@@ -49,7 +49,7 @@ export default function RemoveResidentButton({
           await Swal.fire({
             icon: "success",
             title: "ดำเนินการเสร็จสิ้น",
-            text: data.message || "นำผู้พักอาศัยออกจากบ้านเรียบร้อยแล้ว",
+            text: data.message || "ลบข้อมูลผู้พักอาศัยออกจากระบบเรียบร้อยแล้ว",
             confirmButtonColor: "#376B64",
             confirmButtonText: "รับทราบ",
             customClass: { popup: "rounded-[2rem]", confirmButton: "rounded-xl font-bold px-8" }
@@ -59,7 +59,7 @@ export default function RemoveResidentButton({
           Swal.fire({ 
             icon: "error", 
             title: "ผิดพลาด", 
-            text: data.error || "ไม่สามารถนำข้อมูลออกได้", 
+            text: data.error || "ไม่สามารถลบข้อมูลออกได้", 
             confirmButtonColor: "#ef4444",
             customClass: { popup: "rounded-[2rem]" }
           });
@@ -84,7 +84,7 @@ export default function RemoveResidentButton({
       onClick={handleRemove}
       disabled={loading}
       className={`p-1.5 sm:p-2 text-red-400 hover:text-white hover:bg-red-500 rounded-xl transition-colors shrink-0 ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
-      title="นำข้อมูลออก"
+      title="ลบข้อมูลผู้พักอาศัยออกจากระบบ"
     >
       <UserMinus size={16} className="shrink-0" />
     </button>

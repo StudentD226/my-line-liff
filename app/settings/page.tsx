@@ -19,7 +19,7 @@ export default function SettingsPage() {
       const res = await fetch(`/api/user?lineId=${lineId}`);
       const data = await res.json();
       
-      if (data.success && data.user) {
+      if (data.success && data.user && data.user.residentHouse) {
         setUserData(data.user);
         setLoading(false);
       } else {

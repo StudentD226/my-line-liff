@@ -84,13 +84,16 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
     if (!isSuperAdmin) return;
     const userId = formData.get('userId') as string;
     if (userId) {
-      const user = await prisma.user.findUnique({ where: { id: userId } });
-      if (user) {
-        if (user.lineId) {
-          await prisma.report.deleteMany({ where: { lineId: user.lineId } });
+      await prisma.$transaction(async (tx) => {
+        const user = await tx.user.findUnique({ where: { id: userId } });
+        if (user) {
+          await tx.house.updateMany({ where: { ownerId: userId }, data: { ownerId: null } });
+          if (user.lineId) {
+            await tx.report.deleteMany({ where: { lineId: user.lineId } });
+          }
+          await tx.user.delete({ where: { id: userId } });
         }
-        await prisma.user.delete({ where: { id: userId } });
-      }
+      });
     }
     redirect(`/admin/houses${editId ? `?edit=${editId}&` : '?'}alert=remove_success`);
   };

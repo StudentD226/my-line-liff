@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 
+export const dynamic = 'force-dynamic';
 const prisma = new PrismaClient();
 
 export async function POST(request: Request) {
@@ -32,9 +33,10 @@ export async function POST(request: Request) {
 
     let user;
 
-    // 🌟 กฎระบบ: ข้อมูลเบอร์โทรและชื่อแก้ได้ แต่บ้านเลขที่และส่วนที่เหลือแก้ไขไม่ได้
-    if (existingUser && existingUser.residentHouseId) {
-      // ลูกบ้านเดิมที่มีบ้านแล้ว -> อัปเดตเฉพาะชื่อและเบอร์โทร
+    // 🌟 กฎระบบ: ข้อมูลเบอร์โทรและชื่อแก้ได้ แต่ถ้ามีบ้านผูกอยู่แล้วจะไม่ให้เปลี่ยนบ้าน
+    // แต่ถ้ายังไม่มีบ้านผูกอยู่ (ผู้ใช้ใหม่ หรือถูกแอดมินลบออกจากบ้านเดิม) ให้สามารถผูกบ้านใหม่ได้ทันที
+    if (existingUser && existingUser.residentHouseId && existingUser.residentHouse) {
+      // ลูกบ้านเดิมที่มีบ้านอยู่แล้ว -> อัปเดตเฉพาะชื่อและเบอร์โทร
       user = await prisma.user.update({
         where: { lineId: lineId },
         data: {
@@ -43,7 +45,7 @@ export async function POST(request: Request) {
         }
       });
     } else {
-      // 2. บันทึกข้อมูลลูกบ้านใหม่ลง Database
+      // 2. บันทึกข้อมูลลูกบ้านใหม่ลง Database (หรืออัปเดตผู้ใช้ที่ไม่มีบ้าน ให้ผูกกับบ้านใหม่)
       user = await prisma.user.upsert({
         where: { lineId: lineId },
         update: {
@@ -65,18 +67,16 @@ export async function POST(request: Request) {
       if (!house.ownerId) {
         await prisma.house.update({
           where: { id: house.id },
-          data: { ownerId: user.id } // เอา id ของคนที่เพิ่งสมัคร ยัดใส่เป็นเจ้าของบ้าน
+          data: { ownerId: user.id }
         });
         console.log(`👑 แต่งตั้ง ${user.name} เป็นเจ้าของบ้านเลขที่ ${house.houseNo} อัตโนมัติ!`);
       }
-      // =======================================================
     }
 
     // 4. ตอบกลับหน้าเว็บว่า "สมัครสำเร็จ!"
     return NextResponse.json({ success: true, user });
     
   } catch (error: any) { 
-    // อันนี้คือ Error ของระบบเราเอง (เช่น ฐานข้อมูลพัง)
     console.error("Register Error:", error);
     return NextResponse.json({ 
       success: false, 

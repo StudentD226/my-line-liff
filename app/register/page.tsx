@@ -85,16 +85,23 @@ export default function RegisterPage() {
             const res = await fetch(`/api/user?lineId=${profile.userId}`);
             if (res.ok) {
               const data = await res.json();
-              if (data.user) {
+              if (data.success && data.user && data.user.residentHouse?.houseNo) {
                 setName(data.user.name || '');
                 setPhone(data.user.phone || '');
                 
                 // ถ้ามีบ้านเลขที่ผูกไว้แล้ว ให้ดึงมาใส่และ "ล็อคการแก้ไข" ทันที
-                const existingHouseNo = data.user.residentHouse?.houseNo || data.user.houseNo;
-                if (existingHouseNo) {
-                  setHouseNo(existingHouseNo);
-                  setSearchQuery(existingHouseNo);
-                  setHasExistingHouse(true);
+                const existingHouseNo = data.user.residentHouse.houseNo;
+                setHouseNo(existingHouseNo);
+                setSearchQuery(existingHouseNo);
+                setHasExistingHouse(true);
+              } else {
+                // ถ้ายังไม่มีบ้าน หรือถูกแอดมินลบออกจากบ้านแล้ว ต้องปลดล็อคให้ลงทะเบียนบ้านใหม่ได้
+                setHasExistingHouse(false);
+                setHouseNo('');
+                setSearchQuery('');
+                if (data.user) {
+                  setName(data.user.name || '');
+                  setPhone(data.user.phone || '');
                 }
               }
             }
