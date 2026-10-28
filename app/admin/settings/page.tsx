@@ -3,9 +3,9 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import Swal from 'sweetalert2';
-import Link from 'next/link'; 
-import { 
-  Info, CalendarDays, Settings as SettingsIcon, Building, 
+import Link from 'next/link';
+import {
+  Info, CalendarDays, Settings as SettingsIcon, Building,
   CreditCard, X, Save, ArrowLeft, BellRing, Clock, Landmark, ChevronDown,
   ShieldAlert, AlertCircle
 } from 'lucide-react';
@@ -149,21 +149,19 @@ const CustomDayPicker = React.memo(({ label, value, onChange, placeholder = "ร
         {tooltipText && (
           <div className="group relative inline-flex items-center justify-center cursor-help shrink-0">
             <Info size={16} className="text-slate-400 hover:text-[#376B64] transition-colors" />
-            <div className={`pointer-events-none absolute bottom-full mb-2 hidden group-hover:block w-[260px] p-2.5 bg-slate-800 text-white text-xs font-medium rounded-xl shadow-2xl z-[9999] text-center leading-relaxed ${
-              tooltipAlign === 'left' 
-                ? 'left-0' 
-                : tooltipAlign === 'right' 
-                  ? 'right-0' 
-                  : 'left-1/2 -translate-x-1/2'
-            }`}>
+            <div className={`pointer-events-none absolute bottom-full mb-2 hidden group-hover:block w-[260px] p-2.5 bg-slate-800 text-white text-xs font-medium rounded-xl shadow-2xl z-[9999] text-center leading-relaxed ${tooltipAlign === 'left'
+              ? 'left-0'
+              : tooltipAlign === 'right'
+                ? 'right-0'
+                : 'left-1/2 -translate-x-1/2'
+              }`}>
               {tooltipText}
-              <div className={`absolute top-full border-4 border-transparent border-t-slate-800 ${
-                tooltipAlign === 'left' 
-                  ? 'left-4' 
-                  : tooltipAlign === 'right' 
-                    ? 'right-4' 
-                    : 'left-1/2 -translate-x-1/2'
-              }`}></div>
+              <div className={`absolute top-full border-4 border-transparent border-t-slate-800 ${tooltipAlign === 'left'
+                ? 'left-4'
+                : tooltipAlign === 'right'
+                  ? 'right-4'
+                  : 'left-1/2 -translate-x-1/2'
+                }`}></div>
             </div>
           </div>
         )}
@@ -180,14 +178,13 @@ const CustomDayPicker = React.memo(({ label, value, onChange, placeholder = "ร
           </span>
           <Icon size={20} className={disabled ? 'text-slate-400' : 'text-[#376B64]'} />
         </button>
-        
+
         {isOpen && !disabled && (
-          <div className={`absolute top-full z-[9999] mt-2 w-[280px] p-4 bg-white border border-slate-200 shadow-2xl rounded-2xl animate-in fade-in duration-150 ${
-            align === 'right' ? 'right-0' : 'left-0'
-          }`}>
+          <div className={`absolute top-full z-[9999] mt-2 w-[280px] p-4 bg-white border border-slate-200 shadow-2xl rounded-2xl animate-in fade-in duration-150 ${align === 'right' ? 'right-0' : 'left-0'
+            }`}>
             <div className="flex justify-between items-center mb-2 pb-1 border-b border-slate-100">
               <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">เลือกวันที่ของเดือน</div>
-              <button type="button" onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-slate-600 p-1"><X size={15}/></button>
+              <button type="button" onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-slate-600 p-1"><X size={15} /></button>
             </div>
             <div className="grid grid-cols-7 gap-1">
               {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
@@ -218,8 +215,8 @@ export default function AdminSettingsPage() {
 
   const [projectType, setProjectType] = useState('HOUSING_ESTATE');
   const [flatRateAmount, setFlatRateAmount] = useState<number | ''>('');
-  const [penaltyRatePerDay, setPenaltyRatePerDay] = useState<number | ''>(''); 
-  
+  const [penaltyRatePerDay, setPenaltyRatePerDay] = useState<number | ''>('');
+
   const [invoiceGenerateDay, setInvoiceGenerateDay] = useState(27);
   const [invoiceGenerateTime, setInvoiceGenerateTime] = useState("08:00");
   const [dueDateDay, setDueDateDay] = useState(7);
@@ -229,9 +226,9 @@ export default function AdminSettingsPage() {
   const [bankAccountNo, setBankAccountNo] = useState("660-9-55290-8");
   const [bankAccountName, setBankAccountName] = useState("นิติบุคคลหมู่บ้าน");
   const [bankLogoUrl, setBankLogoUrl] = useState("/banks/KTB.png");
-  
+
   const [isBankDropdownOpen, setIsBankDropdownOpen] = useState(false);
-  const [imageError, setImageError] = useState(false); 
+  const [imageError, setImageError] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [savingGlobal, setSavingGlobal] = useState(false);
@@ -297,8 +294,8 @@ export default function AdminSettingsPage() {
     }
   }, []);
 
-  useEffect(() => { 
-    fetchConfig(); 
+  useEffect(() => {
+    fetchConfig();
     fetchHouses();
   }, [fetchConfig, fetchHouses]);
 
@@ -306,7 +303,7 @@ export default function AdminSettingsPage() {
   const handleBankAccountChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const originalValue = e.target.value;
     const sanitizedValue = originalValue.replace(/[^0-9-]/g, '');
-    
+
     if (/[^0-9-]/.test(originalValue)) {
       // ย้าย Swal.fire ลงมาใน Component ตรงๆ แทนเรียกผ่านฟังก์ชันภายนอก Scope
       Swal.fire({
@@ -325,17 +322,17 @@ export default function AdminSettingsPage() {
   const handleSaveGlobal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isSuperAdmin) return;
-    
+
     if (flatRateAmount === '' || penaltyRatePerDay === '') {
-      Swal.fire({ icon: 'warning', title: 'ข้อมูลไม่ครบถ้วน', text: 'กรุณาระบุข้อมูลอัตราเรียกเก็บมาตรฐานและอัตราค่าปรับล่าช้าในระบบ', showCloseButton: true, confirmButtonColor: '#376B64', customClass: { popup: 'rounded-[2rem]' }});
+      Swal.fire({ icon: 'warning', title: 'ข้อมูลไม่ครบถ้วน', text: 'กรุณาระบุข้อมูลอัตราเรียกเก็บมาตรฐานและอัตราค่าปรับล่าช้าในระบบ', showCloseButton: true, confirmButtonColor: '#376B64', customClass: { popup: 'rounded-[2rem]' } });
       return;
     }
     if (Number(flatRateAmount) <= 0) {
-      Swal.fire({ icon: 'warning', title: 'ข้อมูลไม่ถูกต้อง', text: 'อัตราเรียกเก็บมาตรฐานส่วนกลางต้องมีมูลค่ามากกว่า 0 บาท', showCloseButton: true, confirmButtonColor: '#376B64', customClass: { popup: 'rounded-[2rem]' }});
+      Swal.fire({ icon: 'warning', title: 'ข้อมูลไม่ถูกต้อง', text: 'อัตราเรียกเก็บมาตรฐานส่วนกลางต้องมีมูลค่ามากกว่า 0 บาท', showCloseButton: true, confirmButtonColor: '#376B64', customClass: { popup: 'rounded-[2rem]' } });
       return;
     }
     if (Number(penaltyRatePerDay) < 0) {
-      Swal.fire({ icon: 'warning', title: 'ข้อมูลไม่ถูกต้อง', text: 'อัตราค่าปรับล่าช้าต้องไม่มีค่าติดลบ สามารถกำหนดเป็น 0 ได้หากไม่มีนโยบายจัดเก็บ', showCloseButton: true, confirmButtonColor: '#376B64', customClass: { popup: 'rounded-[2rem]' }});
+      Swal.fire({ icon: 'warning', title: 'ข้อมูลไม่ถูกต้อง', text: 'อัตราค่าปรับล่าช้าต้องไม่มีค่าติดลบ สามารถกำหนดเป็น 0 ได้หากไม่มีนโยบายจัดเก็บ', showCloseButton: true, confirmButtonColor: '#376B64', customClass: { popup: 'rounded-[2rem]' } });
       return;
     }
 
@@ -344,11 +341,11 @@ export default function AdminSettingsPage() {
       text: applyToAllHouses ? "การบันทึกนี้จะปรับรูปแบบโครงสร้างราคาทุกยูนิตในระบบให้เป็นอัตราเหมาจ่ายทันที" : "ระบบจะดำเนินการบันทึกข้อมูลการตั้งค่าโครงสร้างพื้นฐานส่วนกลาง",
       icon: 'warning',
       showCancelButton: true,
-      showCloseButton: true, 
+      showCloseButton: true,
       confirmButtonText: 'ยืนยันการบันทึก',
       cancelButtonText: 'ยกเลิก',
-      customClass: { 
-        popup: 'rounded-[2rem] w-auto max-w-[90vw]', 
+      customClass: {
+        popup: 'rounded-[2rem] w-auto max-w-[90vw]',
         actions: 'flex flex-row justify-center gap-3 w-full px-4',
         confirmButton: 'order-1 bg-[#376B64] hover:bg-[#2A524C] text-white rounded-xl px-6 py-2.5 font-bold',
         cancelButton: 'order-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl px-6 py-2.5 font-bold'
@@ -357,19 +354,19 @@ export default function AdminSettingsPage() {
       if (result.isConfirmed) {
         setSavingGlobal(true);
         Swal.fire({ title: 'กำลังประมวลผลข้อมูล...', allowOutsideClick: false, showConfirmButton: false, didOpen: () => Swal.showLoading(), customClass: { popup: 'rounded-[2rem]' } });
-        
+
         try {
           const res = await fetch('/api/admin/settings', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
+            body: JSON.stringify({
               projectType, flatRateAmount: Number(flatRateAmount), penaltyRatePerDay: Number(penaltyRatePerDay), applyToAllHouses,
               invoiceGenerateDay, invoiceGenerateTime, dueDateDay, secondReminderDay,
               bankName, bankAccountNo, bankAccountName, bankLogoUrl
             })
           });
           const data = await res.json();
-          
+
           if (data.success) {
             Swal.fire({ icon: 'success', title: 'บันทึกข้อมูลเสร็จสิ้น', text: 'ระบบส่วนกลางได้รับการปรับปรุงโครงสร้างข้อมูลเรียบร้อยแล้ว', showCloseButton: true, confirmButtonColor: '#376B64', customClass: { popup: 'rounded-[2rem] w-auto max-w-[90vw]', confirmButton: 'rounded-xl px-8 py-3 font-bold' } });
             if (applyToAllHouses) { fetchHouses(); setApplyToAllHouses(false); }
@@ -414,14 +411,14 @@ export default function AdminSettingsPage() {
     if (!editHouse) return;
 
     if (editHouse.feeRate === '') {
-      Swal.fire({ icon: 'warning', title: 'ข้อมูลไม่ครบถ้วน', text: 'กรุณาระบุรายละเอียดอัตราค่าส่วนกลางประจำยูนิต', showCloseButton: true, confirmButtonColor: '#376B64', customClass: { popup: 'rounded-[2rem]' }});
+      Swal.fire({ icon: 'warning', title: 'ข้อมูลไม่ครบถ้วน', text: 'กรุณาระบุรายละเอียดอัตราค่าส่วนกลางประจำยูนิต', showCloseButton: true, confirmButtonColor: '#376B64', customClass: { popup: 'rounded-[2rem]' } });
       return;
     }
     if (Number(editHouse.feeRate) <= 0) {
-      Swal.fire({ icon: 'warning', title: 'ข้อมูลไม่ถูกต้อง', text: 'อัตราเรียกเก็บค่าส่วนกลางประจำยูนิตต้องมีมูลค่ามากกว่า 0 บาท', showCloseButton: true, confirmButtonColor: '#376B64', customClass: { popup: 'rounded-[2rem]' }});
+      Swal.fire({ icon: 'warning', title: 'ข้อมูลไม่ถูกต้อง', text: 'อัตราเรียกเก็บค่าส่วนกลางประจำยูนิตต้องมีมูลค่ามากกว่า 0 บาท', showCloseButton: true, confirmButtonColor: '#376B64', customClass: { popup: 'rounded-[2rem]' } });
       return;
     }
-    
+
     setSavingHouse(true);
     Swal.fire({ title: 'กำลังบันทึกข้อมูลเรทราคา...', allowOutsideClick: false, showConfirmButton: false, didOpen: () => Swal.showLoading(), customClass: { popup: 'rounded-[2rem]' } });
 
@@ -433,11 +430,11 @@ export default function AdminSettingsPage() {
         body: JSON.stringify({ houseIds: idsToUpdate, feeType: editHouse.feeType, feeRate: Number(editHouse.feeRate) })
       });
       const data = await res.json();
-      
+
       if (data.success) {
         Swal.fire({ icon: 'success', title: 'การดำเนินการเสร็จสิ้น', text: isBulkMode ? `ระบบทำการปรับปรุงข้อมูลสำเร็จจำนวน ${idsToUpdate.length} รายการ` : 'ระบบทำการบันทึกข้อมูลอัตราประจำยูนิตเสร็จสิ้น', showCloseButton: true, confirmButtonColor: '#376B64', customClass: { popup: 'rounded-[2rem] w-auto max-w-[90vw]', confirmButton: 'rounded-xl px-8 py-3 font-bold' } });
         setIsPopupOpen(false);
-        if (isBulkMode) setSelectedHouses([]); 
+        if (isBulkMode) setSelectedHouses([]);
         fetchHouses();
       } else {
         throw new Error(data.message);
@@ -452,7 +449,7 @@ export default function AdminSettingsPage() {
   return (
     <div className="p-4 sm:p-6 md:p-8 bg-slate-50 min-h-screen font-sans text-slate-800 relative w-full">
       <div className="max-w-6xl mx-auto space-y-6 w-full">
-        
+
         <div className="mb-2">
           <Link href="/admin/invoices" className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-500 hover:text-[#376B64] hover:border-[#376B64]/30 hover:bg-[#376B64]/5 rounded-xl text-sm font-bold transition-all shadow-sm active:scale-95">
             <ArrowLeft size={18} /> ย้อนกลับสู่หน้าจอการจัดการใบแจ้งหนี้
@@ -463,16 +460,16 @@ export default function AdminSettingsPage() {
           <h1 className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight">ตั้งค่าระบบและเกณฑ์การคำนวณค่าส่วนกลาง</h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-2">บริหารจัดการข้อมูลประเภทโครงการ เกณฑ์การคิดคำนวณรากฐาน และตรวจสอบอัตราแยกรายยูนิตพักอาศัย</p>
         </div>
-        
+
         <section className="bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-sm border border-slate-100 relative z-20">
-          
+
           {!isSuperAdmin && (
             <div className="absolute inset-0 z-20 bg-slate-100/40 backdrop-blur-[1px] flex flex-col items-center justify-center rounded-[1.5rem] sm:rounded-[2rem]">
-               <div className="bg-white p-6 rounded-2xl shadow-xl border border-slate-200 flex flex-col items-center text-center max-w-sm">
-                 <div className="w-14 h-14 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mb-4"><ShieldAlert size={28} /></div>
-                 <h3 className="text-base font-black text-slate-800 mb-1">สิทธิ์การเข้าถึงข้อมูลจำกัด</h3>
-                 <p className="text-xs text-slate-500 font-bold leading-relaxed">เฉพาะผู้ดูแลระบบสูงสุดเท่านั้นที่มีสิทธิ์ปรับปรุงแก้ไขโครงสร้างนโยบายหลักของโครงการได้</p>
-               </div>
+              <div className="bg-white p-6 rounded-2xl shadow-xl border border-slate-200 flex flex-col items-center text-center max-w-sm">
+                <div className="w-14 h-14 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mb-4"><ShieldAlert size={28} /></div>
+                <h3 className="text-base font-black text-slate-800 mb-1">สิทธิ์การเข้าถึงข้อมูลจำกัด</h3>
+                <p className="text-xs text-slate-500 font-bold leading-relaxed">เฉพาะผู้ดูแลระบบสูงสุดเท่านั้นที่มีสิทธิ์ปรับปรุงแก้ไขโครงสร้างนโยบายหลักของโครงการได้</p>
+              </div>
             </div>
           )}
 
@@ -481,7 +478,7 @@ export default function AdminSettingsPage() {
               <span className="p-2 bg-[#376B64]/10 text-[#376B64] rounded-lg shrink-0"><SettingsIcon size={20} /></span> <span className="truncate">เกณฑ์การคิดคำนวณรากฐานส่วนกลาง (Global Settings)</span>
             </h2>
             <form onSubmit={handleSaveGlobal} className="space-y-6">
-              
+
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-2">ประเภทโครงสร้างโครงการ</label>
@@ -490,7 +487,7 @@ export default function AdminSettingsPage() {
 
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-2">อัตราเรียกเก็บมาตรฐาน (บาท/เดือน)</label>
-                  <input 
+                  <input
                     type="number" value={flatRateAmount} onChange={(e) => setFlatRateAmount(e.target.value === '' ? '' : Number(e.target.value))}
                     disabled={!isSuperAdmin}
                     className="w-full border border-slate-200 rounded-xl p-3 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-[#376B64]/50 focus:border-[#376B64] outline-none transition-all shadow-sm font-bold disabled:bg-slate-100 disabled:text-slate-500"
@@ -499,7 +496,7 @@ export default function AdminSettingsPage() {
 
                 <div className="sm:col-span-2 md:col-span-1">
                   <label className="block text-sm font-bold text-slate-700 mb-2">อัตราค่าปรับล่าช้าคงที่ (บาท/รอบบิล)</label>
-                  <input 
+                  <input
                     type="number" value={penaltyRatePerDay} onChange={(e) => setPenaltyRatePerDay(e.target.value === '' ? '' : Number(e.target.value))}
                     disabled={!isSuperAdmin}
                     className="w-full border border-slate-200 rounded-xl p-3 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-[#376B64]/50 focus:border-[#376B64] outline-none transition-all shadow-sm font-bold disabled:bg-slate-100 disabled:text-slate-500"
@@ -508,7 +505,7 @@ export default function AdminSettingsPage() {
               </div>
 
               <div className="p-4 bg-orange-50 border border-orange-100 rounded-xl flex items-start gap-3 mt-2 shadow-inner">
-                <input 
+                <input
                   type="checkbox" id="applyAll" checked={applyToAllHouses} onChange={(e) => setApplyToAllHouses(e.target.checked)} disabled={!isSuperAdmin}
                   className="mt-0.5 sm:mt-1 shrink-0 w-4 h-4 sm:w-5 sm:h-5 text-orange-600 rounded border-slate-300 focus:ring-orange-500 cursor-pointer disabled:cursor-not-allowed"
                 />
@@ -583,35 +580,35 @@ export default function AdminSettingsPage() {
                 <h3 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-2">
                   <span className="p-2 bg-[#376B64]/10 text-[#376B64] rounded-lg shrink-0"><CalendarDays size={20} /></span> <span className="truncate">รอบการประมวลผลจัดส่งใบแจ้งหนี้อัตโนมัติ</span>
                 </h3>
-                
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-                  <CustomDayPicker 
-                    label="วันประมวลผลออกเอกสารประจำเดือน" 
-                    value={invoiceGenerateDay} 
-                    onChange={setInvoiceGenerateDay} 
-                    tooltipText="วันที่ระบบส่วนกลางจะสร้างเอกสารใบแจ้งหนี้และส่งข้อความแจ้งเตือนหาผู้พักอาศัยทุกคนเสร็จสิ้น" 
+                  <CustomDayPicker
+                    label="วันออกบิลประจำเดือน"
+                    value={invoiceGenerateDay}
+                    onChange={setInvoiceGenerateDay}
+                    tooltipText="วันที่ระบบส่วนกลางจะสร้างเอกสารใบแจ้งหนี้และส่งข้อความแจ้งเตือนหาผู้พักอาศัยทุกคนเสร็จสิ้น"
                     tooltipAlign="left"
                     align="left"
-                    disabled={!isSuperAdmin} 
+                    disabled={!isSuperAdmin}
                   />
-                  <CustomDayPicker 
-                    label="วันจัดส่งข้อความแจ้งเตือนรอบสอง" 
-                    value={secondReminderDay} 
-                    onChange={setSecondReminderDay} 
-                    tooltipText="วันที่ระบบจะส่งข้อความแจ้งเตือนย้ำก่อนวันครบกำหนดการชำระเงินของรอบเดือน" 
-                    icon={BellRing} 
+                  <CustomDayPicker
+                    label="วันจัดส่งข้อความแจ้งเตือนรอบสอง"
+                    value={secondReminderDay}
+                    onChange={setSecondReminderDay}
+                    tooltipText="วันที่ระบบจะส่งข้อความแจ้งเตือนย้ำก่อนวันครบกำหนดการชำระเงินของรอบเดือน"
+                    icon={BellRing}
                     tooltipAlign="center"
                     align="left"
-                    disabled={!isSuperAdmin} 
+                    disabled={!isSuperAdmin}
                   />
-                  <CustomDayPicker 
-                    label="วันสิ้นสุดกำหนดเวลาชำระเงิน" 
-                    value={dueDateDay} 
-                    onChange={setDueDateDay} 
-                    tooltipText="วันสุดท้ายสำหรับการดำเนินการชำระหนี้สินตามรอบบิลโดยไม่ถูกคิดคำนวณอัตราปรับล่าช้า" 
+                  <CustomDayPicker
+                    label="วันสิ้นสุดกำหนดเวลาชำระเงิน"
+                    value={dueDateDay}
+                    onChange={setDueDateDay}
+                    tooltipText="วันสุดท้ายสำหรับการดำเนินการชำระหนี้สินตามรอบบิลโดยไม่ถูกคิดคำนวณอัตราปรับล่าช้า"
                     tooltipAlign="right"
                     align="right"
-                    disabled={!isSuperAdmin} 
+                    disabled={!isSuperAdmin}
                   />
 
                   <div className="flex flex-col h-full">
@@ -631,7 +628,7 @@ export default function AdminSettingsPage() {
               </div>
 
               <div className="flex justify-start pt-6 border-t border-slate-100">
-                <button 
+                <button
                   type="submit" disabled={savingGlobal || !isSuperAdmin}
                   className={`w-full sm:w-auto px-8 py-3.5 rounded-xl font-bold shadow-lg transition-all flex items-center justify-center gap-2 ${savingGlobal || !isSuperAdmin ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-[#376B64] text-white hover:bg-[#2A524C] hover:-translate-y-0.5 active:scale-[0.98]'}`}
                 >
@@ -649,7 +646,7 @@ export default function AdminSettingsPage() {
             <div className="p-5 sm:p-6 md:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100">
               <h2 className="text-lg sm:text-xl font-black text-slate-800 flex items-center gap-2">
                 <span className="p-2 bg-[#376B64]/10 text-[#376B64] rounded-lg shrink-0"><CreditCard size={20} /></span> <span className="truncate">การจัดการเกณฑ์และราคาแยกรายยูนิตพักอาศัย</span>
-                
+
                 <div className="group relative inline-flex items-center justify-center cursor-help ml-1 shrink-0">
                   <Info size={18} className="text-slate-400 hover:text-[#376B64] transition-colors" />
                   <div className="pointer-events-none absolute top-full left-0 sm:left-1/2 sm:-translate-x-1/2 mt-2 hidden group-hover:block w-[260px] sm:w-72 p-3 bg-slate-800 text-white text-xs font-medium rounded-xl shadow-2xl z-[9999] text-center leading-relaxed">
@@ -660,7 +657,7 @@ export default function AdminSettingsPage() {
               </h2>
 
               {selectedHouses.length > 0 && (
-                <button 
+                <button
                   onClick={openBulkPopup}
                   className="w-full md:w-auto justify-center animate-in fade-in px-5 py-2.5 bg-[#376B64] text-white text-sm font-bold rounded-xl shadow-md hover:bg-[#2A524C] transition flex items-center gap-2 active:scale-[0.98]"
                 >
@@ -668,14 +665,14 @@ export default function AdminSettingsPage() {
                 </button>
               )}
             </div>
-            
+
             <div className="overflow-x-auto bg-white pb-6 w-full custom-scrollbar">
               <table className="w-full text-left border-collapse min-w-[800px]">
                 <thead>
                   <tr className="bg-slate-50 text-slate-500 text-sm border-b border-slate-100">
                     <th className="p-4 w-12 text-center">
-                      <input 
-                        type="checkbox" 
+                      <input
+                        type="checkbox"
                         className="rounded border-slate-300 text-[#376B64] focus:ring-[#376B64] w-5 h-5 cursor-pointer"
                         onChange={handleSelectAll} checked={selectedHouses.length === houses.length && houses.length > 0}
                       />
@@ -696,8 +693,8 @@ export default function AdminSettingsPage() {
                       return (
                         <tr key={house.id} className={`transition-colors hover:bg-slate-50/50 ${isSelected ? 'bg-[#376B64]/5' : ''}`}>
                           <td className="p-4 text-center">
-                            <input 
-                              type="checkbox" 
+                            <input
+                              type="checkbox"
                               className="rounded border-slate-300 text-[#376B64] focus:ring-[#376B64] w-5 h-5 cursor-pointer"
                               checked={isSelected} onChange={() => handleSelectOne(house.id)}
                             />
@@ -715,11 +712,11 @@ export default function AdminSettingsPage() {
                             {Number(house.feeRate).toLocaleString('th-TH')} <span className="text-xs font-bold text-slate-400">{house.feeType === 'FIXED' ? '/ รอบบิล' : '/ หน่วยพื้นที่'}</span>
                           </td>
                           <td className="p-4 text-center whitespace-nowrap">
-                            <button 
+                            <button
                               onClick={() => openSinglePopup(house)}
                               className="bg-white border border-slate-200 hover:border-[#376B64] hover:bg-[#376B64]/10 hover:text-[#376B64] text-slate-600 px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-sm active:scale-95 flex items-center justify-center gap-1.5 mx-auto"
                             >
-                               ปรับแต่งข้อมูล
+                              ปรับแต่งข้อมูล
                             </button>
                           </td>
                         </tr>
@@ -753,15 +750,15 @@ export default function AdminSettingsPage() {
                 {projectType === 'CONDO' ? 'ห้องพักอ้างอิง' : 'ยูนิตอ้างอิง'} <span className="font-black text-[#376B64] text-base ml-1">{editHouse.houseNo}</span>
               </p>
             </div>
-            
+
             <form onSubmit={handleSaveHouseFee} className="space-y-5">
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-2">โครงสร้างสัดส่วนเกณฑ์การคำนวณ</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <button type="button" onClick={() => setEditHouse({...editHouse, feeType: 'CALCULATED'})} className={`py-3.5 border-2 rounded-xl font-bold text-sm transition-all ${editHouse.feeType === 'CALCULATED' ? 'border-orange-500 bg-orange-50 text-orange-700 shadow-inner' : 'border-slate-100 bg-white text-slate-400 hover:border-slate-200 hover:bg-slate-50'}`}>
+                  <button type="button" onClick={() => setEditHouse({ ...editHouse, feeType: 'CALCULATED' })} className={`py-3.5 border-2 rounded-xl font-bold text-sm transition-all ${editHouse.feeType === 'CALCULATED' ? 'border-orange-500 bg-orange-50 text-orange-700 shadow-inner' : 'border-slate-100 bg-white text-slate-400 hover:border-slate-200 hover:bg-slate-50'}`}>
                     คำนวณตามพื้นที่
                   </button>
-                  <button type="button" onClick={() => setEditHouse({...editHouse, feeType: 'FIXED'})} className={`py-3.5 border-2 rounded-xl font-bold text-sm transition-all ${editHouse.feeType === 'FIXED' ? 'border-[#376B64] bg-[#376B64]/10 text-[#376B64] shadow-inner' : 'border-slate-100 bg-white text-slate-400 hover:border-slate-200 hover:bg-slate-50'}`}>
+                  <button type="button" onClick={() => setEditHouse({ ...editHouse, feeType: 'FIXED' })} className={`py-3.5 border-2 rounded-xl font-bold text-sm transition-all ${editHouse.feeType === 'FIXED' ? 'border-[#376B64] bg-[#376B64]/10 text-[#376B64] shadow-inner' : 'border-slate-100 bg-white text-slate-400 hover:border-slate-200 hover:bg-slate-50'}`}>
                     อัตราเหมาจ่ายคงที่
                   </button>
                 </div>
@@ -771,9 +768,9 @@ export default function AdminSettingsPage() {
                 <label className="block text-sm font-bold text-slate-700 mb-2">
                   มูลค่าเงินเรียกเก็บหลัก <span className="text-slate-400 font-medium">{editHouse.feeType === 'FIXED' ? '(บาท/รอบบิล)' : '(บาท/หน่วยตาราง)'}</span>
                 </label>
-                <input 
+                <input
                   type="number" required value={editHouse.feeRate === 0 ? '' : editHouse.feeRate}
-                  onChange={(e) => setEditHouse({...editHouse, feeRate: e.target.value === '' ? '' : Number(e.target.value)})}
+                  onChange={(e) => setEditHouse({ ...editHouse, feeRate: e.target.value === '' ? '' : Number(e.target.value) })}
                   className="w-full border-2 border-slate-200 rounded-xl p-3.5 text-lg font-black text-slate-800 focus:border-[#376B64] outline-none transition-all bg-slate-50 focus:bg-white shadow-inner"
                   placeholder={editHouse.feeType === 'FIXED' ? 'ตัวอย่าง 850' : 'ตัวอย่าง 15'}
                 />
@@ -788,13 +785,13 @@ export default function AdminSettingsPage() {
 
               {/* ปุ่มบันทึกอยู่ด้านซ้าย ปุ่มยกเลิกอยู่ด้านขวา */}
               <div className="pt-2 flex flex-row gap-3">
-                <button 
+                <button
                   type="submit" disabled={savingHouse}
                   className={`flex-[2] py-3.5 rounded-xl font-bold text-white shadow-md transition-all flex items-center justify-center gap-2 active:scale-95 ${savingHouse ? 'bg-slate-400' : 'bg-[#376B64] hover:bg-[#2A524C]'}`}
                 >
                   <Save size={18} className="shrink-0" /> บันทึกการตั้งค่าข้อมูล
                 </button>
-                <button 
+                <button
                   type="button" onClick={() => setIsPopupOpen(false)} disabled={savingHouse}
                   className="flex-1 py-3.5 border border-slate-200 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl active:scale-95 transition-all"
                 >
@@ -806,7 +803,8 @@ export default function AdminSettingsPage() {
         </div>
       )}
 
-      <style dangerouslySetInnerHTML={{__html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         .custom-scrollbar::-webkit-scrollbar { height: 6px; width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
