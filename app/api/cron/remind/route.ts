@@ -197,17 +197,24 @@ async function handleRemindCronJob(request: Request) {
     const now = new Date();
     const bkkTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Bangkok" }));
     
-    const currentDay = bkkTime.getDate();
-    const currentHour = String(bkkTime.getHours()).padStart(2, '0');
-    const currentMinute = String(bkkTime.getMinutes()).padStart(2, '0');
-    const currentTimeStr = `${currentHour}:${currentMinute}`;
-    
-    const targetTimeStr = config.invoiceGenerateTime || "08:00";
+    const url = new URL(request.url);
+    const isForce = url.searchParams.get('force') === 'true';
+    const targetHouseNo = url.searchParams.get('houseNo')?.trim();
+    const isDryRun = url.searchParams.get('dryRun') === 'true';
 
-    if (currentTimeStr !== targetTimeStr) {
+    const currentDay = bkkTime.getDate();
+    const currentHour = bkkTime.getHours();
+    
+    // ดึงเวลาที่กำหนดไว้จากระบบ (เช่น "09:00" -> ชั่วโมง 9)
+    const targetTimeStr = config.invoiceGenerateTime || "08:00";
+    const [targetHourStr] = targetTimeStr.split(':');
+    const targetHour = parseInt(targetHourStr, 10);
+
+    // 🌟 เช็คเฉพาะชั่วโมง: ถ้าไม่ใช่ชั่วโมงที่ตั้งไว้ (และไม่ได้ระบุ ?force=true) ให้ข้าม
+    if (!isForce && currentHour !== targetHour) {
       return NextResponse.json({ 
         success: true, 
-        message: `ยังไม่ถึงเวลาทวงยอดที่กำหนดไว้ (${targetTimeStr} น.) เวลาไทยปัจจุบันคือ ${currentTimeStr} น.` 
+        message: `ยังไม่ถึงชั่วโมงทวงยอดที่กำหนดไว้ (${targetTimeStr} น.) เวลาไทยปัจจุบันคือ ${String(currentHour).padStart(2, '0')}:${String(bkkTime.getMinutes()).padStart(2, '0')} น.` 
       });
     }
 
@@ -217,16 +224,34 @@ async function handleRemindCronJob(request: Request) {
         reminderType = 'REMINDER';
     } else if (currentDay === config.penaltyStartDay || currentDay === 15) {
         reminderType = 'OVERDUE';
+    } else if (isForce) {
+        reminderType = 'REMINDER';
     }
 
     if (reminderType === 'NONE') {
         return NextResponse.json({ success: true, message: `วันนี้ (วันที่ ${currentDay}) ไม่ใช่วันส่งทวงยอดค้างครับ` });
     }
 
+    // 🌟 เช็คป้องกันการส่งซ้ำในวันเดียวกัน (Idempotency Guard)
+    const todayDateStr = `${bkkTime.getFullYear()}-${String(bkkTime.getMonth() + 1).padStart(2, '0')}-${String(bkkTime.getDate()).padStart(2, '0')}`;
+    const reminderTitle = `AUTO_REMINDER_${todayDateStr}_${reminderType}`;
+
+    const alreadySentToday = await prisma.adminReminder.findFirst({
+      where: { title: reminderTitle }
+    });
+
+    if (alreadySentToday && !isForce) {
+      return NextResponse.json({ 
+        success: true, 
+        message: `ระบบได้ทำการส่งแจ้งเตือน (${reminderType}) ของวันนี้ (${todayDateStr}) เรียบร้อยแล้ว (ไม่ส่งซ้ำ)` 
+      });
+    }
+
     const pendingInvoices = await prisma.invoice.findMany({
       where: { 
         status: { in: ['PENDING', 'PARTIAL', 'OVERDUE', 'REJECTED'] as any },
         billingYear: { not: 9999 },
+        ...(targetHouseNo ? { house: { houseNo: targetHouseNo } } : {}),
         NOT: {
           invoiceNo: { startsWith: 'TR-' }
         }
@@ -234,7 +259,14 @@ async function handleRemindCronJob(request: Request) {
       include: { house: { include: { residents: true } } }
     });
     
-    if (pendingInvoices.length === 0) return NextResponse.json({ success: true, message: 'ไม่มีบิลค้างชำระที่ต้องทวง' });
+    if (pendingInvoices.length === 0) {
+      return NextResponse.json({ 
+        success: true, 
+        message: targetHouseNo 
+          ? `ไม่พบบิลค้างชำระสำหรับบ้านเลขที่ ${targetHouseNo}` 
+          : 'ไม่มีบิลค้างชำระที่ต้องทวง' 
+      });
+    }
 
     const penaltyRatePerMonth = config?.penaltyRatePerDay !== undefined && config?.penaltyRatePerDay !== null
       ? Number(config.penaltyRatePerDay)
@@ -258,22 +290,26 @@ async function handleRemindCronJob(request: Request) {
 
         currentPenalty = truncateDecimals(overdueMonths * penaltyRatePerMonth);
 
-        await prisma.invoice.update({
-          where: { id: inv.id },
-          data: {
-            penaltyAmount: currentPenalty,
-            totalAmount: truncateDecimals(Number(inv.baseAmount) + currentPenalty),
-            status: inv.status === 'PARTIAL' ? 'PARTIAL' : 'OVERDUE'
-          }
-        });
+        if (!isDryRun) {
+          await prisma.invoice.update({
+            where: { id: inv.id },
+            data: {
+              penaltyAmount: currentPenalty,
+              totalAmount: truncateDecimals(Number(inv.baseAmount) + currentPenalty),
+              status: inv.status === 'PARTIAL' ? 'PARTIAL' : 'OVERDUE'
+            }
+          });
+        }
       } else if (isPenaltyDisabled && !isInvInitialBalance && Number(inv.penaltyAmount) > 0) {
-        await prisma.invoice.update({
-          where: { id: inv.id },
-          data: {
-            penaltyAmount: 0,
-            totalAmount: truncateDecimals(Number(inv.baseAmount))
-          }
-        });
+        if (!isDryRun) {
+          await prisma.invoice.update({
+            where: { id: inv.id },
+            data: {
+              penaltyAmount: 0,
+              totalAmount: truncateDecimals(Number(inv.baseAmount))
+            }
+          });
+        }
       }
     }
 
@@ -386,17 +422,40 @@ async function handleRemindCronJob(request: Request) {
             invoiceNo: latestInv.invoiceNo || latestInv.id,
             lastPaidText: lastPaidText,
           });
-          await sendAutoLineMessage(resident.lineId, flexMsg);
+          if (!isDryRun) {
+            await sendAutoLineMessage(resident.lineId, flexMsg);
+          }
           stats.lineSent++;
         }
       }
       stats.updatedInvoices += invList.length;
     }
 
-    return NextResponse.json({ success: true, message: 'ส่งแจ้งเตือนสำเร็จ', stats });
-  } catch (error) {
+    // 🌟 บันทึกประวัติเพื่อป้องกันการส่งซ้ำในวันเดียวกัน (เฉพาะเมื่อส่งจริงและไม่ได้ระบุบ้านเจาะจง)
+    if (!alreadySentToday && !isDryRun && !targetHouseNo) {
+      await prisma.adminReminder.create({
+        data: {
+          title: reminderTitle,
+          dayOfMonth: currentDay,
+          isActive: true
+        }
+      }).catch(err => console.error("Error saving reminder log:", err));
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      message: isDryRun 
+        ? `[Dry Run] จำลองการทำงานสำเร็จ (ไม่ได้ส่ง LINE จริง) สำหรับ${targetHouseNo ? `บ้านเลขที่ ${targetHouseNo}` : 'ทุกบ้าน'}` 
+        : `ส่งแจ้งเตือนสำเร็จ${targetHouseNo ? ` (เฉพาะบ้านเลขที่ ${targetHouseNo})` : ''}`, 
+      stats 
+    });
+  } catch (error: any) {
     console.error(error);
-    return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ 
+      success: false, 
+      error: 'Internal Server Error',
+      details: error?.message || String(error)
+    }, { status: 500 });
   }
 }
 

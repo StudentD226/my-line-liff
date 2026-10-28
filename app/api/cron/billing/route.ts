@@ -393,22 +393,29 @@ async function handleCronJob(request: Request) {
     const now = new Date();
     const bkkTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Bangkok" }));
     
-    const currentDay = bkkTime.getDate();
-    const currentHour = String(bkkTime.getHours()).padStart(2, '0');
-    const currentMinute = String(bkkTime.getMinutes()).padStart(2, '0');
-    const currentTimeStr = `${currentHour}:${currentMinute}`;
-    
-    const generateTimeStr = config.invoiceGenerateTime || "08:00";
+    const url = new URL(request.url);
+    const isForce = url.searchParams.get('force') === 'true';
+    const targetHouseNo = url.searchParams.get('houseNo')?.trim();
+    const isDryRun = url.searchParams.get('dryRun') === 'true';
 
-    if (currentTimeStr !== generateTimeStr) {
+    const currentDay = bkkTime.getDate();
+    const currentHour = bkkTime.getHours();
+    
+    // ดึงเวลาที่กำหนดไว้จากระบบ (เช่น "09:00" -> ชั่วโมง 9)
+    const generateTimeStr = config.invoiceGenerateTime || "08:00";
+    const [targetHourStr] = generateTimeStr.split(':');
+    const targetHour = parseInt(targetHourStr, 10);
+
+    // 🌟 เช็คเฉพาะชั่วโมง: ถ้าไม่ใช่ชั่วโมงที่ตั้งไว้ (และไม่ได้ระบุ ?force=true) ให้ข้าม
+    if (!isForce && currentHour !== targetHour) {
       return NextResponse.json({ 
         success: true, 
-        message: `ยังไม่ถึงเวลาทำงานที่กำหนดไว้ (${generateTimeStr} น.) เวลาไทยปัจจุบันคือ ${currentTimeStr} น.` 
+        message: `ยังไม่ถึงชั่วโมงทำงานที่กำหนดไว้ (${generateTimeStr} น.) เวลาไทยปัจจุบันคือ ${String(currentHour).padStart(2, '0')}:${String(bkkTime.getMinutes()).padStart(2, '0')} น.` 
       });
     }
 
-    // 1. สร้างบิลใหม่ถ้าถึงวันที่ตั้งไว้
-    if (currentDay === config.invoiceGenerateDay) {
+    // 1. สร้างบิลใหม่ถ้าถึงวันที่ตั้งไว้ (หรือ force)
+    if (currentDay === config.invoiceGenerateDay || isForce) {
       let targetMonth = bkkTime.getMonth() + 2; 
       let targetYear = bkkTime.getFullYear();
       if (targetMonth > 12) {
@@ -416,7 +423,14 @@ async function handleCronJob(request: Request) {
         targetYear += 1;
       }
 
-      const houses = await prisma.house.findMany();
+      const houses = await prisma.house.findMany({
+        where: targetHouseNo ? { houseNo: targetHouseNo } : undefined
+      });
+
+      if (houses.length === 0 && targetHouseNo) {
+        return NextResponse.json({ success: false, message: `ไม่พบบ้านเลขที่ ${targetHouseNo} ในระบบ` });
+      }
+
       const dueDate = new Date(targetYear, targetMonth - 1, config.dueDateDay, 23, 59, 59);
       const dayStr = String(bkkTime.getDate()).padStart(2, '0');
       const monthStr = String(bkkTime.getMonth() + 1).padStart(2, '0');
@@ -443,21 +457,31 @@ async function handleCronJob(request: Request) {
         );
         const customInvoiceNo = `${house.houseNo}-${dayStr}${monthStr}${yearStrTh}-M${String(targetMonth).padStart(2, '0')}`;
 
-        await prisma.invoice.create({
-          data: {
-            invoiceNo: customInvoiceNo,
-            billingMonth: targetMonth,
-            billingYear: targetYear,
-            baseAmount: monthlyRate,
-            totalAmount: monthlyRate,
-            paidAmount: 0, 
-            status: 'PENDING',
-            isNotified: false,
-            dueDate: dueDate,
-            scheduledSendAt: now,
-            residentHouseId: house.id
+        if (!isDryRun) {
+          try {
+            await prisma.invoice.create({
+              data: {
+                invoiceNo: customInvoiceNo,
+                billingMonth: targetMonth,
+                billingYear: targetYear,
+                baseAmount: monthlyRate,
+                totalAmount: monthlyRate,
+                paidAmount: 0, 
+                status: 'PENDING',
+                isNotified: false,
+                dueDate: dueDate,
+                scheduledSendAt: now,
+                residentHouseId: house.id
+              }
+            });
+          } catch (createErr: any) {
+            if (createErr?.code === 'P2002') {
+              console.log(`Invoice ${customInvoiceNo} already exists, skipping.`);
+            } else {
+              throw createErr;
+            }
           }
-        });
+        }
       }
     }
 
@@ -468,6 +492,7 @@ async function handleCronJob(request: Request) {
         scheduledSendAt: { lte: now },
         status: { in: ['PENDING', 'OVERDUE', 'PARTIAL'] as any }, 
         billingYear: { not: 9999 },
+        ...(targetHouseNo ? { house: { houseNo: targetHouseNo } } : {}),
         NOT: {
           invoiceNo: { startsWith: 'TR-' }
         }
@@ -478,7 +503,12 @@ async function handleCronJob(request: Request) {
     });
 
     if (pendingInvoices.length === 0) {
-      return NextResponse.json({ success: true, message: 'ไม่มีบิลที่ต้องส่งในรอบเวลานี้ครับ' });
+      return NextResponse.json({ 
+        success: true, 
+        message: (currentDay === config.invoiceGenerateDay || isForce)
+          ? 'สร้างบิลและส่งข้อความครบถ้วนแล้ว หรือไม่มีบิลใหม่ที่ต้องส่ง' 
+          : `วันนี้ (วันที่ ${currentDay}) ไม่ใช่วันออกบิลประจำเดือน (วันที่ ${config.invoiceGenerateDay})` 
+      });
     }
 
     const penaltyRatePerMonth = config?.penaltyRatePerDay !== undefined && config?.penaltyRatePerDay !== null
@@ -531,6 +561,7 @@ async function handleCronJob(request: Request) {
 
     for (const [houseId, invList] of uniqueHouseMap.entries()) {
       const sampleInv = invList[0];
+      if (!sampleInv || !sampleInv.house) continue;
 
       // ดึงประวัติค้างชำระทั้งหมดของบ้านนี้
       const allUnpaidForThisHouse = await prisma.invoice.findMany({
@@ -654,24 +685,38 @@ async function handleCronJob(request: Request) {
             lastPaidText: lastPaidText,
           });
 
-          await sendAutoLineMessage(resident.lineId, flexMsg);
+          if (!isDryRun) {
+            await sendAutoLineMessage(resident.lineId, flexMsg);
+          }
           stats.lineSent++;
         }
       }
 
       const invIdsToUpdate = invList.map(i => i.id);
-      await prisma.invoice.updateMany({
-        where: { id: { in: invIdsToUpdate } },
-        data: { isNotified: true }
-      });
+      if (!isDryRun) {
+        await prisma.invoice.updateMany({
+          where: { id: { in: invIdsToUpdate } },
+          data: { isNotified: true }
+        });
+      }
       stats.updatedInvoices += invIdsToUpdate.length;
     }
 
-    return NextResponse.json({ success: true, message: 'หุ่นยนต์สร้างบิลและจัดส่งเวลาไทยรอบเดียวเสร็จสิ้น!', stats });
+    return NextResponse.json({ 
+      success: true, 
+      message: isDryRun
+        ? `[Dry Run] จำลองการทำงานสำเร็จ (ไม่ได้ส่ง LINE จริง) สำหรับ${targetHouseNo ? `บ้านเลขที่ ${targetHouseNo}` : 'ทุกบ้าน'}`
+        : `หุ่นยนต์สร้างบิลและจัดส่งเวลาไทยรอบเดียวเสร็จสิ้น${targetHouseNo ? ` (เฉพาะบ้านเลขที่ ${targetHouseNo})` : ''}!`, 
+      stats 
+    });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Cron Error:", error);
-    return NextResponse.json({ success: false, error: 'ระบบหุ่นยนต์ผิดพลาด' }, { status: 500 });
+    return NextResponse.json({ 
+      success: false, 
+      error: 'ระบบหุ่นยนต์ผิดพลาด',
+      details: error?.message || String(error)
+    }, { status: 500 });
   }
 }
 

@@ -43,7 +43,7 @@ export async function addHouse(formData: FormData) {
   revalidatePath("/admin/houses");
 }
 
-// 2. แก้ไขบ้าน
+// 2. แก้ไขบ้าน (ไม่อนุญาตให้แก้ไขเลขที่บ้านและ Passcode เพื่อความปลอดภัยและความถูกต้องของระบบ)
 export async function updateHouse(formData: FormData) {
   const id = formData.get("id")?.toString();
   const houseSize = parseFloat(formData.get("houseSize")?.toString() || "0");
@@ -53,6 +53,7 @@ export async function updateHouse(formData: FormData) {
 
   if (!id) return;
 
+  // houseNo และ passcode ถูกล็อกไว้ ไม่สามารถแก้ไขได้
   await prisma.house.update({
     where: { id },
     data: {

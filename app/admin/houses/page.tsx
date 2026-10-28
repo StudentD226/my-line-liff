@@ -2,7 +2,8 @@ import { PrismaClient } from "@prisma/client";
 import { 
   Plus, MapPin, Maximize2, Pencil, 
   X, Calculator, Coins, Search, Phone,
-  ChevronDown, Building, Users, ShieldAlert
+  ChevronDown, Building, Users, ShieldAlert,
+  Lock, Key
 } from 'lucide-react';
 import Link from "next/link";
 import { addHouse, updateHouse, autoGenerateHouses } from './actions';
@@ -184,14 +185,70 @@ export default async function AdminHousePage(props: { searchParams: Promise<{ ed
                 {editHouse && <input type="hidden" name="id" value={editHouse.id} />}
                 
                 <div>
-                  <label className="block text-xs sm:text-[13px] font-bold text-slate-700 mb-1 sm:mb-1.5 tracking-wide">
-                    {unitLabel} {editHouse && <span className="text-red-500 ml-1 lowercase font-medium tracking-normal">(ข้อมูลอ้างอิงหลัก ไม่สามารถเปลี่ยนแปลงได้)</span>}
-                  </label>
-                  <div className="relative">
-                    <MapPin className={`absolute left-4 top-3 sm:top-3.5 shrink-0 ${editHouse ? 'text-slate-300' : 'text-slate-400'}`} size={18} />
-                    <input suppressHydrationWarning name="houseNo" type="text" defaultValue={editHouse?.houseNo || ""} placeholder="ตัวอย่าง 99/1" required readOnly={!!editHouse} className={`w-full pl-11 pr-4 py-2.5 sm:py-3 border border-slate-200 rounded-2xl outline-none transition-all font-medium text-sm sm:text-base ${editHouse ? 'bg-slate-50 text-slate-400 cursor-not-allowed border-dashed' : 'bg-white focus:border-[#376B64] focus:ring-4 focus:ring-[#376B64]/10'}`} />
+                  <div className="flex items-center justify-between mb-1 sm:mb-1.5">
+                    <label className="block text-xs sm:text-[13px] font-bold text-slate-700 tracking-wide">
+                      {unitLabel}
+                    </label>
+                    {editHouse && (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-lg">
+                        <Lock size={12} className="shrink-0" /> ไม่สามารถแก้ไขได้
+                      </span>
+                    )}
                   </div>
+                  <div className="relative">
+                    <MapPin className={`absolute left-4 top-3 sm:top-3.5 shrink-0 ${editHouse ? 'text-slate-400' : 'text-slate-400'}`} size={18} />
+                    <input 
+                      suppressHydrationWarning 
+                      name="houseNo" 
+                      type="text" 
+                      defaultValue={editHouse?.houseNo || ""} 
+                      placeholder="ตัวอย่าง 99/1" 
+                      required={!editHouse} 
+                      readOnly={!!editHouse} 
+                      disabled={!!editHouse}
+                      className={`w-full pl-11 pr-10 py-2.5 sm:py-3 border rounded-2xl outline-none transition-all font-bold text-sm sm:text-base ${
+                        editHouse 
+                          ? 'bg-slate-100 text-slate-500 border-slate-200 cursor-not-allowed select-none' 
+                          : 'bg-white text-slate-800 border-slate-200 focus:border-[#376B64] focus:ring-4 focus:ring-[#376B64]/10'
+                      }`} 
+                    />
+                    {editHouse && (
+                      <Lock size={16} className="absolute right-4 top-3 sm:top-3.5 text-slate-400 pointer-events-none" />
+                    )}
+                  </div>
+                  {editHouse && (
+                    <p className="mt-1 text-[11px] text-slate-400">
+                      * ข้อมูลอ้างอิงหลักของยูนิต ไม่สามารถเปลี่ยนแปลงได้
+                    </p>
+                  )}
                 </div>
+
+                {editHouse && (
+                  <div>
+                    <div className="flex items-center justify-between mb-1 sm:mb-1.5">
+                      <label className="block text-xs sm:text-[13px] font-bold text-slate-700 tracking-wide">
+                        รหัสผ่านประจำยูนิต (Passcode)
+                      </label>
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-lg">
+                        <Lock size={12} className="shrink-0" /> ไม่สามารถแก้ไขได้
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <Key className="absolute left-4 top-3 sm:top-3.5 text-slate-400 shrink-0" size={18} />
+                      <input
+                        type="text"
+                        value={editHouse.passcode || "ยังไม่มีรหัส"}
+                        readOnly
+                        disabled
+                        className="w-full pl-11 pr-10 py-2.5 sm:py-3 border border-slate-200 rounded-2xl outline-none font-mono font-bold text-sm sm:text-base bg-slate-100 text-slate-500 cursor-not-allowed select-none"
+                      />
+                      <Lock size={16} className="absolute right-4 top-3 sm:top-3.5 text-slate-400 pointer-events-none" />
+                    </div>
+                    <p className="mt-1 text-[11px] text-slate-400">
+                      * รหัสผ่านสำหรับลูกบ้านใช้ลงทะเบียน ไม่สามารถแก้ไขในฟอร์มนี้ได้ (หากต้องการเปลี่ยน ให้ใช้ปุ่มสุ่มรหัสผ่านใหม่ที่ตารางข้อมูล)
+                    </p>
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-xs sm:text-[13px] font-bold text-slate-700 mb-1 sm:mb-1.5 tracking-wide">ขนาดพื้นที่อ้างอิง ({sizeLabel})</label>
