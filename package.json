@@ -17,6 +17,7 @@
     "@line/liff": "^2.27.3",
     "@prisma/client": "^6.19.2",
     "@prisma/config": "^7.4.2",
+    "@vercel/analytics": "^2.0.1",
     "bcryptjs": "^3.0.3",
     "cloudinary": "^2.9.0",
     "dayjs": "^1.11.21",
